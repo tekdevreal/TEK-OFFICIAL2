@@ -48,6 +48,10 @@ function getAdminWallet(): Keypair {
   }
 
   try {
+    if (!env.ADMIN_WALLET_PATH) {
+      throw new Error('ADMIN_WALLET_PATH environment variable is not set');
+    }
+
     if (!fs.existsSync(env.ADMIN_WALLET_PATH)) {
       throw new Error(`Admin wallet file not found: ${env.ADMIN_WALLET_PATH}`);
     }
