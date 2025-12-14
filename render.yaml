@@ -29,3 +29,27 @@ services:
       # - key: MIN_SOL_PAYOUT
       #   value: 0.0001
 
+  - type: worker
+    name: nukerewards-telegram-bot
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd telegram-bot && npm install && npm run build
+    startCommand: cd telegram-bot && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Required: Set these in Render Dashboard
+      # - key: TELEGRAM_BOT_TOKEN
+      #   sync: false  # Mark as secret
+      # - key: TELEGRAM_CHAT_ID
+      #   value: @nukerewards
+      # - key: BACKEND_URL
+      #   value: https://nukerewards-backend.onrender.com
+      # - key: POLLING_INTERVAL_MS
+      #   value: 60000
+      # - key: RETRY_ATTEMPTS
+      #   value: 3
+      # - key: RETRY_DELAY_MS
+      #   value: 1000
+
