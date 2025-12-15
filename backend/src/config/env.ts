@@ -7,11 +7,10 @@ dotenv.config();
 interface EnvConfig {
   NODE_ENV: string;
   PORT: number;
-  // Solana configuration (optional for basic server startup)
   SOLANA_NETWORK?: string;
-  HELIUS_RPC_URL?: string;
-  TOKEN_MINT?: string;
-  ADMIN_WALLET_PATH?: string;
+  HELIUS_RPC_URL: string;
+  TOKEN_MINT: string;
+  ADMIN_WALLET_JSON: string;
   // Additional environment variables can be added here as needed
   [key: string]: string | number | undefined;
 }
@@ -27,14 +26,25 @@ export function loadEnv(): EnvConfig {
     throw new Error('PORT must be a valid number between 1 and 65535');
   }
 
+  if (!process.env.HELIUS_RPC_URL) {
+    throw new Error('HELIUS_RPC_URL environment variable is required');
+  }
+
+  if (!process.env.TOKEN_MINT) {
+    throw new Error('TOKEN_MINT environment variable is required');
+  }
+
+  if (!process.env.ADMIN_WALLET_JSON) {
+    throw new Error('ADMIN_WALLET_JSON environment variable is required');
+  }
+
   return {
     NODE_ENV: nodeEnv,
     PORT: port,
-    // Optional Solana config - won't fail if not provided
     SOLANA_NETWORK: process.env.SOLANA_NETWORK,
     HELIUS_RPC_URL: process.env.HELIUS_RPC_URL,
     TOKEN_MINT: process.env.TOKEN_MINT,
-    ADMIN_WALLET_PATH: process.env.ADMIN_WALLET_PATH,
+    ADMIN_WALLET_JSON: process.env.ADMIN_WALLET_JSON,
   };
 }
 

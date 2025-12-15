@@ -48,27 +48,30 @@ function getAdminWallet(): Keypair {
   }
 
   try {
-    if (!env.ADMIN_WALLET_PATH) {
-      throw new Error('ADMIN_WALLET_PATH environment variable is not set');
+    if (!env.ADMIN_WALLET_JSON) {
+      throw new Error('ADMIN_WALLET_JSON environment variable is not set');
     }
 
-    if (!fs.existsSync(env.ADMIN_WALLET_PATH)) {
-      throw new Error(`Admin wallet file not found: ${env.ADMIN_WALLET_PATH}`);
+    let secretKey: Uint8Array;
+    try {
+      const parsed = JSON.parse(env.ADMIN_WALLET_JSON);
+      secretKey = Uint8Array.from(parsed);
+    } catch (parseError) {
+      throw new Error('ADMIN_WALLET_JSON is not valid JSON');
     }
 
-    const secretKey = JSON.parse(fs.readFileSync(env.ADMIN_WALLET_PATH, 'utf-8'));
-    cachedAdminWallet = Keypair.fromSecretKey(new Uint8Array(secretKey));
+    cachedAdminWallet = Keypair.fromSecretKey(secretKey);
     
     logger.info('Admin wallet loaded', {
       pubkey: cachedAdminWallet.publicKey.toBase58(),
-      path: env.ADMIN_WALLET_PATH,
+      source: 'ADMIN_WALLET_JSON',
     });
 
     return cachedAdminWallet;
   } catch (error) {
     logger.error('Failed to load admin wallet', {
       error: error instanceof Error ? error.message : String(error),
-      path: env.ADMIN_WALLET_PATH,
+      source: 'ADMIN_WALLET_JSON',
     });
     throw error;
   }
