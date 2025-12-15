@@ -15,14 +15,14 @@ import {
   createAssociatedTokenAccountInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import {
+  createUmi,
   createSignerFromKeypair,
   keypairIdentity,
   publicKey as umiPublicKey,
   none,
 } from '@metaplex-foundation/umi';
-import { createMetadataAccountV3 } from '@metaplex-foundation/mpl-token-metadata';
+import mplTokenMetadata from '@metaplex-foundation/mpl-token-metadata';
 import * as fs from 'fs';
 import { CONFIG } from './config.js';
 
@@ -30,6 +30,11 @@ async function createToken() {
   // Connection
   const connection = new Connection(CONFIG.network[CONFIG.network.current], 'confirmed');
   const umi = createUmi(CONFIG.network[CONFIG.network.current]);
+  const {
+    createMetadataAccountV3,
+    createMetadataAccountV2,
+    createMetadataAccount,
+  } = mplTokenMetadata?.default ?? mplTokenMetadata;
 
   // Load admin wallet
   if (!process.env.ADMIN_WALLET_JSON) throw new Error('ADMIN_WALLET_JSON is required');
@@ -139,23 +144,65 @@ async function createToken() {
 
   const umiMint = umiPublicKey(mint.toBase58());
 
-  const metadataTx = await createMetadataAccountV3(umi, {
-    mint: umiMint,
-    mintAuthority: umiSigner,
-    payer: umiSigner,
-    updateAuthority: umiSigner,
-    data: {
-      name: CONFIG.metadata.name,
-      symbol: CONFIG.metadata.symbol,
-      uri: CONFIG.metadata.uri || CONFIG.metadata.image || '',
-      sellerFeeBasisPoints: CONFIG.metadata.sellerFeeBasisPoints,
-      creators: umiCreators,
-      collection: none(),
-      uses: none(),
-      collectionDetails: none(),
-    },
-    isMutable: true,
-  }).sendAndConfirm(umi);
+  const metadataBuilder =
+    (createMetadataAccountV3 &&
+      createMetadataAccountV3(umi, {
+        mint: umiMint,
+        mintAuthority: umiSigner,
+        payer: umiSigner,
+        updateAuthority: umiSigner,
+        data: {
+          name: CONFIG.metadata.name,
+          symbol: CONFIG.metadata.symbol,
+          uri: CONFIG.metadata.uri || CONFIG.metadata.image || '',
+          sellerFeeBasisPoints: CONFIG.metadata.sellerFeeBasisPoints,
+          creators: umiCreators,
+          collection: none(),
+          uses: none(),
+          collectionDetails: none(),
+        },
+        isMutable: true,
+      })) ||
+    (createMetadataAccountV2 &&
+      createMetadataAccountV2(umi, {
+        mint: umiMint,
+        mintAuthority: umiSigner,
+        payer: umiSigner,
+        updateAuthority: umiSigner,
+        data: {
+          name: CONFIG.metadata.name,
+          symbol: CONFIG.metadata.symbol,
+          uri: CONFIG.metadata.uri || CONFIG.metadata.image || '',
+          sellerFeeBasisPoints: CONFIG.metadata.sellerFeeBasisPoints,
+          creators: umiCreators,
+          collection: none(),
+          uses: none(),
+        },
+        isMutable: true,
+      })) ||
+    (createMetadataAccount &&
+      createMetadataAccount(umi, {
+        mint: umiMint,
+        mintAuthority: umiSigner,
+        payer: umiSigner,
+        updateAuthority: umiSigner,
+        data: {
+          name: CONFIG.metadata.name,
+          symbol: CONFIG.metadata.symbol,
+          uri: CONFIG.metadata.uri || CONFIG.metadata.image || '',
+          sellerFeeBasisPoints: CONFIG.metadata.sellerFeeBasisPoints,
+          creators: umiCreators,
+          collection: none(),
+          uses: none(),
+        },
+        isMutable: true,
+      }));
+
+  if (!metadataBuilder) {
+    throw new Error('No compatible metadata builder found in mpl-token-metadata');
+  }
+
+  const metadataTx = await metadataBuilder.sendAndConfirm(umi);
 
   console.log('✅ Metadata transaction confirmed:', metadataTx);
 
