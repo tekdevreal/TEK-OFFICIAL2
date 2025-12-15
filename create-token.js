@@ -16,7 +16,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import mplTokenMetadata from '@metaplex-foundation/mpl-token-metadata';
-const { createCreateMetadataAccountV3Instruction } = mplTokenMetadata;
+const { createCreateMetadataAccountV3Instruction } = (mplTokenMetadata?.default ?? mplTokenMetadata);
 import * as fs from 'fs';
 import { CONFIG } from './config.js';
 
