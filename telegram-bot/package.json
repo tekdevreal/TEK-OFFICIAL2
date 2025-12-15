@@ -22,6 +22,9 @@
     "node": "20.6.0"
   },
   "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@metaplex-foundation/umi": "^1.0.0",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.0.0",
     "axios": "^1.13.2",
     "dotenv": "^16.4.5",
     "node-telegram-bot-api": "^0.67.0",

@@ -16,7 +16,7 @@ import {
   createAssociatedTokenAccountInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
-import { createUmi } from '@metaplex-foundation/umi';
+   import { createUmi } from '@metaplex-foundation/umi';
 import {
   createSignerFromKeypair,
   keypairIdentity,
