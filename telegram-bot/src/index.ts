@@ -35,35 +35,51 @@ function isAuthorizedMessage(allowedIds: string[], msg: TelegramBot.Message): bo
   return directAllowed || forwardAllowed;
 }
 
+type RewardApiResponse = {
+  lastRun: string | null;
+  nextRun: string | null;
+  isRunning: boolean;
+  statistics: {
+    totalHolders: number;
+    eligibleHolders: number;
+    pendingPayouts: number;
+    totalSOLDistributed: number;
+  };
+  tokenPrice: { usd: number };
+};
+
+/**
+ * Fetch rewards from the backend and return a pre-formatted message string
+ * along with the raw lastRun timestamp so callers can decide whether to send.
+ */
+async function fetchRewardsSummary(backendUrl: string): Promise<{ message: string; lastRun: string | null }> {
+  const response = await axios.get<RewardApiResponse>(`${backendUrl}/dashboard/rewards`, { timeout: 30000 });
+  const rewards = response.data;
+
+  const lastRunDisplay = rewards.lastRun ? new Date(rewards.lastRun).toLocaleString() : 'Never';
+  const nextRunDisplay = rewards.nextRun ? new Date(rewards.nextRun).toLocaleString() : 'N/A';
+
+  const message = [
+    '📊 Reward System Status',
+    '',
+    `Last Run: ${lastRunDisplay}`,
+    `Next Run: ${nextRunDisplay}`,
+    `Status: ${rewards.isRunning ? 'Running' : 'Idle'}`,
+    '',
+    'Statistics:',
+    `• Total Holders: ${rewards.statistics.totalHolders}`,
+    `• Eligible Holders: ${rewards.statistics.eligibleHolders}`,
+    `• Pending Payouts: ${rewards.statistics.pendingPayouts}`,
+    `• Total SOL Distributed: ${rewards.statistics.totalSOLDistributed.toFixed(6)}`,
+    `• Token Price (USD): ${rewards.tokenPrice.usd.toFixed(4)}`,
+  ].join('\n');
+
+  return { message, lastRun: rewards.lastRun };
+}
+
 async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl: string): Promise<void> {
   try {
-    const response = await axios.get(`${backendUrl}/dashboard/rewards`, { timeout: 30000 });
-    const rewards = response.data as {
-      lastRun: string | null;
-      nextRun: string | null;
-      isRunning: boolean;
-      statistics: { totalHolders: number; eligibleHolders: number; pendingPayouts: number; totalSOLDistributed: number };
-      tokenPrice: { usd: number };
-    };
-
-    const lastRun = rewards.lastRun ? new Date(rewards.lastRun).toLocaleString() : 'Never';
-    const nextRun = rewards.nextRun ? new Date(rewards.nextRun).toLocaleString() : 'N/A';
-
-    const message = [
-      '📊 Reward System Status',
-      '',
-      `Last Run: ${lastRun}`,
-      `Next Run: ${nextRun}`,
-      `Status: ${rewards.isRunning ? 'Running' : 'Idle'}`,
-      '',
-      'Statistics:',
-      `• Total Holders: ${rewards.statistics.totalHolders}`,
-      `• Eligible Holders: ${rewards.statistics.eligibleHolders}`,
-      `• Pending Payouts: ${rewards.statistics.pendingPayouts}`,
-      `• Total SOL Distributed: ${rewards.statistics.totalSOLDistributed.toFixed(6)}`,
-      `• Token Price (USD): ${rewards.tokenPrice.usd.toFixed(4)}`,
-    ].join('\n');
-
+    const { message } = await fetchRewardsSummary(backendUrl);
     await bot.sendMessage(chatId, message);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -79,6 +95,7 @@ function main(): void {
     const authorizedChatIds = parseAuthorizedChatIds(chatIdsEnv);
     const backendUrl = requireEnv('BACKEND_URL');
     const port = Number(process.env.PORT || 3000);
+    const pollingIntervalMs = Number(process.env.POLLING_INTERVAL_MS || '60000');
     const webhookUrl = `${getWebhookUrl()}/telegram/webhook`;
 
     const bot = new TelegramBot(token, { polling: false, webHook: { port: 0 } });
@@ -102,7 +119,7 @@ function main(): void {
       res.sendStatus(200);
     });
 
-    // Unified handler for messages and channel posts
+    // Unified handler for messages and channel posts (webhook-driven)
     const handleIncomingMessage = async (msg: TelegramBot.Message) => {
       console.log('[Bot] Incoming message', { chatId: msg.chat.id, chatType: msg.chat.type, text: msg.text });
       if (!msg.text) return;
@@ -123,8 +140,56 @@ function main(): void {
     bot.on('message', handleIncomingMessage);
     bot.on('channel_post', handleIncomingMessage);
 
+    // Automatic reward notifications loop:
+    // - Runs every POLLING_INTERVAL_MS (default 60000ms)
+    // - Fetches rewards once per tick
+    // - Sends to all authorized chats only when lastRun increases
+    let lastBroadcastLastRun: string | null = null;
+
+    const tickAutomaticRewards = async () => {
+      try {
+        const { message, lastRun } = await fetchRewardsSummary(backendUrl);
+        if (!lastRun) {
+          console.log('[AutoRewards] No lastRun from backend yet; skipping broadcast');
+          return;
+        }
+
+        const lastRunDate = new Date(lastRun);
+        const lastBroadcastDate = lastBroadcastLastRun ? new Date(lastBroadcastLastRun) : null;
+
+        if (lastBroadcastDate && lastRunDate <= lastBroadcastDate) {
+          console.log('[AutoRewards] No new rewards run detected; lastRun <= lastBroadcastLastRun', {
+            lastRun,
+            lastBroadcastLastRun,
+          });
+          return;
+        }
+
+        console.log('[AutoRewards] New rewards run detected, broadcasting to authorized chats', {
+          lastRun,
+          authorizedChatIds,
+        });
+
+        for (const chatId of authorizedChatIds) {
+          try {
+            await bot.sendMessage(chatId, message);
+            console.log('[AutoRewards] Sent rewards summary', { chatId });
+          } catch (sendErr) {
+            console.error('[AutoRewards] Failed to send rewards summary', { chatId, error: sendErr });
+          }
+        }
+
+        lastBroadcastLastRun = lastRun;
+      } catch (err) {
+        console.error('[AutoRewards] Error while fetching or broadcasting rewards:', err);
+      }
+    };
+
+    // Start periodic automatic rewards polling (does not interfere with webhook handlers)
+    setInterval(tickAutomaticRewards, pollingIntervalMs);
+
     app.listen(port, () => {
-      console.log('[Bot] Express server listening', { port, webhookUrl, backendUrl });
+      console.log('[Bot] Express server listening', { port, webhookUrl, backendUrl, pollingIntervalMs });
     });
   } catch (error) {
     console.error('[Bot] Failed to start:', error);
