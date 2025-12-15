@@ -8,6 +8,7 @@
     "create-token": "node create-token.js",
     "create-token-with-fee": "node create-token-with-transfer-fee.js",
     "mint-tokens": "node mint-tokens.js",
+    "send-tokens": "node send-tokens.js",
     "create-tax-token": "tsx createTaxToken.ts",
     "update-transfer-fee": "tsx updateTransferFee.ts"
   },
