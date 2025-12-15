@@ -94,8 +94,8 @@ function main(): void {
         console.log('[Bot] Webhook registered successfully');
       })
       .catch((err) => {
-        console.error('[Bot] Failed to set webhook:', err);
-        process.exit(1);
+        // Do NOT exit the process; keep Express listening so Railway doesn't 502.
+        console.error('[Bot] Failed to set webhook. Bot will keep running but may not receive updates:', err);
       });
 
     const app = express();
