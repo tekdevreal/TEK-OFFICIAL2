@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import healthRouter from './routes/health';
 import dashboardRouter from './routes/dashboard';
@@ -39,7 +39,7 @@ export function createApp(): Express {
   }));
 
   // Request logging middleware (for debugging)
-  app.use((req: Request, _res: Response, next: express.NextFunction) => {
+  app.use((req: Request, _res: Response, next: NextFunction) => {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
         origin: req.headers.origin,
@@ -95,7 +95,7 @@ export function createApp(): Express {
   });
 
   // Error handler
-  app.use((err: Error, _req: Request, res: Response, _next: express.NextFunction): void => {
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction): void => {
     console.error('Unhandled error:', err.message);
     res.status(500).json({ error: 'Internal Server Error' });
   });
