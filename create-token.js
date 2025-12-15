@@ -15,24 +15,12 @@ import {
   createAssociatedTokenAccountInstruction,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
+import mplTokenMetadata from '@metaplex-foundation/mpl-token-metadata';
+const { createCreateMetadataAccountV3Instruction } = mplTokenMetadata;
 import * as fs from 'fs';
 import { CONFIG } from './config.js';
 
 async function createToken() {
-  // Dynamic import of Metaplex module
-  const mplTokenMetadata = await import('@metaplex-foundation/mpl-token-metadata');
-  const createMetadataInstruction =
-    mplTokenMetadata.createCreateMetadataAccountV3Instruction ||
-    mplTokenMetadata.default?.createCreateMetadataAccountV3Instruction ||
-    mplTokenMetadata.createCreateMetadataAccountV2Instruction ||
-    mplTokenMetadata.default?.createCreateMetadataAccountV2Instruction ||
-    mplTokenMetadata.createCreateMetadataAccountInstruction ||
-    mplTokenMetadata.default?.createCreateMetadataAccountInstruction;
-
-  if (!createMetadataInstruction) {
-    throw new Error('Cannot find a metadata creation instruction in mpl-token-metadata (v3/v2/legacy)');
-  }
-
   // Connection
   const connection = new Connection(CONFIG.network[CONFIG.network.current], 'confirmed');
 
@@ -111,7 +99,7 @@ async function createToken() {
       ? CONFIG.metadata.creators
       : [{ address: adminWallet.publicKey, verified: true, share: 100 }];
 
-  const metadataIx = createMetadataInstruction(
+  const metadataIx = createCreateMetadataAccountV3Instruction(
     {
       metadata: metadataPDA,
       mint,
