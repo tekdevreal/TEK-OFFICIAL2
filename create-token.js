@@ -22,22 +22,27 @@ import {
   publicKey as umiPublicKey,
   none,
 } from '@metaplex-foundation/umi';
-import mplTokenMetadata from '@metaplex-foundation/mpl-token-metadata';
+import {
+  mplTokenMetadata,
+  createMetadataAccountV3,
+  createMetadataAccountV2,
+  createMetadataAccount,
+} from '@metaplex-foundation/mpl-token-metadata';
 import * as fs from 'fs';
 import { CONFIG } from './config.js';
 
 async function createToken() {
-  // Connection
-  const connection = new Connection(CONFIG.network[CONFIG.network.current], 'confirmed');
-  const umi = createUmi(CONFIG.network[CONFIG.network.current]);
-  const {
-    createMetadataAccountV3,
-    createMetadataAccountV2,
-    createMetadataAccount,
-  } = mplTokenMetadata?.default ?? mplTokenMetadata;
+  // Connection (devnet URL should be in CONFIG.network.devnet or equivalent)
+  const rpcUrl = CONFIG.network[CONFIG.network.current];
+  const connection = new Connection(rpcUrl, 'confirmed');
 
-  // Load admin wallet
-  if (!process.env.ADMIN_WALLET_JSON) throw new Error('ADMIN_WALLET_JSON is required');
+  // Umi instance with metadata plugin
+  const umi = createUmi(rpcUrl).use(mplTokenMetadata());
+
+  // Load admin wallet from env
+  if (!process.env.ADMIN_WALLET_JSON) {
+    throw new Error('ADMIN_WALLET_JSON is required');
+  }
   const secretKey = Uint8Array.from(JSON.parse(process.env.ADMIN_WALLET_JSON));
   const adminWallet = Keypair.fromSecretKey(secretKey);
   console.log('✅ Admin Wallet Address:', adminWallet.publicKey.toBase58());
@@ -49,7 +54,15 @@ async function createToken() {
   const payer = adminWallet.publicKey;
   const signer = adminWallet;
 
-  // Step 1: Create Mint
+  console.log('📋 Configuration:');
+  console.log(`   Network: ${CONFIG.network.current}`);
+  console.log(`   Token Name: ${CONFIG.token.name}`);
+  console.log(`   Symbol: ${CONFIG.token.symbol}`);
+  console.log(`   Decimals: ${CONFIG.token.decimals}`);
+  console.log(`   Initial Supply: ${CONFIG.token.initialMint.toString()}\n`);
+
+  // Step 1: Create Mint (Token-2022)
+  console.log('📝 Step 1: Creating Token-2022 mint...');
   const mint = await createMint(
     connection,
     signer,
@@ -62,6 +75,7 @@ async function createToken() {
   console.log('✅ Mint created:', mint.toBase58());
 
   // Step 2: Get or create ATA
+  console.log('📝 Step 2: Setting up Associated Token Account (ATA)...');
   const associatedTokenAccount = getAssociatedTokenAddressSync(
     mint,
     payer,
@@ -85,9 +99,12 @@ async function createToken() {
       )
     );
     console.log('✅ ATA created:', associatedTokenAccount.toBase58());
+  } else {
+    console.log('ℹ️ ATA already exists:', associatedTokenAccount.toBase58());
   }
 
   // Step 3: Mint initial supply
+  console.log('📝 Step 3: Minting initial supply...');
   transaction.add(
     createMintToInstruction(
       mint,
@@ -99,19 +116,8 @@ async function createToken() {
     )
   );
 
-  // Step 4: Metadata
-  const METAPLEX_PROGRAM_ID = new PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
-  const [metadataPDA] = PublicKey.findProgramAddressSync(
-    [Buffer.from('metadata'), METAPLEX_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-    METAPLEX_PROGRAM_ID
-  );
-
-  const creators =
-    CONFIG.metadata.creators && CONFIG.metadata.creators.length > 0
-      ? CONFIG.metadata.creators
-      : [{ address: adminWallet.publicKey, verified: true, share: 100 }];
-
-  // Step 5: Send transaction
+  // Step 4: (Legacy) on-chain actions done via web3.js – send token transaction
+  console.log('📝 Step 4: Sending token transaction (mint + ATA)...');
   const blockhashInfo = await connection.getLatestBlockhash('confirmed');
   transaction.recentBlockhash = blockhashInfo.blockhash;
   transaction.feePayer = payer;
@@ -125,26 +131,35 @@ async function createToken() {
     confirmTransactionInitialTimeout: 60000,
   });
 
-  console.log('✅ Transaction confirmed:', signature);
-  console.log(`Solscan: https://solscan.io/tx/${signature}?cluster=${CONFIG.network.current}`);
+  console.log('✅ Token transaction confirmed:', signature);
+  console.log(`🔗 Solscan: https://solscan.io/tx/${signature}?cluster=${CONFIG.network.current}`);
 
-  // Step 6: Create metadata via Umi (handles version compatibility)
-  console.log('📝 Creating metadata via Umi...');
+  // Step 5: Create metadata via Umi (v3 → v2 → legacy fallback)
+  console.log('📝 Step 5: Creating metadata via Umi...');
+
   const umiKeypair = umi.eddsa.createKeypairFromSecretKey(secretKey);
   const umiSigner = createSignerFromKeypair(umi, umiKeypair);
   umi.use(keypairIdentity(umiSigner));
 
+  const creators =
+    CONFIG.metadata.creators && CONFIG.metadata.creators.length > 0
+      ? CONFIG.metadata.creators
+      : [{ address: adminWallet.publicKey, verified: true, share: 100 }];
+
   const umiCreators = creators.map((c) => ({
-    address: umiPublicKey(
-      typeof c.address === 'string' ? c.address : c.address.toBase58()
-    ),
+    address: umiPublicKey(typeof c.address === 'string' ? c.address : c.address.toBase58()),
     verified: !!c.verified,
     share: c.share ?? 100,
   }));
 
   const umiMint = umiPublicKey(mint.toBase58());
 
-  const metadataBuilder =
+  const metadataName = CONFIG.metadata.name;
+  const metadataSymbol = CONFIG.metadata.symbol;
+  const metadataUri = CONFIG.metadata.uri || CONFIG.metadata.image || '';
+  const sellerFeeBasisPoints = CONFIG.metadata.sellerFeeBasisPoints;
+
+  const builder =
     (createMetadataAccountV3 &&
       createMetadataAccountV3(umi, {
         mint: umiMint,
@@ -152,10 +167,10 @@ async function createToken() {
         payer: umiSigner,
         updateAuthority: umiSigner,
         data: {
-          name: CONFIG.metadata.name,
-          symbol: CONFIG.metadata.symbol,
-          uri: CONFIG.metadata.uri || CONFIG.metadata.image || '',
-          sellerFeeBasisPoints: CONFIG.metadata.sellerFeeBasisPoints,
+          name: metadataName,
+          symbol: metadataSymbol,
+          uri: metadataUri,
+          sellerFeeBasisPoints,
           creators: umiCreators,
           collection: none(),
           uses: none(),
@@ -170,10 +185,10 @@ async function createToken() {
         payer: umiSigner,
         updateAuthority: umiSigner,
         data: {
-          name: CONFIG.metadata.name,
-          symbol: CONFIG.metadata.symbol,
-          uri: CONFIG.metadata.uri || CONFIG.metadata.image || '',
-          sellerFeeBasisPoints: CONFIG.metadata.sellerFeeBasisPoints,
+          name: metadataName,
+          symbol: metadataSymbol,
+          uri: metadataUri,
+          sellerFeeBasisPoints,
           creators: umiCreators,
           collection: none(),
           uses: none(),
@@ -187,10 +202,10 @@ async function createToken() {
         payer: umiSigner,
         updateAuthority: umiSigner,
         data: {
-          name: CONFIG.metadata.name,
-          symbol: CONFIG.metadata.symbol,
-          uri: CONFIG.metadata.uri || CONFIG.metadata.image || '',
-          sellerFeeBasisPoints: CONFIG.metadata.sellerFeeBasisPoints,
+          name: metadataName,
+          symbol: metadataSymbol,
+          uri: metadataUri,
+          sellerFeeBasisPoints,
           creators: umiCreators,
           collection: none(),
           uses: none(),
@@ -198,15 +213,15 @@ async function createToken() {
         isMutable: true,
       }));
 
-  if (!metadataBuilder) {
-    throw new Error('No compatible metadata builder found in mpl-token-metadata');
+  if (!builder) {
+    throw new Error('No compatible metadata builder found in @metaplex-foundation/mpl-token-metadata');
   }
 
-  const metadataTx = await metadataBuilder.sendAndConfirm(umi);
+  const metadataTxSig = await builder.sendAndConfirm(umi);
+  console.log('✅ Metadata transaction confirmed:', metadataTxSig);
 
-  console.log('✅ Metadata transaction confirmed:', metadataTx);
-
-  // Save token info
+  // Step 6: Save token info
+  console.log('📝 Step 6: Saving token info...');
   const tokenInfo = {
     mint: mint.toBase58(),
     mintAuthority: mintAuthority.publicKey.toBase58(),
@@ -215,10 +230,13 @@ async function createToken() {
     decimals: CONFIG.token.decimals,
     initialSupply: CONFIG.token.initialMint.toString(),
     network: CONFIG.network.current,
-    transactionSignature: signature,
+    tokenTransactionSignature: signature,
+    metadataTransactionSignature: metadataTxSig,
   };
   fs.writeFileSync('token-info.json', JSON.stringify(tokenInfo, null, 2));
   console.log('💾 Token info saved to token-info.json');
+
+  console.log('\n🎉 Token creation + metadata completed successfully!');
 }
 
 // Execute
