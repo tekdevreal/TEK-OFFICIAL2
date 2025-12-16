@@ -58,7 +58,6 @@ interface RaydiumPair {
   quoteTokenTotal: number;
   lpTokenTotal: number;
   openOrdersReserve: number;
-  version: number;
   stakingInfo?: {
     stakingVault: string;
     stakingVaultNonce: number;
