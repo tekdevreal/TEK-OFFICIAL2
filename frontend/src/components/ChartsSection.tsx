@@ -1,7 +1,8 @@
-import { HolderDistributionChart } from './HolderDistributionChart';
-import { PayoutStatusChart } from './PayoutStatusChart';
-import { HoldersValueChart } from './HoldersValueChart';
-import { RewardTrendsChart } from './RewardTrendsChart';
+// Temporarily removed chart imports to prevent crashes
+// import { HolderDistributionChart } from './HolderDistributionChart';
+// import { PayoutStatusChart } from './PayoutStatusChart';
+// import { HoldersValueChart } from './HoldersValueChart';
+// import { RewardTrendsChart } from './RewardTrendsChart';
 import './ChartsSection.css';
 
 export function ChartsSection() {

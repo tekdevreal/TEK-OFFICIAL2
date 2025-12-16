@@ -262,10 +262,13 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
         filtered: null,
       };
     }
-    // Remove tokenPrice from response if it exists (safety check)
+    // Remove tokenPrice and dex from response if they exist (safety check)
     const rewardsData = { ...response.data };
     if ('tokenPrice' in rewardsData) {
       delete rewardsData.tokenPrice;
+    }
+    if ('dex' in rewardsData) {
+      delete rewardsData.dex;
     }
     return rewardsData;
   } catch (error: any) {
