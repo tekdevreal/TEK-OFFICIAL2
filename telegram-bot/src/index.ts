@@ -45,7 +45,17 @@ type RewardApiResponse = {
     pendingPayouts: number;
     totalSOLDistributed: number;
   };
-  tokenPrice: { usd: number };
+  tokenPrice: {
+    usd: number;
+    source?: 'jupiter' | 'raydium' | 'fallback';
+  };
+  dex?: {
+    name: string;
+    price: number | null;
+    liquidityUSD: number | null;
+    source: string;
+    updatedAt: string;
+  } | null;
 };
 
 /**
@@ -58,8 +68,10 @@ async function fetchRewardsSummary(backendUrl: string): Promise<{ message: strin
 
   const lastRunDisplay = rewards.lastRun ? new Date(rewards.lastRun).toLocaleString() : 'Never';
   const nextRunDisplay = rewards.nextRun ? new Date(rewards.nextRun).toLocaleString() : 'N/A';
+  const priceSource = rewards.tokenPrice.source || 'fallback';
+  const priceSourceDisplay = priceSource === 'jupiter' ? 'Jupiter' : priceSource === 'raydium' ? 'Raydium' : 'Default';
 
-  const message = [
+  const messageLines = [
     '📊 Reward System Status',
     '',
     `Last Run: ${lastRunDisplay}`,
@@ -71,8 +83,22 @@ async function fetchRewardsSummary(backendUrl: string): Promise<{ message: strin
     `• Eligible Holders: ${rewards.statistics.eligibleHolders}`,
     `• Pending Payouts: ${rewards.statistics.pendingPayouts}`,
     `• Total SOL Distributed: ${rewards.statistics.totalSOLDistributed.toFixed(6)}`,
-    `• Token Price (USD): ${rewards.tokenPrice.usd.toFixed(4)}`,
-  ].join('\n');
+    `• Token Price (USD): ${rewards.tokenPrice.usd.toFixed(4)} (${priceSourceDisplay})`,
+  ];
+
+  // Add Raydium DEX info if available
+  if (rewards.dex && rewards.dex.source === 'raydium') {
+    messageLines.push('');
+    messageLines.push('DEX: Raydium (Devnet)');
+    if (rewards.dex.price !== null) {
+      messageLines.push(`Price: $${rewards.dex.price.toFixed(8)} (Raydium)`);
+    }
+    if (rewards.dex.liquidityUSD !== null) {
+      messageLines.push(`Liquidity: $${rewards.dex.liquidityUSD.toLocaleString()}`);
+    }
+  }
+
+  const message = messageLines.join('\n');
 
   return { message, lastRun: rewards.lastRun };
 }

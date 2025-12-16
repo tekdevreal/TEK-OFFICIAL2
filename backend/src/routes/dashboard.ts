@@ -7,7 +7,8 @@ import {
 } from '../services/rewardService';
 import { getSchedulerStatus } from '../scheduler/rewardScheduler';
 import { getTokenHolders } from '../services/solanaService';
-import { getNUKEPriceUSD } from '../services/priceService';
+import { getNUKEPriceUSD, getPriceSource } from '../services/priceService';
+import { getRaydiumData } from '../services/raydiumService';
 import { isBlacklisted } from '../config/blacklist';
 import { REWARD_CONFIG } from '../config/constants';
 import { logger } from '../utils/logger';
@@ -130,6 +131,10 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
       filteredPending = pendingPayouts.filter(p => p.pubkey === filterPubkey);
     }
 
+    // Get Raydium data and price source
+    const raydiumData = await getRaydiumData().catch(() => null);
+    const priceSource = getPriceSource();
+
     const response = {
       lastRun: schedulerStatus.lastRun ? new Date(schedulerStatus.lastRun).toISOString() : null,
       nextRun: schedulerStatus.nextRun ? new Date(schedulerStatus.nextRun).toISOString() : null,
@@ -144,7 +149,15 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
       },
       tokenPrice: {
         usd: parseFloat(tokenPriceUSD.toFixed(6)),
+        source: priceSource,
       },
+      dex: raydiumData && raydiumData.source === 'raydium' ? {
+        name: 'raydium',
+        price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null,
+        liquidityUSD: raydiumData.liquidityUSD ? parseFloat(raydiumData.liquidityUSD.toFixed(2)) : null,
+        source: 'raydium',
+        updatedAt: raydiumData.updatedAt,
+      } : null,
       filtered: filterPubkey ? {
         pubkey: filterPubkey,
         eligible: filteredEligible.length > 0,
@@ -279,6 +292,53 @@ router.get('/payouts', async (req: Request, res: Response): Promise<void> => {
       error: error instanceof Error ? error.message : 'Unknown error',
       payouts: [],
       total: 0,
+    });
+  }
+});
+
+/**
+ * GET /dashboard/raydium
+ * Returns Raydium DEX analytics for NUKE token
+ */
+router.get('/raydium', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+
+    logger.info('Dashboard API: GET /dashboard/raydium', {
+      timestamp: new Date().toISOString(),
+    });
+
+    const raydiumData = await getRaydiumData();
+
+    const response = {
+      dex: 'raydium',
+      price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null,
+      priceUSD: raydiumData.price ? (await getNUKEPriceUSD().catch(() => null)) : null,
+      liquidityUSD: raydiumData.liquidityUSD ? parseFloat(raydiumData.liquidityUSD.toFixed(2)) : null,
+      baseVaultBalance: raydiumData.baseVaultBalance.toString(),
+      quoteVaultBalance: raydiumData.quoteVaultBalance.toString(),
+      source: raydiumData.source,
+      updatedAt: raydiumData.updatedAt,
+    };
+
+    const duration = Date.now() - startTime;
+    logger.info('Dashboard API: GET /dashboard/raydium completed', {
+      duration: `${duration}ms`,
+      hasData: raydiumData.source === 'raydium',
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching Raydium data for dashboard', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      dex: 'raydium',
+      price: null,
+      liquidityUSD: null,
+      source: null,
+      updatedAt: new Date().toISOString(),
     });
   }
 });

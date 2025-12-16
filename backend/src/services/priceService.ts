@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger';
 import { tokenMint } from '../config/solana';
+import { getRaydiumPriceUSD } from './raydiumService';
 
 // Default fallback price if API fails (in USD per token)
 const DEFAULT_NUKE_PRICE_USD = 0.01;
@@ -7,6 +8,7 @@ const DEFAULT_NUKE_PRICE_USD = 0.01;
 // Cache for price to avoid excessive API calls
 let cachedPrice: number | null = null;
 let priceCacheTimestamp: number = 0;
+let priceSource: 'jupiter' | 'raydium' | 'fallback' = 'fallback';
 const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
@@ -79,6 +81,7 @@ async function fetchPriceAlternative(): Promise<number | null> {
  * Get NUKE token price in USD
  * Uses cached price if available and fresh
  * Falls back to default price if all APIs fail
+ * Priority: Jupiter -> Raydium -> Fallback
  */
 export async function getNUKEPriceUSD(): Promise<number> {
   try {
@@ -87,6 +90,7 @@ export async function getNUKEPriceUSD(): Promise<number> {
     if (cachedPrice !== null && (now - priceCacheTimestamp) < PRICE_CACHE_TTL) {
       logger.debug('Using cached NUKE price', {
         price: cachedPrice,
+        source: priceSource,
         cachedAt: new Date(priceCacheTimestamp).toISOString(),
       });
       return cachedPrice;
@@ -94,10 +98,23 @@ export async function getNUKEPriceUSD(): Promise<number> {
 
     // Try Jupiter API first
     let price = await fetchPriceFromJupiter();
+    let source: 'jupiter' | 'raydium' | 'fallback' = 'jupiter';
     
-    // If Jupiter fails, try alternative source
+    // If Jupiter fails, try Raydium
+    if (price === null) {
+      logger.debug('Jupiter price unavailable, trying Raydium');
+      price = await getRaydiumPriceUSD();
+      if (price !== null) {
+        source = 'raydium';
+      }
+    }
+    
+    // If both fail, try alternative source (legacy)
     if (price === null) {
       price = await fetchPriceAlternative();
+      if (price !== null) {
+        source = 'jupiter'; // Assume alternative is Jupiter-like
+      }
     }
 
     // If all APIs fail, use default fallback
@@ -107,15 +124,17 @@ export async function getNUKEPriceUSD(): Promise<number> {
         tokenMint: tokenMint.toBase58(),
       });
       price = DEFAULT_NUKE_PRICE_USD;
+      source = 'fallback';
     }
 
     // Update cache
     cachedPrice = price;
     priceCacheTimestamp = now;
+    priceSource = source;
 
     logger.info('NUKE token price fetched', {
       priceUSD: price,
-      source: price === DEFAULT_NUKE_PRICE_USD ? 'fallback' : 'api',
+      source,
       tokenMint: tokenMint.toBase58(),
     });
 
@@ -129,8 +148,16 @@ export async function getNUKEPriceUSD(): Promise<number> {
     // Return fallback price
     cachedPrice = DEFAULT_NUKE_PRICE_USD;
     priceCacheTimestamp = Date.now();
+    priceSource = 'fallback';
     return DEFAULT_NUKE_PRICE_USD;
   }
+}
+
+/**
+ * Get price source (jupiter, raydium, or fallback)
+ */
+export function getPriceSource(): 'jupiter' | 'raydium' | 'fallback' {
+  return priceSource;
 }
 
 /**
@@ -139,6 +166,7 @@ export async function getNUKEPriceUSD(): Promise<number> {
 export function clearPriceCache(): void {
   cachedPrice = null;
   priceCacheTimestamp = 0;
+  priceSource = 'fallback';
   logger.debug('Price cache cleared');
 }
 
