@@ -120,15 +120,7 @@ export function RewardSummary({ refreshInterval = 60000 }: RewardSummaryProps) {
           </div>
         </div>
 
-        {/* Temporarily removed token price display for debugging */}
-        {/* <div className="summary-card highlight">
-          <div className="card-label">NUKE Price</div>
-          <div className="card-value">
-            {data.tokenPrice?.sol !== null && data.tokenPrice?.sol !== undefined && (data.tokenPrice?.sol || 0) > 0
-              ? `${(data.tokenPrice?.sol || 0).toFixed(8)} SOL`
-              : 'N/A (Raydium)'}
-          </div>
-        </div> */}
+        {/* Token price display removed for debugging - ensure tokenPrice is never accessed */}
       </div>
 
       <div className="statistics-grid">
