@@ -14,7 +14,11 @@ export function HoldersValueChart() {
         const response = await fetchHolders({ limit: 20, offset: 0 });
         // Sort by USD value descending and take top 20
         const holders = response.holders || [];
-        const sorted = holders.sort((a, b) => (b.usdValue || 0) - (a.usdValue || 0));
+        const sorted = holders.sort((a, b) => {
+          const aVal = (a.usdValue !== null && a.usdValue !== undefined && !isNaN(a.usdValue)) ? Number(a.usdValue) : 0;
+          const bVal = (b.usdValue !== null && b.usdValue !== undefined && !isNaN(b.usdValue)) ? Number(b.usdValue) : 0;
+          return bVal - aVal;
+        });
         setHolders(sorted.slice(0, 20));
       } catch (error) {
         console.error('Error loading holders chart data:', error);
@@ -44,7 +48,13 @@ export function HoldersValueChart() {
   const chartData = holders.map((holder, index) => ({
     name: `Holder ${index + 1}`,
     pubkey: holder.pubkey.substring(0, 8) + '...',
-    value: parseFloat((holder.usdValue || 0).toFixed(2)),
+    value: (() => {
+      const usd = holder.usdValue;
+      if (usd === null || usd === undefined || isNaN(usd)) {
+        return 0;
+      }
+      return parseFloat(Number(usd).toFixed(2));
+    })(),
     status: holder.eligibilityStatus,
   }));
 

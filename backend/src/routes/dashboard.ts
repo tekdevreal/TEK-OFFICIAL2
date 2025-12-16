@@ -59,14 +59,21 @@ router.get('/holders', async (req: Request, res: Response): Promise<void> => {
       limit,
       offset,
       hasMore: offset + limit < total,
-      holders: paginatedHolders.map(h => ({
-        pubkey: h.pubkey,
-        balance: h.balance,
-        usdValue: parseFloat(h.usdValue.toFixed(2)),
-        eligibilityStatus: h.eligibilityStatus,
-        lastReward: h.lastReward ? new Date(h.lastReward).toISOString() : null,
-        retryCount: h.retryCount,
-      })),
+      holders: paginatedHolders.map(h => {
+        // Defensive check: ensure usdValue is always a number
+        const usdValue = (h.usdValue !== null && h.usdValue !== undefined && !isNaN(h.usdValue))
+          ? parseFloat(Number(h.usdValue).toFixed(2))
+          : 0;
+        
+        return {
+          pubkey: h.pubkey || '',
+          balance: h.balance || '0',
+          usdValue,
+          eligibilityStatus: h.eligibilityStatus || 'excluded',
+          lastReward: h.lastReward ? new Date(h.lastReward).toISOString() : null,
+          retryCount: h.retryCount || 0,
+        };
+      }),
     };
 
     const duration = Date.now() - startTime;

@@ -74,9 +74,19 @@ export function HoldersPage() {
     {
       key: 'usdValue',
       header: 'USD Value',
-      accessor: (row) => `$${(row.usdValue || 0).toFixed(2)}`,
+      accessor: (row) => {
+        const usd = row.usdValue;
+        if (usd === null || usd === undefined || isNaN(usd)) {
+          return '$0.00';
+        }
+        return `$${Number(usd).toFixed(2)}`;
+      },
       sortable: true,
-      sortFn: (a, b) => (a.usdValue || 0) - (b.usdValue || 0),
+      sortFn: (a, b) => {
+        const aVal = (a.usdValue !== null && a.usdValue !== undefined && !isNaN(a.usdValue)) ? Number(a.usdValue) : 0;
+        const bVal = (b.usdValue !== null && b.usdValue !== undefined && !isNaN(b.usdValue)) ? Number(b.usdValue) : 0;
+        return aVal - bVal;
+      },
     },
     {
       key: 'eligibilityStatus',

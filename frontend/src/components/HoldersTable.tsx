@@ -164,7 +164,13 @@ export function HoldersTable({ refreshInterval = 60000 }: HoldersTableProps) {
                         {formatPubkey(holder.pubkey)}
                       </td>
                       <td>{formatBalance(holder.balance)}</td>
-                      <td>${(holder.usdValue || 0).toFixed(2)}</td>
+                      <td>${(() => {
+                        const usd = holder.usdValue;
+                        if (usd === null || usd === undefined || isNaN(usd)) {
+                          return '0.00';
+                        }
+                        return Number(usd).toFixed(2);
+                      })()}</td>
                       <td>
                         <span className={`badge ${getStatusBadgeClass(holder.eligibilityStatus)}`}>
                           {holder.eligibilityStatus}

@@ -189,9 +189,26 @@ export async function fetchHolders(params?: {
       }
       return { holders: [], total: 0, limit: 1000, offset: 0, hasMore: false };
     }
-    // Ensure holders array exists
+    // Ensure holders array exists and validate each holder
+    const holders = (response.data.holders || []).map(holder => {
+      // Defensive check: ensure holder is a valid object with all required fields
+      if (!holder || typeof holder !== 'object') {
+        return null;
+      }
+      return {
+        pubkey: holder.pubkey || '',
+        balance: holder.balance || '0',
+        usdValue: (holder.usdValue !== null && holder.usdValue !== undefined && !isNaN(holder.usdValue))
+          ? Number(holder.usdValue)
+          : 0,
+        eligibilityStatus: holder.eligibilityStatus || 'excluded',
+        lastReward: holder.lastReward || null,
+        retryCount: holder.retryCount || 0,
+      };
+    }).filter(holder => holder !== null); // Remove any null holders
+    
     return {
-      holders: response.data.holders || [],
+      holders,
       total: response.data.total || 0,
       limit: response.data.limit || 1000,
       offset: response.data.offset || 0,
