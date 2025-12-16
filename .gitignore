@@ -46,3 +46,7 @@ Thumbs.db
 *.swp
 *.swo
 
+# Temporary conversion files (can be regenerated)
+convert-keys.js
+convert-keys.mjs
+CONVERTED_KEYS.md
