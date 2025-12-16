@@ -86,6 +86,11 @@ export function RewardSummary({ refreshInterval = 60000 }: RewardSummaryProps) {
     );
   }
 
+  // Ensure tokenPrice exists
+  if (!data.tokenPrice) {
+    data.tokenPrice = { sol: null, usd: null, source: null };
+  }
+
   const stats = data.statistics;
 
   return (

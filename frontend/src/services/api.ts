@@ -244,7 +244,12 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
         filtered: null,
       };
     }
-    return response.data;
+    // Ensure tokenPrice exists in response
+    const rewardsData = response.data;
+    if (!rewardsData.tokenPrice) {
+      rewardsData.tokenPrice = { sol: null, usd: null, source: null };
+    }
+    return rewardsData;
   } catch (error: any) {
     if (isDevelopment) {
       console.error('[API] Error fetching rewards:', {
@@ -269,7 +274,7 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
         pendingPayouts: 0,
         totalSOLDistributed: 0,
       },
-      tokenPrice: { usd: 0 },
+      tokenPrice: { sol: null, usd: null, source: null },
       filtered: null,
     };
   }

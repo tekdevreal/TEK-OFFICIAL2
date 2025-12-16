@@ -130,8 +130,8 @@ export function HarvestPage() {
             ['Latest Excluded Holders', data.statistics?.excludedHolders || 0],
             ['Latest Blacklisted Holders', data.statistics?.blacklistedHolders || 0],
             ['Total SOL Distributed', (data.statistics?.totalSOLDistributed || 0).toFixed(6)],
-            ['Current Token Price (SOL)', data.tokenPrice.sol !== null && data.tokenPrice.sol > 0 
-              ? data.tokenPrice.sol.toFixed(8) 
+            ['Current Token Price (SOL)', data.tokenPrice?.sol !== null && data.tokenPrice?.sol !== undefined && (data.tokenPrice?.sol || 0) > 0 
+              ? (data.tokenPrice?.sol || 0).toFixed(8) 
               : 'N/A'],
             [''],
             ['Last Harvest', data.lastRun ? new Date(data.lastRun).toLocaleString() : 'Never'],
