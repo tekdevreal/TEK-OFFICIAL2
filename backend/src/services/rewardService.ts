@@ -6,6 +6,7 @@ import { connection } from '../config/solana';
 import { REWARD_CONFIG } from '../config/constants';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
+import { loadKeypairFromEnv } from '../utils/loadKeypairFromEnv';
 import { isBlacklisted } from '../config/blacklist';
 import { getNUKEPriceUSD } from './priceService';
 import { saveHistoricalPayouts, type HistoricalPayout } from './rewardHistoryService';
@@ -47,6 +48,8 @@ function getAdminWallet(): Keypair {
     return cachedAdminWallet;
   }
 
+  // Use the helper utility for consistent keypair loading
+  // ADMIN_WALLET_JSON is already a JSON string in env, so we use it directly
   try {
     if (!env.ADMIN_WALLET_JSON) {
       throw new Error('ADMIN_WALLET_JSON environment variable is not set');
@@ -62,6 +65,7 @@ function getAdminWallet(): Keypair {
 
     cachedAdminWallet = Keypair.fromSecretKey(secretKey);
     
+    // Only log public key (never log secret keys)
     logger.info('Admin wallet loaded', {
       pubkey: cachedAdminWallet.publicKey.toBase58(),
       source: 'ADMIN_WALLET_JSON',

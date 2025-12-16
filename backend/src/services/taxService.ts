@@ -16,6 +16,7 @@ import {
 } from '@solana/spl-token';
 import { connection, tokenMint } from '../config/solana';
 import { logger } from '../utils/logger';
+import { loadKeypairFromEnv, loadKeypairFromEnvOptional } from '../utils/loadKeypairFromEnv';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -146,37 +147,17 @@ function getRewardWalletAddress(): PublicKey {
 }
 
 /**
- * Get reward wallet keypair from environment variable (for receiving tokens)
- * Environment variable: REWARD_WALLET_PRIVATE_KEY (JSON array)
+ * Get reward wallet keypair from environment variable
+ * Environment variable: REWARD_WALLET_PRIVATE_KEY_JSON (JSON array of 64 numbers)
+ * Required for withdrawing withheld taxes and sending distributions
  */
-function getRewardWallet(): Keypair | null {
-  const rewardWalletJson = process.env.REWARD_WALLET_PRIVATE_KEY;
-  
-  if (!rewardWalletJson) {
-    return null; // Reward wallet private key is optional (can be receive-only)
-  }
-
+function getRewardWallet(): Keypair {
   if (cachedRewardWallet) {
     return cachedRewardWallet;
   }
 
-  try {
-    const parsed = JSON.parse(rewardWalletJson);
-    const secretKey = Uint8Array.from(parsed);
-    cachedRewardWallet = Keypair.fromSecretKey(secretKey);
-    
-    logger.info('Reward wallet loaded', {
-      pubkey: cachedRewardWallet.publicKey.toBase58(),
-      source: 'REWARD_WALLET_PRIVATE_KEY',
-    });
-
-    return cachedRewardWallet;
-  } catch (parseError) {
-    logger.warn('REWARD_WALLET_PRIVATE_KEY is not valid JSON, reward wallet will be receive-only', {
-      error: parseError instanceof Error ? parseError.message : String(parseError),
-    });
-    return null;
-  }
+  cachedRewardWallet = loadKeypairFromEnv('REWARD_WALLET_PRIVATE_KEY_JSON');
+  return cachedRewardWallet;
 }
 
 /**
@@ -200,36 +181,16 @@ function getTreasuryWalletAddress(): PublicKey {
 
 /**
  * Get treasury wallet keypair from environment variable (optional)
- * Environment variable: TREASURY_WALLET_PRIVATE_KEY (JSON array, optional)
+ * Environment variable: TREASURY_WALLET_PRIVATE_KEY_JSON (JSON array of 64 numbers, optional)
+ * Treasury wallet can be receive-only, so this is optional
  */
 function getTreasuryWallet(): Keypair | null {
-  const treasuryWalletJson = process.env.TREASURY_WALLET_PRIVATE_KEY;
-  
-  if (!treasuryWalletJson) {
-    return null; // Treasury wallet private key is optional
-  }
-
   if (cachedTreasuryWallet) {
     return cachedTreasuryWallet;
   }
 
-  try {
-    const parsed = JSON.parse(treasuryWalletJson);
-    const secretKey = Uint8Array.from(parsed);
-    cachedTreasuryWallet = Keypair.fromSecretKey(secretKey);
-    
-    logger.info('Treasury wallet loaded', {
-      pubkey: cachedTreasuryWallet.publicKey.toBase58(),
-      source: 'TREASURY_WALLET_PRIVATE_KEY',
-    });
-
-    return cachedTreasuryWallet;
-  } catch (parseError) {
-    logger.warn('TREASURY_WALLET_PRIVATE_KEY is not valid JSON, treasury wallet will be receive-only', {
-      error: parseError instanceof Error ? parseError.message : String(parseError),
-    });
-    return null;
-  }
+  cachedTreasuryWallet = loadKeypairFromEnvOptional('TREASURY_WALLET_PRIVATE_KEY_JSON');
+  return cachedTreasuryWallet;
 }
 
 /**
@@ -262,9 +223,10 @@ export class TaxService {
    * @returns Tax distribution result with amounts and transaction signatures
    * 
    * Environment variables required:
-   * - REWARD_WALLET_ADDRESS: Public key of reward wallet
-   * - TREASURY_WALLET_ADDRESS: Public key of treasury wallet
-   * - REWARD_WALLET_PRIVATE_KEY: Private key for reward wallet (required for withdrawals)
+   * - REWARD_WALLET_ADDRESS: Public key of reward wallet (optional, derived from private key if not set)
+   * - TREASURY_WALLET_ADDRESS: Public key of treasury wallet (optional, derived from private key if not set)
+   * - REWARD_WALLET_PRIVATE_KEY_JSON: JSON array of 64 numbers (required for withdrawals)
+   * - TREASURY_WALLET_PRIVATE_KEY_JSON: JSON array of 64 numbers (optional, treasury can be receive-only)
    */
   static async processWithheldTax(): Promise<TaxDistributionResult | null> {
     logger.info('Processing withheld tax from Token-2022 transfers');
@@ -273,7 +235,7 @@ export class TaxService {
       // Step 1: Get reward wallet (must have withdraw authority)
       const rewardWallet = getRewardWallet();
       if (!rewardWallet) {
-        throw new Error('REWARD_WALLET_PRIVATE_KEY is required to withdraw withheld taxes');
+        throw new Error('REWARD_WALLET_PRIVATE_KEY_JSON is required to withdraw withheld taxes');
       }
 
       // Step 2: Get token mint info
@@ -617,7 +579,7 @@ export class TaxService {
       // This is a placeholder - actual implementation depends on how transfers are detected
       const senderWallet = getRewardWallet(); // Using reward wallet as sender for now
       if (!senderWallet) {
-        throw new Error('REWARD_WALLET_PRIVATE_KEY is required to send tax distributions');
+        throw new Error('REWARD_WALLET_PRIVATE_KEY_JSON is required to send tax distributions');
       }
 
       const result: TaxDistributionResult = {

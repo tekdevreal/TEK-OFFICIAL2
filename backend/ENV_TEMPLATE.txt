@@ -23,12 +23,20 @@ MIN_SOL_PAYOUT=0.0001
 
 # Tax Distribution Configuration
 # Reward wallet receives 3% of transaction tax
+# REWARD_WALLET_ADDRESS is optional (will be derived from private key if not set)
 REWARD_WALLET_ADDRESS=6PpZCPj72mdzBfrSJCJab9y535v2greCBe6YVW7XeXpo
-REWARD_WALLET_PRIVATE_KEY=[228,90,164,192,155,203,112,233,18,250,115,189,46,155,54,13,214,141,101,62,226,209,135,233,216,62,92,28,131,200,189,3,55,21,218,39,48,33,114,116,206,138,233,5,184,176,159,237,168,117,71,91,15,97,106,117,253,115,243,228,67,119,8,28]
+# REWARD_WALLET_PRIVATE_KEY_JSON: JSON array of 64 numbers (required for tax distribution)
+# Example: [12,34,56,78,...] (64 numbers total)
+# In Railway/Render: Set as single-line JSON array
+REWARD_WALLET_PRIVATE_KEY_JSON=[228,90,164,192,155,203,112,233,18,250,115,189,46,155,54,13,214,141,101,62,226,209,135,233,216,62,92,28,131,200,189,3,55,21,218,39,48,33,114,116,206,138,233,5,184,176,159,237,168,117,71,91,15,97,106,117,253,115,243,228,67,119,8,28]
 
 # Treasury wallet receives 1% of transaction tax
+# TREASURY_WALLET_ADDRESS is optional (will be derived from private key if not set)
 TREASURY_WALLET_ADDRESS=DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo
-# TREASURY_WALLET_PRIVATE_KEY is optional (treasury can be receive-only)
+# TREASURY_WALLET_PRIVATE_KEY_JSON: JSON array of 64 numbers (optional - treasury can be receive-only)
+# Example: [12,34,56,78,...] (64 numbers total)
+# In Railway/Render: Set as single-line JSON array (optional)
+# TREASURY_WALLET_PRIVATE_KEY_JSON=[...]
 
 # Telegram Bot Configuration (optional)
 TELEGRAM_BOT_TOKEN=your_bot_token_here
