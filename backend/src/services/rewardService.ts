@@ -43,7 +43,7 @@ const STATE_FILE_PATH = path.join(process.cwd(), 'reward-state.json');
  */
 let cachedAdminWallet: Keypair | null = null;
 
-function getAdminWallet(): Keypair {
+export function getAdminWallet(): Keypair {
   if (cachedAdminWallet) {
     return cachedAdminWallet;
   }

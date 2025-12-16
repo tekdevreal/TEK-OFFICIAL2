@@ -342,9 +342,14 @@ export async function getRaydiumData(): Promise<{
 
     logger.info('Raydium data fetched', {
       price,
+      priceDescription: price ? `${price} WSOL per NUKE` : 'null',
       liquidityUSD,
       baseVaultBalance: poolData.baseVaultBalance.toString(),
       quoteVaultBalance: poolData.quoteVaultBalance.toString(),
+      baseAmount: baseAmount.toString(),
+      quoteAmount: quoteAmount.toString(),
+      baseDecimals: poolData.baseDecimals,
+      quoteDecimals: poolData.quoteDecimals,
       poolId: poolId.toBase58(),
     });
 

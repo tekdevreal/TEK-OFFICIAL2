@@ -17,6 +17,7 @@ import {
 import { connection, tokenMint } from '../config/solana';
 import { logger } from '../utils/logger';
 import { loadKeypairFromEnv, loadKeypairFromEnvOptional } from '../utils/loadKeypairFromEnv';
+import { getAdminWallet } from './rewardService';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -232,28 +233,75 @@ export class TaxService {
     logger.info('Processing withheld tax from Token-2022 transfers');
 
     try {
-      // Step 1: Get reward wallet (must have withdraw authority)
-      const rewardWallet = getRewardWallet();
-      if (!rewardWallet) {
-        throw new Error('REWARD_WALLET_PRIVATE_KEY_JSON is required to withdraw withheld taxes');
-      }
-
-      // Step 2: Get token mint info
+      // Step 1: Get token mint info and check withdraw authority
       const mintInfo = await getMint(connection, tokenMint, 'confirmed', TOKEN_2022_PROGRAM_ID);
       const decimals = mintInfo.decimals;
+      
+      // Parse mint to get transfer fee config
+      const mintAccount = await connection.getAccountInfo(tokenMint);
+      if (!mintAccount) {
+        throw new Error('Mint account not found');
+      }
+      
+      // Import unpackMint and getTransferFeeConfig
+      const { unpackMint, getTransferFeeConfig } = await import('@solana/spl-token');
+      const parsedMint = unpackMint(tokenMint, mintAccount, TOKEN_2022_PROGRAM_ID);
+      const transferFeeConfig = getTransferFeeConfig(parsedMint);
+      
+      if (!transferFeeConfig || !transferFeeConfig.withdrawWithheldAuthority) {
+        logger.error('No withdraw withheld authority set on mint. Tax harvesting will not work.');
+        logger.error('Please update the withdraw withheld authority to the reward wallet.');
+        return null;
+      }
+      
+      const withdrawAuthority = transferFeeConfig.withdrawWithheldAuthority;
+      logger.info('Withdraw withheld authority', {
+        authority: withdrawAuthority.toBase58(),
+      });
+      
+      // Step 2: Determine which wallet to use based on authority
+      // Try reward wallet first, then admin wallet as fallback
+      let withdrawWallet: Keypair | null = null;
+      const rewardWallet = getRewardWallet();
+      const rewardWalletAddress = getRewardWalletAddress();
+      
+      if (withdrawAuthority.equals(rewardWalletAddress)) {
+        withdrawWallet = rewardWallet;
+        logger.info('Using reward wallet for tax withdrawal');
+      } else {
+        // Try admin wallet as fallback
+        try {
+          const adminWallet = getAdminWallet();
+          if (withdrawAuthority.equals(adminWallet.publicKey)) {
+            withdrawWallet = adminWallet;
+            logger.info('Using admin wallet for tax withdrawal (reward wallet is not the authority)');
+          } else {
+            logger.error('Withdraw authority does not match reward or admin wallet', {
+              authority: withdrawAuthority.toBase58(),
+              rewardWallet: rewardWalletAddress.toBase58(),
+              adminWallet: adminWallet.publicKey.toBase58(),
+            });
+            return null;
+          }
+        } catch (error) {
+          logger.error('Failed to get admin wallet', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return null;
+        }
+      }
+      
+      if (!withdrawWallet) {
+        throw new Error('No valid wallet found for tax withdrawal');
+      }
 
       // Step 3: Harvest withheld tokens to mint (collects from all token accounts)
       // This moves withheld fees from individual accounts to the mint
-      // Function signature in v0.4.14: harvestWithheldTokensToMint(connection, mint, authority, multiSigners, sources, programId)
-      // Note: In v0.4.14, this is an async transaction sender that returns Promise<string> (signature)
-      // authority must be a Signer (Keypair), not PublicKey
       try {
-        // harvestWithheldTokensToMint is an async transaction sender
-        // Signature: harvestWithheldTokensToMint(connection, authority, mint, sources, confirmOptions) - 5 parameters
         const emptySources: PublicKey[] = []; // Explicitly typed empty array for sources
         const harvestSignature = await harvestWithheldTokensToMint(
           connection, // Connection (first parameter)
-          rewardWallet, // Authority (Signer/Keypair) - second parameter
+          withdrawWallet, // Authority (Signer/Keypair) - must match withdraw authority
           tokenMint, // Mint (PublicKey) - third parameter
           emptySources, // Sources (PublicKey[] - empty array = all token accounts)
           { commitment: 'confirmed' } // ConfirmOptions (programId determined from connection)
@@ -266,21 +314,11 @@ export class TaxService {
         logger.warn('Failed to harvest withheld tokens (may be none available)', {
           error: error instanceof Error ? error.message : String(error),
         });
-        // Continue - withdrawal might still work
+        // Continue - withdrawal might still work even if harvest fails
       }
 
-      // Step 4: Get mint account to check withheld amount
-      const mintAccount = await connection.getAccountInfo(tokenMint);
-      if (!mintAccount) {
-        throw new Error('Mint account not found');
-      }
-
-      // Note: Getting withheld amount requires parsing the mint extension
-      // For now, we'll use a different approach - withdraw to a temporary account first
-      // Then distribute from there
-
-      // Step 5: Create temporary withdrawal account (reward wallet ATA)
-      const rewardWalletAddress = getRewardWalletAddress();
+      // Step 4: Create withdrawal account (reward wallet ATA)
+      // rewardWalletAddress already declared above
       const rewardTokenAccount = getAssociatedTokenAddressSync(
         tokenMint,
         rewardWalletAddress,
@@ -290,11 +328,21 @@ export class TaxService {
 
       // Check if reward token account exists, create if needed
       const rewardAccountInfo = await connection.getAccountInfo(rewardTokenAccount).catch(() => null);
-      if (!rewardAccountInfo) {
+      let balanceBefore = BigInt(0);
+      
+      if (rewardAccountInfo) {
+        // Get balance before withdrawal to calculate how much was withdrawn
+        const rewardAccount = await getAccount(connection, rewardTokenAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+        balanceBefore = rewardAccount.amount;
+        logger.debug('Reward token account balance before withdrawal', {
+          balance: balanceBefore.toString(),
+        });
+      } else {
+        // Create the account
         const createTx = new Transaction();
         createTx.add(
           createAssociatedTokenAccountInstruction(
-            rewardWallet.publicKey,
+            withdrawWallet.publicKey, // Payer
             rewardTokenAccount,
             rewardWalletAddress,
             tokenMint,
@@ -304,31 +352,29 @@ export class TaxService {
 
         const { blockhash } = await connection.getLatestBlockhash('confirmed');
         createTx.recentBlockhash = blockhash;
-        createTx.feePayer = rewardWallet.publicKey;
+        createTx.feePayer = withdrawWallet.publicKey;
 
         await sendAndConfirmTransaction(
           connection,
           createTx,
-          [rewardWallet],
+          [withdrawWallet],
           { commitment: 'confirmed', maxRetries: 3 }
         );
+        logger.info('Created reward token account', {
+          account: rewardTokenAccount.toBase58(),
+        });
       }
 
-      // Step 6: Withdraw withheld tokens to reward wallet
-      // Function signature in v0.4.14: withdrawWithheldTokensFromAccounts(
-      //   connection, mint, destination, authority, multiSigners, sources, programId
-      // )
-      // Note: In v0.4.14, this is an async transaction sender that returns Promise<string> (signature)
-      // authority must be a Signer (Keypair), not PublicKey
+      // Step 5: Withdraw withheld tokens to reward wallet
+      let withdrawSignature: string | undefined;
       let withdrawnAmount = BigInt(0);
+      
       try {
-        // withdrawWithheldTokensFromAccounts is an async transaction sender
-        // Signature: withdrawWithheldTokensFromAccounts(connection, authority, mint, destination, programId, multiSigners, sources) - 7 parameters
         const emptySources: PublicKey[] = []; // Explicitly typed empty array for sources
         const emptySigners: Keypair[] = []; // Explicitly typed empty array for multiSigners
-        const withdrawSignature = await withdrawWithheldTokensFromAccounts(
+        withdrawSignature = await withdrawWithheldTokensFromAccounts(
           connection, // Connection (first parameter)
-          rewardWallet, // Withdraw authority (Signer/Keypair) - second parameter
+          withdrawWallet, // Withdraw authority (Signer/Keypair) - must match mint authority
           tokenMint, // Mint (PublicKey) - third parameter
           rewardTokenAccount, // Destination token account (PublicKey) - fourth parameter
           TOKEN_2022_PROGRAM_ID, // Program ID
@@ -337,26 +383,34 @@ export class TaxService {
         );
 
         // Get the balance after withdrawal to determine how much was withdrawn
-        // Note: This gets the total balance in the account, which includes any previously held tokens
-        // For accurate tracking, we'd need to track balance before/after, but for tax distribution
-        // purposes, we'll use the current balance
         const rewardAccount = await getAccount(connection, rewardTokenAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
-        withdrawnAmount = rewardAccount.amount;
+        const balanceAfter = rewardAccount.amount;
+        withdrawnAmount = balanceAfter - balanceBefore;
 
         logger.info('Withdrew withheld tokens', {
           signature: withdrawSignature,
-          amount: withdrawnAmount.toString(),
+          balanceBefore: balanceBefore.toString(),
+          balanceAfter: balanceAfter.toString(),
+          withdrawnAmount: withdrawnAmount.toString(),
           to: rewardTokenAccount.toBase58(),
         });
       } catch (error) {
-        logger.warn('No withheld tokens to withdraw (or insufficient authority)', {
-          error: error instanceof Error ? error.message : String(error),
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('Failed to withdraw withheld tokens', {
+          error: errorMessage,
+          authority: withdrawWallet.publicKey.toBase58(),
         });
+        
+        // Check if it's an authority error
+        if (errorMessage.includes('authority') || errorMessage.includes('insufficient')) {
+          logger.error('Withdraw authority mismatch. Please update the withdraw withheld authority on the mint to match the wallet being used.');
+        }
+        
         return null;
       }
 
       if (withdrawnAmount === BigInt(0)) {
-        logger.info('No withheld tokens to distribute');
+        logger.info('No withheld tokens were withdrawn (may be none available)');
         return null;
       }
 
@@ -394,7 +448,7 @@ export class TaxService {
           if (!treasuryAccountInfo) {
             treasuryTx.add(
               createAssociatedTokenAccountInstruction(
-                rewardWallet.publicKey,
+                withdrawWallet.publicKey, // Payer
                 treasuryTokenAccount,
                 treasuryWalletAddress,
                 tokenMint,
@@ -409,7 +463,7 @@ export class TaxService {
               rewardTokenAccount,
               tokenMint,
               treasuryTokenAccount,
-              rewardWallet.publicKey,
+              rewardWalletAddress, // Owner of fromAta (reward wallet)
               treasuryAmount,
               decimals,
               [],
@@ -419,12 +473,12 @@ export class TaxService {
 
           const { blockhash } = await connection.getLatestBlockhash('confirmed');
           treasuryTx.recentBlockhash = blockhash;
-          treasuryTx.feePayer = rewardWallet.publicKey;
+          treasuryTx.feePayer = withdrawWallet.publicKey;
 
           treasurySignature = await sendAndConfirmTransaction(
             connection,
             treasuryTx,
-            [rewardWallet],
+            [withdrawWallet],
             { commitment: 'confirmed', maxRetries: 3 }
           );
 
