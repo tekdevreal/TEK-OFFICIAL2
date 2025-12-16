@@ -65,7 +65,7 @@ NODE_ENV=development
 # Solana Configuration
 SOLANA_NETWORK=devnet
 HELIUS_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_API_KEY
-TOKEN_MINT=8LF2FBaX47nmaZ1sBqs4Kg88t6VDbgDzjK3MQM7uPZZx
+TOKEN_MINT=CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq
 ADMIN_WALLET_PATH=../admin.json
 
 # Reward Configuration

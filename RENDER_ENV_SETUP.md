@@ -20,7 +20,7 @@ PORT=10000
 ```bash
 SOLANA_NETWORK=devnet
 HELIUS_RPC_URL=https://devnet.helius-rpc.com/?api-key=4e637579-10e2-40d8-8ead-87a929a9c6aa
-TOKEN_MINT=8LF2FBaX47nmaZ1sBqs4Kg88t6VDbgDzjK3MQM7uPZZx
+TOKEN_MINT=CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq
 ```
 
 #### Admin Wallet (CRITICAL - Mark as Secret)
@@ -164,7 +164,7 @@ export NODE_ENV=production
 export PORT=10000
 export SOLANA_NETWORK=devnet
 export HELIUS_RPC_URL=your_rpc_url
-export TOKEN_MINT=8LF2FBaX47nmaZ1sBqs4Kg88t6VDbgDzjK3MQM7uPZZx
+export TOKEN_MINT=CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq
 export FRONTEND_URL=https://nukerewards.imgprotocol.com
 npm run build
 npm start

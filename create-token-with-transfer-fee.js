@@ -25,6 +25,7 @@ import {
   transferCheckedWithFee,
   withdrawWithheldTokensFromAccounts,
 } from '@solana/spl-token';
+// mpl-token-metadata is CommonJS; import default then destructure
 import mplTokenMetadata from '@metaplex-foundation/mpl-token-metadata';
 const { createCreateMetadataAccountV3Instruction } = mplTokenMetadata;
 import { CONFIG } from './config.js';
@@ -50,7 +51,8 @@ try {
   process.exit(1);
 }
 
-const mintAuthority = Keypair.generate();
+// Use admin wallet as mint authority so we retain control and can update metadata later
+const mintAuthority = adminWallet;
 const freezeAuthority = adminWallet.publicKey;
 const transferFeeConfigAuthority = adminWallet.publicKey;
 const withdrawWithheldAuthority = adminWallet.publicKey;
@@ -191,12 +193,13 @@ async function createTokenWithTransferFee() {
     const mintBlockhash = await connection.getLatestBlockhash('confirmed');
     mintTransaction.recentBlockhash = mintBlockhash.blockhash;
     mintTransaction.feePayer = payer;
-    mintTransaction.sign(signer);
+  // Sign with both the payer and the mint authority, since mintAuthority is required for minting
+  mintTransaction.sign(signer, mintAuthority);
 
     const mintSignature = await sendAndConfirmTransaction(
       connection,
       mintTransaction,
-      [signer],
+      [signer, mintAuthority],
       { commitment: 'confirmed' }
     );
     console.log('✅ Tokens minted!');

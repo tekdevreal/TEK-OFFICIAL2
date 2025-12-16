@@ -34,7 +34,7 @@ PORT=10000
 ```
 SOLANA_NETWORK=devnet
 HELIUS_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_KEY
-TOKEN_MINT=8LF2FBaX47nmaZ1sBqs4Kg88t6VDbgDzjK3MQM7uPZZx
+TOKEN_MINT=CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq
 ```
 
 **Optional (if using reward features):**

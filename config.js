@@ -11,12 +11,12 @@ export const CONFIG = {
 
   // Token Configuration
   token: {
-    name: 'Reward Token',
-    symbol: 'REWARD',
+    name: 'Nuke Rewards',
+    symbol: 'NUKE',
     decimals: 6,
-    // Total supply: 1 billion tokens (1,000,000,000 * 10^6)
+    // Total supply: 1 billion NUKE (1,000,000,000 * 10^6)
     totalSupply: BigInt(1_000_000_000_000_000),
-    // Initial mint amount (can be less than total supply)
+    // Initial mint amount (mint full supply)
     initialMint: BigInt(1_000_000_000_000_000),
   },
 
@@ -33,11 +33,11 @@ export const CONFIG = {
 
   // Metadata Configuration
   metadata: {
-    name: 'Reward Token',
-    symbol: 'REWARD',
-    description: 'A reward token for the Reward Project',
-    image: '', // URI to token image
-    externalUrl: '', // Website or external link
+    name: 'Nuke Rewards',
+    symbol: 'NUKE',
+    description: 'Full Clip Only.',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Radiation_warning_symbol.svg/1024px-Radiation_warning_symbol.svg.png', // Token image URI
+    externalUrl: '', // Optional website or external link
     // Creator information
     creators: null, // Or array of creator objects
     sellerFeeBasisPoints: 0, // Royalty percentage (0-10000)

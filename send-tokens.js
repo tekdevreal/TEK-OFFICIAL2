@@ -24,7 +24,7 @@ import {
   TOKEN_2022_PROGRAM_ID,
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
-  createTransferInstruction,
+  createTransferCheckedInstruction,
   getMint,
 } from '@solana/spl-token';
 
@@ -88,13 +88,15 @@ async function main() {
     console.log('ℹ️ Destination ATA already exists:', toAta.toBase58());
   }
 
-  // Transfer instruction
+  // Transfer instruction (checked, required for Token-2022)
   tx.add(
-    createTransferInstruction(
+    createTransferCheckedInstruction(
       fromAta,
+      mintPubkey,
       toAta,
       admin.publicKey,
       rawAmount,
+      decimals,
       [],
       TOKEN_2022_PROGRAM_ID
     )

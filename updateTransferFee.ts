@@ -14,19 +14,23 @@ import {
 } from '@solana/spl-token';
 import * as fs from 'fs';
 import * as path from 'path';
+import dotenv from 'dotenv';
 
-// Configuration
-const DEVNET_RPC = 'https://api.devnet.solana.com';
-const MINT_ADDRESS = '8LF2FBaX47nmaZ1sBqs4Kg88t6VDbgDzjK3MQM7uPZZx';
-const TOKEN_DECIMALS = 9;
+dotenv.config();
 
-// New transfer fee configuration
-const NEW_TRANSFER_FEE_BASIS_POINTS = 500; // 5% (500 basis points)
-const NEW_MAX_TRANSFER_FEE = BigInt(100_000); // 0.0001 token (with 9 decimals)
+// Configuration (overridable via env)
+const RPC = process.env.HELIUS_RPC_URL || 'https://api.devnet.solana.com';
+const MINT_ADDRESS = process.env.TOKEN_MINT || 'REPLACE_WITH_MINT';
+const TOKEN_DECIMALS = Number(process.env.TOKEN_DECIMALS || '6');
 
-// File paths
+// New transfer fee configuration (defaults to 5% with 1,000 tokens max at 6 decimals)
+const NEW_TRANSFER_FEE_BASIS_POINTS = Number(process.env.NEW_TRANSFER_FEE_BPS || '500'); // 5%
+const NEW_MAX_TRANSFER_FEE = BigInt(
+  process.env.NEW_MAX_TRANSFER_FEE || '1000000000' // 1,000 tokens with 6 decimals
+);
+
+// Keypair source: ADMIN_WALLET_JSON env or admin.json file
 const ADMIN_KEYPAIR_PATH = path.join(process.cwd(), 'admin.json');
-const TAX_WALLET_PATH = path.join(process.cwd(), 'tax-wallet.json');
 
 /**
  * Load keypair from JSON file
@@ -44,14 +48,6 @@ function loadKeypair(filePath: string): Keypair {
 }
 
 /**
- * Get current epoch from the connection
- */
-async function getCurrentEpoch(connection: Connection): Promise<bigint> {
-  const epochInfo = await connection.getEpochInfo();
-  return BigInt(epochInfo.epoch);
-}
-
-/**
  * Main function to update TransferFeeConfig
  */
 async function updateTransferFee(): Promise<void> {
@@ -61,13 +57,15 @@ async function updateTransferFee(): Promise<void> {
     
     // Step 1: Connect to devnet
     console.log('\n📡 Step 1: Connecting to Solana Devnet...');
-    const connection = new Connection(DEVNET_RPC, 'confirmed');
+    const connection = new Connection(RPC, 'confirmed');
     const version = await connection.getVersion();
     console.log(`✅ Connected to Devnet (Version: ${version['solana-core']})\n`);
 
     // Step 2: Load admin payer wallet
     console.log('💼 Step 2: Loading admin payer wallet...');
-    const adminWallet = loadKeypair(ADMIN_KEYPAIR_PATH);
+    const adminWallet = process.env.ADMIN_WALLET_JSON
+      ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env.ADMIN_WALLET_JSON)))
+      : loadKeypair(ADMIN_KEYPAIR_PATH);
     const adminBalance = await connection.getBalance(adminWallet.publicKey);
     console.log(`✅ Admin Wallet: ${adminWallet.publicKey.toBase58()}`);
     console.log(`   Balance: ${adminBalance / LAMPORTS_PER_SOL} SOL`);
@@ -77,9 +75,8 @@ async function updateTransferFee(): Promise<void> {
     }
     console.log('');
 
-    // Step 3: Load transfer fee config authority
-    console.log('🔑 Step 3: Loading transfer fee config authority...');
-    const transferFeeAuthority = loadKeypair(TAX_WALLET_PATH);
+    // Step 3: Transfer fee config authority = admin (mint authority)
+    const transferFeeAuthority = adminWallet;
     console.log(`✅ Transfer Fee Config Authority: ${transferFeeAuthority.publicKey.toBase58()}\n`);
 
     // Step 4: Fetch current mint account and verify it exists
@@ -128,15 +125,8 @@ async function updateTransferFee(): Promise<void> {
       );
     }
 
-    // Step 5: Get current epoch
-    console.log('📅 Step 5: Getting current epoch...');
-    const currentEpoch = await getCurrentEpoch(connection);
-    const nextEpoch = currentEpoch + BigInt(1);
-    console.log(`✅ Current Epoch: ${currentEpoch.toString()}`);
-    console.log(`   Setting new transfer fee for epoch: ${nextEpoch.toString()}\n`);
-
-    // Step 6: Build and send transaction to update transfer fee
-    console.log('📝 Step 6: Building transaction to update transfer fee...');
+    // Step 5: Build and send transaction to update transfer fee
+    console.log('📝 Step 5: Building transaction to update transfer fee...');
     console.log('   New Configuration:');
     console.log(`     Transfer Fee: ${NEW_TRANSFER_FEE_BASIS_POINTS / 100}% (${NEW_TRANSFER_FEE_BASIS_POINTS} basis points)`);
     console.log(`     Max Transfer Fee: ${NEW_MAX_TRANSFER_FEE.toString()} (${Number(NEW_MAX_TRANSFER_FEE) / 10 ** TOKEN_DECIMALS} tokens)\n`);
@@ -154,8 +144,8 @@ async function updateTransferFee(): Promise<void> {
       )
     );
 
-    // Step 7: Send and confirm transaction
-    console.log('📤 Step 7: Sending transaction...');
+    // Step 6: Send and confirm transaction
+    console.log('📤 Step 6: Sending transaction...');
     const blockhash = await connection.getLatestBlockhash('confirmed');
     transaction.recentBlockhash = blockhash.blockhash;
     transaction.feePayer = adminWallet.publicKey;
@@ -171,8 +161,8 @@ async function updateTransferFee(): Promise<void> {
     console.log(`✅ Transaction confirmed!`);
     console.log(`   Signature: ${signature}\n`);
 
-    // Step 8: Verify the updated transfer fee config
-    console.log('🔍 Step 8: Verifying updated transfer fee configuration...');
+    // Step 7: Verify the updated transfer fee config
+    console.log('🔍 Step 7: Verifying updated transfer fee configuration...');
     const updatedMintInfo = await connection.getAccountInfo(mintPublicKey);
     if (!updatedMintInfo) {
       throw new Error('Failed to fetch updated mint account');
@@ -206,9 +196,7 @@ async function updateTransferFee(): Promise<void> {
     console.log(`   New Transfer Fee: ${NEW_TRANSFER_FEE_BASIS_POINTS / 100}% (${NEW_TRANSFER_FEE_BASIS_POINTS} basis points)`);
     console.log(`   New Max Transfer Fee: ${NEW_MAX_TRANSFER_FEE.toString()} (${Number(NEW_MAX_TRANSFER_FEE) / 10 ** TOKEN_DECIMALS} tokens)`);
     console.log(`   Transaction Signature: ${signature}\n`);
-    console.log('⚠️  Note: The new transfer fee will take effect at the next epoch.');
-    console.log(`   Current Epoch: ${currentEpoch.toString()}`);
-    console.log(`   New Fee Active From Epoch: ${nextEpoch.toString()}\n`);
+    console.log('⚠️  Note: Transfer fee changes apply immediately for Token-2022.');
 
   } catch (error) {
     console.error('\n❌ Error updating transfer fee:');
