@@ -370,5 +370,87 @@ router.get('/raydium', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+/**
+ * GET /dashboard/diagnostics
+ * Returns diagnostic information about the system
+ */
+router.get('/diagnostics', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    logger.info('Dashboard API: GET /dashboard/diagnostics', {
+      timestamp: new Date().toISOString(),
+    });
+
+    // Get token holders
+    const allHolders = await getTokenHolders();
+    
+    // Get scheduler status
+    const schedulerStatus = getSchedulerStatus();
+    
+    // Get pending payouts
+    const pendingPayouts = getPendingPayouts();
+    
+    // Get eligible holders
+    const eligibleHolders = await getEligibleHolders().catch(() => []);
+    
+    // Get token price
+    const tokenPriceUSD = await getNUKEPriceUSD().catch(() => 0.01);
+    
+    // Get Raydium data
+    const raydiumData = await getRaydiumData().catch(() => null);
+
+    const response = {
+      timestamp: new Date().toISOString(),
+      token: {
+        mint: process.env.TOKEN_MINT || 'not set',
+        holders: {
+          total: allHolders.length,
+          eligible: eligibleHolders.length,
+          pendingPayouts: pendingPayouts.length,
+          sample: allHolders.slice(0, 5).map(h => ({
+            owner: h.owner,
+            balance: h.amount,
+            address: h.address,
+          })),
+        },
+      },
+      scheduler: {
+        isRunning: schedulerStatus.isRunning,
+        lastRun: schedulerStatus.lastRun ? new Date(schedulerStatus.lastRun).toISOString() : null,
+        nextRun: schedulerStatus.nextRun ? new Date(schedulerStatus.nextRun).toISOString() : null,
+      },
+      price: {
+        usd: tokenPriceUSD,
+        source: getPriceSource(),
+        raydium: raydiumData ? {
+          price: raydiumData.price,
+          liquidityUSD: raydiumData.liquidityUSD,
+          source: raydiumData.source,
+        } : null,
+      },
+      environment: {
+        network: process.env.SOLANA_NETWORK || 'not set',
+        raydiumPoolId: process.env.RAYDIUM_POOL_ID || 'not set',
+        minHoldingUSD: REWARD_CONFIG.MIN_HOLDING_USD,
+        minSOLPayout: REWARD_CONFIG.MIN_SOL_PAYOUT,
+      },
+    };
+
+    const duration = Date.now() - startTime;
+    logger.info('Dashboard API: GET /dashboard/diagnostics completed', {
+      duration: `${duration}ms`,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching diagnostics', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 export default router;
 

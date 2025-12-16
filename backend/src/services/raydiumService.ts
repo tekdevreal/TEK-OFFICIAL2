@@ -1,5 +1,5 @@
 import { Connection, PublicKey } from '@solana/web3.js';
-import { getMint, getAccount } from '@solana/spl-token';
+import { getMint, getAccount, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { connection } from '../config/solana';
 import { RAYDIUM_CONFIG, WSOL_MINT } from '../config/raydium';
 import { logger } from '../utils/logger';
@@ -135,23 +135,65 @@ async function fetchRaydiumPoolData(
     const tokenBVault = new PublicKey(tokenBVaultBytes);
 
     // Fetch vault token accounts
-    const [baseVaultAccount, quoteVaultAccount] = await Promise.all([
-      getAccount(conn, tokenAVault).catch(() => null),
-      getAccount(conn, tokenBVault).catch(() => null),
-    ]);
+    // Try both TOKEN_PROGRAM_ID and TOKEN_2022_PROGRAM_ID since we don't know which one is used
+    let baseVaultAccount = null;
+    let quoteVaultAccount = null;
+
+    // Try to fetch tokenAVault with both program IDs
+    try {
+      baseVaultAccount = await getAccount(conn, tokenAVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
+    } catch {
+      try {
+        baseVaultAccount = await getAccount(conn, tokenAVault, 'confirmed', TOKEN_PROGRAM_ID);
+      } catch (error) {
+        logger.debug('Failed to fetch tokenAVault with both program IDs', {
+          vault: tokenAVault.toBase58(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Try to fetch tokenBVault with both program IDs
+    try {
+      quoteVaultAccount = await getAccount(conn, tokenBVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
+    } catch {
+      try {
+        quoteVaultAccount = await getAccount(conn, tokenBVault, 'confirmed', TOKEN_PROGRAM_ID);
+      } catch (error) {
+        logger.debug('Failed to fetch tokenBVault with both program IDs', {
+          vault: tokenBVault.toBase58(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
 
     if (!baseVaultAccount || !quoteVaultAccount) {
       logger.warn('Failed to fetch Raydium vault accounts', {
         tokenAVault: tokenAVault.toBase58(),
         tokenBVault: tokenBVault.toBase58(),
+        baseVaultFound: !!baseVaultAccount,
+        quoteVaultFound: !!quoteVaultAccount,
       });
       return null;
     }
 
     // Determine which vault is base and which is quote
     // Check mint addresses to determine order
-    const baseMintInfo = await getMint(conn, baseVaultAccount.mint);
-    const quoteMintInfo = await getMint(conn, quoteVaultAccount.mint);
+    // Try both program IDs for mint info
+    let baseMintInfo = null;
+    let quoteMintInfo = null;
+
+    try {
+      baseMintInfo = await getMint(conn, baseVaultAccount.mint, 'confirmed', TOKEN_2022_PROGRAM_ID);
+    } catch {
+      baseMintInfo = await getMint(conn, baseVaultAccount.mint, 'confirmed', TOKEN_PROGRAM_ID);
+    }
+
+    try {
+      quoteMintInfo = await getMint(conn, quoteVaultAccount.mint, 'confirmed', TOKEN_2022_PROGRAM_ID);
+    } catch {
+      quoteMintInfo = await getMint(conn, quoteVaultAccount.mint, 'confirmed', TOKEN_PROGRAM_ID);
+    }
 
     let baseVaultBalance: bigint;
     let quoteVaultBalance: bigint;

@@ -14,7 +14,8 @@ TOKEN_MINT=CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq
 ADMIN_WALLET_PATH=../admin.json
 
 # Raydium DEX Configuration (optional)
-# RAYDIUM_POOL_ID=YourRaydiumPoolIdHere
+# Set this to enable Raydium price fetching and liquidity tracking
+RAYDIUM_POOL_ID=GFPwg4JVyRbsmNSvPGd8Wi3vvR3WVyChkjY56U7FKrc9
 
 # Reward Configuration
 TOTAL_REWARD_POOL_SOL=1.0

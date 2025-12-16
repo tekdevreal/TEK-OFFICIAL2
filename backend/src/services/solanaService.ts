@@ -69,18 +69,22 @@ export async function getTokenSupply(): Promise<string> {
  */
 export async function getTokenHolders(): Promise<TokenHolder[]> {
   try {
+    // Token-2022 accounts can have variable sizes due to extensions
+    // Remove dataSize filter to get all accounts, then filter by mint
     const tokenAccounts = await connection.getProgramAccounts(TOKEN_2022_PROGRAM_ID, {
       filters: [
         {
-          dataSize: 165, // Standard token account data size (may vary with extensions)
-        },
-        {
           memcmp: {
-            offset: 0, // Mint address offset in token account
+            offset: 0, // Mint address offset in token account (first 32 bytes)
             bytes: tokenMint.toBase58(),
           },
         },
       ],
+    });
+
+    logger.debug('Found token accounts for mint', {
+      count: tokenAccounts.length,
+      mint: tokenMint.toBase58(),
     });
 
     const holders: TokenHolder[] = [];
@@ -123,9 +127,11 @@ export async function getTokenHolders(): Promise<TokenHolder[]> {
       return 0;
     });
 
-    logger.debug('Fetched token holders', {
+    logger.info('Fetched token holders', {
       count: holders.length,
       mint: tokenMint.toBase58(),
+      totalAccountsFound: tokenAccounts.length,
+      accountsWithBalance: holders.length,
     });
 
     return holders;
