@@ -173,9 +173,9 @@ export function HistoricalRewardsPage() {
             <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === 'Total SOL Distributed') {
-                  return [`${value.toFixed(6)} SOL`, name];
+                  return [`${(value || 0).toFixed(6)} SOL`, name];
                 }
-                return [value.toLocaleString(), name];
+                return [(value || 0).toLocaleString(), name];
               }}
               labelFormatter={(label) => `Date: ${formatDate(label)}`}
             />

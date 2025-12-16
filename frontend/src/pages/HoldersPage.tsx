@@ -76,7 +76,7 @@ export function HoldersPage() {
       header: 'USD Value',
       accessor: (row) => `$${(row.usdValue || 0).toFixed(2)}`,
       sortable: true,
-      sortFn: (a, b) => a.usdValue - b.usdValue,
+      sortFn: (a, b) => (a.usdValue || 0) - (b.usdValue || 0),
     },
     {
       key: 'eligibilityStatus',

@@ -25,19 +25,19 @@ export function PayoutStatusChart() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading || !data) {
+  if (loading || !data || !data.summary) {
     return <div className="chart-loading">Loading chart data...</div>;
   }
 
   const chartData = [
     {
       name: 'Status',
-      Pending: data.summary.pending,
-      Failed: data.summary.failed,
+      Pending: data.summary.pending || 0,
+      Failed: data.summary.failed || 0,
     },
   ];
 
-  if (data.summary.pending === 0 && data.summary.failed === 0) {
+  if ((data.summary.pending || 0) === 0 && (data.summary.failed || 0) === 0) {
     return (
       <div className="chart-container">
         <h3>Payout Status</h3>

@@ -301,16 +301,19 @@ export async function fetchPayouts(params?: {
       return { 
         payouts: [], 
         total: 0, 
-        limit: 100,
+        limit: params?.limit || 100,
+        hasMore: false,
         summary: { pending: 0, failed: 0, totalSOL: 0 }
       };
     }
-    // Ensure payouts array exists
+    // Ensure payouts array and summary exist
+    const payoutsData = response.data;
     return {
-      payouts: response.data.payouts || [],
-      total: response.data.total || 0,
-      limit: response.data.limit || 100,
-      summary: response.data.summary || { pending: 0, failed: 0, totalSOL: 0 },
+      payouts: payoutsData.payouts || [],
+      total: payoutsData.total || 0,
+      limit: payoutsData.limit || (params?.limit || 100),
+      hasMore: payoutsData.hasMore || false,
+      summary: payoutsData.summary || { pending: 0, failed: 0, totalSOL: 0 },
     };
   } catch (error: any) {
     if (isDevelopment) {
@@ -327,7 +330,8 @@ export async function fetchPayouts(params?: {
     return { 
       payouts: [], 
       total: 0, 
-      limit: 100,
+      limit: params?.limit || 100,
+      hasMore: false,
       summary: { pending: 0, failed: 0, totalSOL: 0 }
     };
   }

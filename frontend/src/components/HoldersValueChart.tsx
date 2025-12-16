@@ -13,7 +13,8 @@ export function HoldersValueChart() {
       try {
         const response = await fetchHolders({ limit: 20, offset: 0 });
         // Sort by USD value descending and take top 20
-        const sorted = response.holders.sort((a, b) => b.usdValue - a.usdValue);
+        const holders = response.holders || [];
+        const sorted = holders.sort((a, b) => (b.usdValue || 0) - (a.usdValue || 0));
         setHolders(sorted.slice(0, 20));
       } catch (error) {
         console.error('Error loading holders chart data:', error);

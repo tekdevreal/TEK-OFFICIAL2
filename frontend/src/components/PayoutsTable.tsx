@@ -24,8 +24,8 @@ export function PayoutsTable({ refreshInterval = 60000 }: PayoutsTableProps) {
       
       const response = await fetchPayouts({ limit: 1000 });
       
-      setPayouts(response.payouts);
-      setSummary(response.summary);
+      setPayouts(response.payouts || []);
+      setSummary(response.summary || { pending: 0, failed: 0, totalSOL: 0 });
     } catch (err) {
       console.error('Error loading payouts:', err);
     } finally {
@@ -125,11 +125,11 @@ export function PayoutsTable({ refreshInterval = 60000 }: PayoutsTableProps) {
         </div>
         <div className="summary-badge">
           <span className="badge-label">Pending:</span>
-          <span className="badge-value badge-pending">{summary.pending}</span>
+          <span className="badge-value badge-pending">{summary?.pending || 0}</span>
         </div>
         <div className="summary-badge">
           <span className="badge-label">Failed:</span>
-          <span className="badge-value badge-failed">{summary.failed}</span>
+          <span className="badge-value badge-failed">{summary?.failed || 0}</span>
         </div>
         <div className="summary-badge highlight">
           <span className="badge-label">Total SOL:</span>

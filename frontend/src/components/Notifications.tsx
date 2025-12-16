@@ -52,7 +52,7 @@ export function NotificationManager() {
 
         // Check for failed payouts
         const payouts = await fetchPayouts({ limit: 1000 });
-        const failedCount = payouts.summary.failed;
+        const failedCount = payouts.summary?.failed || 0;
         
         if (failedCount > 0 && failedCount !== notificationState.failedPayouts) {
           toast.error(
