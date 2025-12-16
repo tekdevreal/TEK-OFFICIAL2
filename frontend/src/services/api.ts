@@ -240,7 +240,7 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
           pendingPayouts: 0,
           totalSOLDistributed: 0,
         },
-        tokenPrice: { usd: 0 },
+        tokenPrice: { sol: null, usd: null, source: null },
         filtered: null,
       };
     }

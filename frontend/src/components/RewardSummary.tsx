@@ -111,7 +111,11 @@ export function RewardSummary({ refreshInterval = 60000 }: RewardSummaryProps) {
 
         <div className="summary-card highlight">
           <div className="card-label">NUKE Price</div>
-          <div className="card-value">${data.tokenPrice.usd.toFixed(6)}</div>
+          <div className="card-value">
+            {data.tokenPrice.sol !== null && data.tokenPrice.sol > 0
+              ? `${data.tokenPrice.sol.toFixed(8)} SOL`
+              : 'N/A (Raydium)'}
+          </div>
         </div>
       </div>
 

@@ -32,7 +32,9 @@ export interface RewardsResponse {
   isRunning: boolean;
   statistics: RewardStatistics;
   tokenPrice: {
-    usd: number;
+    sol: number | null;
+    usd: number | null;
+    source?: 'raydium' | null;
   };
   filtered: {
     pubkey: string;
