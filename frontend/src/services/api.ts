@@ -240,7 +240,8 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
           pendingPayouts: 0,
           totalSOLDistributed: 0,
         },
-        tokenPrice: { sol: null, usd: null, source: null },
+        // Temporarily removed tokenPrice for debugging
+        // tokenPrice: { sol: null, usd: null, source: null },
         filtered: null,
       };
     }
@@ -274,9 +275,10 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
         blacklistedHolders: 0,
         pendingPayouts: 0,
         totalSOLDistributed: 0,
-      },
-      tokenPrice: { sol: null, usd: null, source: null },
-      filtered: null,
+        },
+        // Temporarily removed tokenPrice for debugging
+        // tokenPrice: { sol: null, usd: null, source: null },
+        filtered: null,
     };
   }
 }

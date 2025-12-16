@@ -7,7 +7,8 @@ import {
 } from '../services/rewardService';
 import { getSchedulerStatus } from '../scheduler/rewardScheduler';
 import { getTokenHolders } from '../services/solanaService';
-import { getNUKEPriceSOL, getNUKEPriceUSD, getPriceSource, getPriceDiagnostics } from '../services/priceService';
+// Temporarily removed price service imports for debugging
+// import { getNUKEPriceSOL, getNUKEPriceUSD, getPriceSource, getPriceDiagnostics } from '../services/priceService';
 import { getRaydiumData } from '../services/raydiumService';
 import { isBlacklisted } from '../config/blacklist';
 import { REWARD_CONFIG } from '../config/constants';
@@ -112,8 +113,8 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
     const allHolders = await getTokenHolders();
     const eligibleHolders = await getEligibleHolders().catch(() => []);
     
-    // Get NUKE price in SOL from Raydium devnet pool
-    const tokenPriceSOL = await getNUKEPriceSOL().catch(() => ({ price: null, source: null }));
+    // Temporarily removed token price fetching for debugging
+    // const tokenPriceSOL = await getNUKEPriceSOL().catch(() => ({ price: null, source: null }));
 
     // Get pending payouts
     const pendingPayouts = getPendingPayouts();
@@ -133,8 +134,8 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
       filteredPending = pendingPayouts.filter(p => p.pubkey === filterPubkey);
     }
 
-    // Get Raydium data
-    const raydiumData = await getRaydiumData().catch(() => null);
+    // Temporarily removed Raydium data fetching for debugging
+    // const raydiumData = await getRaydiumData().catch(() => null);
 
     // Get tax statistics
     const { TaxService } = await import('../services/taxService');
@@ -152,17 +153,19 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
         pendingPayouts: pendingPayouts.length,
         totalSOLDistributed: parseFloat((totalSOLDistributed || 0).toFixed(6)),
       },
-      tokenPrice: {
-        sol: tokenPriceSOL.price !== null && tokenPriceSOL.price > 0 ? parseFloat(tokenPriceSOL.price.toFixed(8)) : null,
-        usd: null, // Not used for devnet (SOL-only pricing)
-        source: tokenPriceSOL.source || null,
-      },
-      dex: raydiumData && raydiumData.source === 'raydium' ? {
-        name: 'raydium',
-        price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null, // SOL per NUKE
-        source: 'raydium',
-        updatedAt: raydiumData.updatedAt,
-      } : null,
+      // Temporarily removed tokenPrice for debugging
+      // tokenPrice: {
+      //   sol: tokenPriceSOL.price !== null && tokenPriceSOL.price > 0 ? parseFloat(tokenPriceSOL.price.toFixed(8)) : null,
+      //   usd: null,
+      //   source: tokenPriceSOL.source || null,
+      // },
+      // Temporarily removed dex data for debugging
+      // dex: raydiumData && raydiumData.source === 'raydium' ? {
+      //   name: 'raydium',
+      //   price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null,
+      //   source: 'raydium',
+      //   updatedAt: raydiumData.updatedAt,
+      // } : null,
       tax: {
         totalTaxCollected: taxStats.totalTaxCollected,
         totalRewardAmount: taxStats.totalRewardAmount,
@@ -203,11 +206,12 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
                 pendingPayouts: 0,
                 totalSOLDistributed: 0,
               },
-              tokenPrice: {
-                sol: null,
-                usd: null,
-                source: null,
-              },
+              // Temporarily removed tokenPrice for debugging
+              // tokenPrice: {
+              //   sol: null,
+              //   usd: null,
+              //   source: null,
+              // },
     });
   }
 });
@@ -378,11 +382,9 @@ router.get('/diagnostics', async (req: Request, res: Response): Promise<void> =>
     // Get eligible holders
     const eligibleHolders = await getEligibleHolders().catch(() => []);
     
-    // Get token price in SOL from Raydium
-    const tokenPriceSOL = await getNUKEPriceSOL().catch(() => ({ price: null, source: null }));
-    
-    // Get Raydium data
-    const raydiumData = await getRaydiumData().catch(() => null);
+    // Temporarily removed token price fetching for debugging
+    // const tokenPriceSOL = await getNUKEPriceSOL().catch(() => ({ price: null, source: null }));
+    // const raydiumData = await getRaydiumData().catch(() => null);
 
     const response = {
       timestamp: new Date().toISOString(),
@@ -404,15 +406,16 @@ router.get('/diagnostics', async (req: Request, res: Response): Promise<void> =>
         lastRun: schedulerStatus.lastRun ? new Date(schedulerStatus.lastRun).toISOString() : null,
         nextRun: schedulerStatus.nextRun ? new Date(schedulerStatus.nextRun).toISOString() : null,
       },
-      price: {
-        sol: tokenPriceSOL.price !== null ? parseFloat(tokenPriceSOL.price.toFixed(8)) : null,
-        usd: null, // Not used for devnet (SOL-only pricing)
-        source: tokenPriceSOL.source || null,
-        raydium: raydiumData && raydiumData.source === 'raydium' ? {
-          price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null, // SOL per NUKE
-          source: raydiumData.source,
-        } : null,
-      },
+      // Temporarily removed price for debugging
+      // price: {
+      //   sol: tokenPriceSOL.price !== null ? parseFloat(tokenPriceSOL.price.toFixed(8)) : null,
+      //   usd: null,
+      //   source: tokenPriceSOL.source || null,
+      //   raydium: raydiumData && raydiumData.source === 'raydium' ? {
+      //     price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null,
+      //     source: raydiumData.source,
+      //   } : null,
+      // },
       environment: {
         network: process.env.SOLANA_NETWORK || 'not set',
         raydiumPoolId: process.env.RAYDIUM_POOL_ID || 'not set',

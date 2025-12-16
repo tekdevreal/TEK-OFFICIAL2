@@ -31,11 +31,12 @@ export interface RewardsResponse {
   nextRun: string | null;
   isRunning: boolean;
   statistics: RewardStatistics;
-  tokenPrice: {
-    sol: number | null;
-    usd: number | null;
-    source?: 'raydium' | null;
-  };
+  // Temporarily removed tokenPrice for debugging
+  // tokenPrice: {
+  //   sol: number | null;
+  //   usd: number | null;
+  //   source?: 'raydium' | null;
+  // };
   filtered: {
     pubkey: string;
     eligible: boolean;
