@@ -168,7 +168,7 @@ async function fetchRaydiumPoolData(
     }
 
     if (!baseVaultAccount || !quoteVaultAccount) {
-      logger.warn('Failed to fetch Raydium vault accounts', {
+      logger.debug('Failed to fetch Raydium vault accounts (using HTTP API for prices instead)', {
         tokenAVault: tokenAVault.toBase58(),
         tokenBVault: tokenBVault.toBase58(),
         baseVaultFound: !!baseVaultAccount,
