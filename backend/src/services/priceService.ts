@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger';
-import { getRaydiumPoolId } from '../config/raydium';
+import { getRaydiumPoolId, WSOL_MINT } from '../config/raydium';
 import { tokenMint } from '../config/solana';
 
 /**
@@ -22,64 +22,51 @@ let cachedPrice: PriceCache | null = null;
 const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Raydium Pool Info API response structure
+ * Raydium Pool Info API response structures
+ *
+ * The devnet API currently returns a "Standard" Cpmm payload with:
+ * - mintA / mintB objects (each with address, decimals, etc.)
+ * - mintAmountA / mintAmountB (human-readable reserves)
+ *
+ * Older examples/docs also reference baseMint / quoteMint and various
+ * raw token totals. To be robust, we support both shapes.
  */
-interface RaydiumPoolInfo {
-  id: string;
-  baseMint: string;
-  quoteMint: string;
-  lpMint: string;
-  baseDecimals: number;
-  quoteDecimals: number;
-  lpDecimals: number;
-  version: number;
-  programId: string;
-  authority: string;
-  openOrders: string;
-  targetOrders: string;
-  baseVault: string;
-  quoteVault: string;
-  withdrawQueue: string;
-  lpVault: string;
-  marketVersion: number;
-  marketProgramId: string;
-  marketId: string;
-  marketBaseVault: string;
-  marketQuoteVault: string;
-  marketBids: string;
-  marketAsks: string;
-  marketEventQueue: string;
-  withdrawQueueType: number;
-  lpTokenVirtualPrice: number;
-  marketBaseTokenTotal: number;
-  marketQuoteTokenTotal: number;
-  baseTokenTotal: number;
-  quoteTokenTotal: number;
-  lpTokenTotal: number;
-  openOrdersReserve: number;
-  price?: number;
-  priceNative?: number;
-  priceUsd?: number;
-  tvl?: number;
-  tvlQuote?: number;
-  tvlBase?: number;
-  apy?: number;
-  fee?: number;
-  fee7d?: number;
-  fee24h?: number;
-  liquidity?: number;
-  liquidityQuote?: number;
-  liquidityBase?: number;
-  volume24h?: number;
-  volume7d?: number;
-  volume30d?: number;
-  official?: boolean;
-  status?: string;
+
+interface RaydiumMintInfo {
+  address: string;
+  decimals: number;
 }
+
+interface RaydiumCpmmPoolStandard {
+  id: string;
+  programId: string;
+  type?: string;
+  mintA: RaydiumMintInfo;
+  mintB: RaydiumMintInfo;
+  mintAmountA?: number;
+  mintAmountB?: number;
+  price?: number;
+}
+
+// Older / alternative shape (kept partial, only fields we care about)
+interface RaydiumLegacyPoolInfo {
+  id: string;
+  baseMint?: string;
+  quoteMint?: string;
+  baseDecimals?: number;
+  quoteDecimals?: number;
+  baseTokenTotal?: number;
+  quoteTokenTotal?: number;
+  marketBaseTokenTotal?: number;
+  marketQuoteTokenTotal?: number;
+  priceNative?: number;
+}
+
+type AnyRaydiumPoolInfo = RaydiumCpmmPoolStandard & RaydiumLegacyPoolInfo;
 
 interface RaydiumPoolInfoResponse {
   success: boolean;
-  data?: RaydiumPoolInfo[];
+  data?: AnyRaydiumPoolInfo[];
   time?: number;
 }
 
@@ -206,44 +193,68 @@ export async function getNUKEPriceSOL(): Promise<{ price: number | null; source:
     }
 
     // Step 4: Extract price (SOL per NUKE)
-    // The API may provide price in different formats:
-    // - priceNative: price in native token (SOL) terms
-    // - price: price in quote token terms
-    // - Calculate from reserves: quoteTokenTotal / baseTokenTotal
+    // The devnet Cpmm API exposes:
+    // - mintA / mintB objects with addresses and decimals
+    // - mintAmountA / mintAmountB as human-readable reserves
+    //
+    // For your NUKE/dwSOL pool:
+    //   mintA = SOL (dwSOL), mintB = NUKE
+    //   mintAmountA = SOL reserves, mintAmountB = NUKE reserves
+    //
+    // We want SOL per NUKE:
+    //   priceSOL = SOL_reserves / NUKE_reserves
     
     let price: number | null = null;
 
-    // Try priceNative first (if available, this is usually SOL per base token)
-    if (pool.priceNative !== undefined && pool.priceNative !== null && pool.priceNative > 0) {
-      // Verify this is the correct direction (SOL per NUKE)
-      // If baseMint is NUKE and quoteMint is WSOL, priceNative should be SOL per NUKE
-      if (pool.baseMint === tokenMint.toBase58()) {
-        price = pool.priceNative;
-      } else if (pool.quoteMint === tokenMint.toBase58()) {
-        // If NUKE is the quote token, invert the price
-        price = pool.priceNative > 0 ? 1 / pool.priceNative : null;
+    const tokenMintStr = tokenMint.toBase58();
+    const wsolStr = WSOL_MINT.toBase58();
+
+    const isStandardCpmm =
+      (pool as RaydiumCpmmPoolStandard).mintA !== undefined &&
+      (pool as RaydiumCpmmPoolStandard).mintB !== undefined;
+
+    if (isStandardCpmm) {
+      const std = pool as RaydiumCpmmPoolStandard;
+      const mintA = std.mintA;
+      const mintB = std.mintB;
+      const amountA = Number(std.mintAmountA ?? 0);
+      const amountB = Number(std.mintAmountB ?? 0);
+
+      if (amountA > 0 && amountB > 0) {
+        if (mintA.address === wsolStr && mintB.address === tokenMintStr) {
+          // A = SOL, B = NUKE  =>  price = SOL / NUKE
+          price = amountA / amountB;
+        } else if (mintB.address === wsolStr && mintA.address === tokenMintStr) {
+          // B = SOL, A = NUKE  =>  price = SOL / NUKE
+          price = amountB / amountA;
+        }
       }
     }
 
-    // Fallback: Calculate from token reserves
-    if (price === null || price <= 0) {
-      const baseTotal = pool.baseTokenTotal || pool.marketBaseTokenTotal || 0;
-      const quoteTotal = pool.quoteTokenTotal || pool.marketQuoteTokenTotal || 0;
-      const baseDecimals = pool.baseDecimals || 6;
-      const quoteDecimals = pool.quoteDecimals || 9;
+    // Legacy fallback: use priceNative or raw token totals if available
+    if ((price === null || price <= 0) && (pool.priceNative !== undefined && pool.priceNative !== null && pool.priceNative > 0)) {
+      const legacy = pool as RaydiumLegacyPoolInfo;
+      if (legacy.baseMint === tokenMintStr) {
+        price = pool.priceNative;
+      } else if (legacy.quoteMint === tokenMintStr && pool.priceNative > 0) {
+        price = 1 / pool.priceNative;
+      }
+    }
 
+    if (price === null || price <= 0) {
+      const legacy = pool as RaydiumLegacyPoolInfo;
+      const baseTotal = legacy.baseTokenTotal || legacy.marketBaseTokenTotal || 0;
+      const quoteTotal = legacy.quoteTokenTotal || legacy.marketQuoteTokenTotal || 0;
+      const baseDecimals = legacy.baseDecimals || 6;
+      const quoteDecimals = legacy.quoteDecimals || 9;
+      
       if (baseTotal > 0 && quoteTotal > 0) {
-        // Adjust for decimals
         const baseAmount = baseTotal / Math.pow(10, baseDecimals);
         const quoteAmount = quoteTotal / Math.pow(10, quoteDecimals);
-
-        if (pool.baseMint === tokenMint.toBase58()) {
-          // NUKE is base token, WSOL is quote token
-          // Price = quoteAmount / baseAmount (SOL per NUKE)
+        
+        if (legacy.baseMint === tokenMintStr) {
           price = quoteAmount / baseAmount;
-        } else if (pool.quoteMint === tokenMint.toBase58()) {
-          // NUKE is quote token, WSOL is base token
-          // Price = baseAmount / quoteAmount (SOL per NUKE)
+        } else if (legacy.quoteMint === tokenMintStr) {
           price = baseAmount / quoteAmount;
         }
       }
