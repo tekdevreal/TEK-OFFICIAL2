@@ -505,26 +505,27 @@ export class TaxService {
           const balanceAfter = rewardAccount.amount;
           withdrawnAmount = balanceAfter - balanceBefore;
 
-        logger.info('Withdrew withheld tokens', {
-          signature: withdrawSignature,
-          balanceBefore: balanceBefore.toString(),
-          balanceAfter: balanceAfter.toString(),
-          withdrawnAmount: withdrawnAmount.toString(),
-          to: rewardTokenAccount.toBase58(),
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn('Failed to withdraw withheld tokens', {
-          error: errorMessage,
-          authority: withdrawWallet.publicKey.toBase58(),
-        });
-        
-        // Check if it's an authority error
-        if (errorMessage.includes('authority') || errorMessage.includes('insufficient')) {
-          logger.error('Withdraw authority mismatch. Please update the withdraw withheld authority on the mint to match the wallet being used.');
+          logger.info('Withdrew withheld tokens from mint', {
+            signature: withdrawSignature,
+            balanceBefore: balanceBefore.toString(),
+            balanceAfter: balanceAfter.toString(),
+            withdrawnAmount: withdrawnAmount.toString(),
+            to: rewardTokenAccount.toBase58(),
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logger.warn('Failed to withdraw withheld tokens from mint', {
+            error: errorMessage,
+            authority: withdrawWallet.publicKey.toBase58(),
+          });
+          
+          // Check if it's an authority error
+          if (errorMessage.includes('authority') || errorMessage.includes('insufficient')) {
+            logger.error('Withdraw authority mismatch. Please update the withdraw withheld authority on the mint to match the wallet being used.');
+          }
+          
+          return null;
         }
-        
-        return null;
       }
 
       if (withdrawnAmount === BigInt(0)) {
