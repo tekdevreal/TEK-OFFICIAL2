@@ -4,7 +4,6 @@ import {
   Transaction,
   SystemProgram,
   sendAndConfirmTransaction,
-  getParsedTransaction,
 } from '@solana/web3.js';
 import {
   TOKEN_2022_PROGRAM_ID,
@@ -496,7 +495,7 @@ export class TaxService {
         
         // Try to get transaction details to see what happened
         try {
-          const txDetails = await getParsedTransaction(connection, harvestSignature, {
+          const txDetails = await connection.getParsedTransaction(harvestSignature, {
             commitment: 'confirmed',
             maxSupportedTransactionVersion: 0,
           });
