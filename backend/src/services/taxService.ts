@@ -402,13 +402,15 @@ export class TaxService {
         const emptySources: PublicKey[] = []; // Explicitly typed empty array for sources
         const emptySigners: Keypair[] = []; // Explicitly typed empty array for multiSigners
         withdrawSignature = await withdrawWithheldTokensFromAccounts(
-          connection, // Connection (first parameter)
-          withdrawWallet, // Withdraw authority (Signer/Keypair) - must match mint authority
-          tokenMint, // Mint (PublicKey) - third parameter
-          rewardTokenAccount, // Destination token account (PublicKey) - fourth parameter
-          TOKEN_2022_PROGRAM_ID, // Program ID
+          connection, // Connection
+          withdrawWallet, // Payer (Signer) - wallet paying transaction fees
+          tokenMint, // Mint
+          rewardTokenAccount, // Destination token account
+          withdrawWallet.publicKey, // Authority (PublicKey) - withdraw authority
           emptySigners, // Multi-signers (empty if single signer)
-          emptySources // Sources (PublicKey[] - empty array = all token accounts)
+          emptySources, // Sources (empty array = all token accounts)
+          { commitment: 'confirmed' }, // ConfirmOptions
+          TOKEN_2022_PROGRAM_ID // Program ID
         );
 
         // Get the balance after withdrawal to determine how much was withdrawn
