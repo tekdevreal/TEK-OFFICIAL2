@@ -288,9 +288,14 @@ export class TaxService {
       }
       
       const withdrawAuthority = transferFeeConfig.withdrawWithheldAuthority;
+      
+      // Check mint's withheld amount (tokens held in the mint after harvesting)
+      const mintWithheldAmount = transferFeeConfig.withheldAmount || 0n;
       logger.info('Withdraw withheld authority check', {
         authority: withdrawAuthority.toBase58(),
         mint: tokenMint.toBase58(),
+        mintWithheldAmount: mintWithheldAmount.toString(),
+        mintWithheldAmountHuman: (Number(mintWithheldAmount) / Math.pow(10, decimals)).toFixed(6),
       });
       
       // Step 2: Determine which wallet to use based on authority
@@ -423,29 +428,82 @@ export class TaxService {
         });
       }
 
-      // Step 5: Withdraw withheld tokens to reward wallet
+      // Step 5: Withdraw withheld tokens from mint to reward wallet
+      // After harvesting, tokens are in the mint, so we need to withdraw from the mint
       let withdrawSignature: string | undefined;
       let withdrawnAmount = BigInt(0);
       
-      try {
-        const emptySources: PublicKey[] = []; // Explicitly typed empty array for sources
-        const emptySigners: Keypair[] = []; // Explicitly typed empty array for multiSigners
-        withdrawSignature = await withdrawWithheldTokensFromAccounts(
-          connection, // Connection
-          withdrawWallet, // Payer (Signer) - wallet paying transaction fees
-          tokenMint, // Mint
-          rewardTokenAccount, // Destination token account
-          withdrawWallet.publicKey, // Authority (PublicKey) - withdraw authority
-          emptySigners, // Multi-signers (empty if single signer)
-          emptySources, // Sources (empty array = all token accounts)
-          { commitment: 'confirmed' }, // ConfirmOptions
-          TOKEN_2022_PROGRAM_ID // Program ID
-        );
+      // Re-check mint withheld amount after harvest
+      const mintAccountAfterHarvest = await connection.getAccountInfo(tokenMint);
+      if (!mintAccountAfterHarvest) {
+        throw new Error('Mint account not found after harvest');
+      }
+      const parsedMintAfterHarvest = unpackMint(tokenMint, mintAccountAfterHarvest, TOKEN_2022_PROGRAM_ID);
+      const transferFeeConfigAfterHarvest = getTransferFeeConfig(parsedMintAfterHarvest);
+      const mintWithheldAfterHarvest = transferFeeConfigAfterHarvest?.withheldAmount || 0n;
+      
+      logger.info('Mint withheld amount after harvest', {
+        mintWithheldAmount: mintWithheldAfterHarvest.toString(),
+        mintWithheldAmountHuman: (Number(mintWithheldAfterHarvest) / Math.pow(10, decimals)).toFixed(6),
+      });
+      
+      if (mintWithheldAfterHarvest === 0n) {
+        logger.info('No tokens withheld in mint after harvest - checking token accounts');
+        // Try withdrawing from token accounts (in case harvest didn't move them to mint)
+        try {
+          const emptySources: PublicKey[] = [];
+          const emptySigners: Keypair[] = [];
+          withdrawSignature = await withdrawWithheldTokensFromAccounts(
+            connection,
+            withdrawWallet,
+            tokenMint,
+            rewardTokenAccount,
+            withdrawWallet.publicKey,
+            emptySigners,
+            emptySources,
+            { commitment: 'confirmed' },
+            TOKEN_2022_PROGRAM_ID
+          );
+          
+          const rewardAccount = await getAccount(connection, rewardTokenAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+          const balanceAfter = rewardAccount.amount;
+          withdrawnAmount = balanceAfter - balanceBefore;
+          
+          logger.info('Withdrew from token accounts', {
+            signature: withdrawSignature,
+            withdrawnAmount: withdrawnAmount.toString(),
+          });
+        } catch (error) {
+          logger.warn('Failed to withdraw from token accounts', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      } else {
+        // Withdraw from mint (tokens are in the mint after harvesting)
+        try {
+          const { withdrawWithheldTokensFromMint } = await import('@solana/spl-token');
+          const emptySigners: Keypair[] = [];
+          
+          logger.info('Withdrawing withheld tokens from mint', {
+            mintWithheldAmount: mintWithheldAfterHarvest.toString(),
+            destination: rewardTokenAccount.toBase58(),
+          });
+          
+          withdrawSignature = await withdrawWithheldTokensFromMint(
+            connection,
+            withdrawWallet, // Payer
+            tokenMint, // Mint
+            rewardTokenAccount, // Destination
+            withdrawWallet.publicKey, // Authority
+            emptySigners, // Multi-signers
+            { commitment: 'confirmed' }, // ConfirmOptions
+            TOKEN_2022_PROGRAM_ID // Program ID
+          );
 
-        // Get the balance after withdrawal to determine how much was withdrawn
-        const rewardAccount = await getAccount(connection, rewardTokenAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
-        const balanceAfter = rewardAccount.amount;
-        withdrawnAmount = balanceAfter - balanceBefore;
+          // Get the balance after withdrawal to determine how much was withdrawn
+          const rewardAccount = await getAccount(connection, rewardTokenAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+          const balanceAfter = rewardAccount.amount;
+          withdrawnAmount = balanceAfter - balanceBefore;
 
         logger.info('Withdrew withheld tokens', {
           signature: withdrawSignature,
