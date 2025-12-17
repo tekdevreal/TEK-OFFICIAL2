@@ -7,8 +7,7 @@ import {
 } from '../services/rewardService';
 import { getSchedulerStatus } from '../scheduler/rewardScheduler';
 import { getTokenHolders } from '../services/solanaService';
-// Temporarily removed price service imports for debugging
-// import { getNUKEPriceSOL, getNUKEPriceUSD, getPriceSource, getPriceDiagnostics } from '../services/priceService';
+import { getNUKEPriceSOL, getNUKEPriceUSD, getPriceDiagnostics } from '../services/priceService';
 import { getRaydiumData } from '../services/raydiumService';
 import { isBlacklisted } from '../config/blacklist';
 import { REWARD_CONFIG } from '../config/constants';
@@ -120,8 +119,22 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
     const allHolders = await getTokenHolders();
     const eligibleHolders = await getEligibleHolders().catch(() => []);
     
-    // Temporarily removed token price fetching for debugging
-    // const tokenPriceSOL = await getNUKEPriceSOL().catch(() => ({ price: null, source: null }));
+    // Fetch Raydium-based pricing with strong fallbacks
+    const [tokenPriceSOLResult, tokenPriceUSDResult, raydiumData] = await Promise.all([
+      getNUKEPriceSOL().catch(() => ({ price: null as number | null, source: null as string | null })),
+      getNUKEPriceUSD().catch(() => null as number | null),
+      getRaydiumData().catch(() => null),
+    ]);
+
+    const tokenPriceSOL =
+      tokenPriceSOLResult && tokenPriceSOLResult.price !== null && tokenPriceSOLResult.price > 0
+        ? parseFloat(tokenPriceSOLResult.price.toFixed(8))
+        : null;
+
+    const tokenPriceUSD =
+      tokenPriceUSDResult !== null && tokenPriceUSDResult > 0
+        ? parseFloat(tokenPriceUSDResult.toFixed(6))
+        : null;
 
     // Get pending payouts
     const pendingPayouts = getPendingPayouts();
@@ -141,9 +154,6 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
       filteredPending = pendingPayouts.filter(p => p.pubkey === filterPubkey);
     }
 
-    // Temporarily removed Raydium data fetching for debugging
-    // const raydiumData = await getRaydiumData().catch(() => null);
-
     // Get tax statistics
     const { TaxService } = await import('../services/taxService');
     const taxStats = TaxService.getTaxStatistics();
@@ -160,19 +170,20 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
         pendingPayouts: pendingPayouts.length,
         totalSOLDistributed: parseFloat((totalSOLDistributed || 0).toFixed(6)),
       },
-      // Temporarily removed tokenPrice for debugging
-      // tokenPrice: {
-      //   sol: tokenPriceSOL.price !== null && tokenPriceSOL.price > 0 ? parseFloat(tokenPriceSOL.price.toFixed(8)) : null,
-      //   usd: null,
-      //   source: tokenPriceSOL.source || null,
-      // },
-      // Temporarily removed dex data for debugging
-      // dex: raydiumData && raydiumData.source === 'raydium' ? {
-      //   name: 'raydium',
-      //   price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null,
-      //   source: 'raydium',
-      //   updatedAt: raydiumData.updatedAt,
-      // } : null,
+      tokenPrice: {
+        sol: tokenPriceSOL,
+        usd: tokenPriceUSD,
+        source: tokenPriceSOLResult?.source || (raydiumData && raydiumData.source) || null,
+      },
+      dex:
+        raydiumData && raydiumData.source === 'raydium'
+          ? {
+              name: 'raydium' as const,
+              price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null,
+              source: raydiumData.source || null,
+              updatedAt: raydiumData.updatedAt || null,
+            }
+          : null,
       tax: {
         totalTaxCollected: taxStats.totalTaxCollected,
         totalRewardAmount: taxStats.totalRewardAmount,
@@ -205,20 +216,23 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
       error: error instanceof Error ? error.message : 'Unknown error',
       lastRun: null,
       nextRun: null,
-              statistics: {
-                totalHolders: 0,
-                eligibleHolders: 0,
-                excludedHolders: 0,
-                blacklistedHolders: 0,
-                pendingPayouts: 0,
-                totalSOLDistributed: 0,
-              },
-              // Temporarily removed tokenPrice for debugging
-              // tokenPrice: {
-              //   sol: null,
-              //   usd: null,
-              //   source: null,
-              // },
+      isRunning: false,
+      statistics: {
+        totalHolders: 0,
+        eligibleHolders: 0,
+        excludedHolders: 0,
+        blacklistedHolders: 0,
+        pendingPayouts: 0,
+        totalSOLDistributed: 0,
+      },
+      tokenPrice: {
+        sol: null,
+        usd: null,
+        source: null,
+      },
+      dex: null,
+      tax: null,
+      filtered: null,
     });
   }
 });

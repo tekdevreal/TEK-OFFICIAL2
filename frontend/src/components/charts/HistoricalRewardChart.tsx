@@ -42,6 +42,16 @@ export function HistoricalRewardChart() {
         // Create data point from current response
         if (!response || !response.statistics) {
           console.warn('Invalid response structure, skipping data point');
+          // Still load existing data even if new data point can't be created
+          try {
+            const stored = localStorage.getItem('historicalRewardData');
+            if (stored) {
+              const historicalData: HistoricalDataPoint[] = JSON.parse(stored);
+              setData(historicalData);
+            }
+          } catch (e) {
+            console.error('Error loading existing historical data:', e);
+          }
           return;
         }
 
@@ -55,12 +65,26 @@ export function HistoricalRewardChart() {
         };
 
         // Load from localStorage for historical data
-        const stored = localStorage.getItem('historicalRewardData');
-        let historicalData: HistoricalDataPoint[] = stored ? JSON.parse(stored) : [];
+        let historicalData: HistoricalDataPoint[] = [];
+        try {
+          const stored = localStorage.getItem('historicalRewardData');
+          if (stored) {
+            historicalData = JSON.parse(stored);
+          }
+        } catch (e) {
+          console.error('Error parsing stored historical data:', e);
+          // Continue with empty array if parsing fails
+          historicalData = [];
+        }
 
-        // Add new data point (avoid duplicates)
+        // Add new data point (avoid duplicates based on data, not just timestamp)
         const lastPoint = historicalData[historicalData.length - 1];
-        if (!lastPoint || lastPoint.timestamp !== dataPoint.timestamp) {
+        const isDuplicate = lastPoint && 
+          lastPoint.totalSOL === dataPoint.totalSOL &&
+          lastPoint.eligibleHolders === dataPoint.eligibleHolders &&
+          lastPoint.pendingPayouts === dataPoint.pendingPayouts;
+        
+        if (!isDuplicate) {
           historicalData.push(dataPoint);
           
           // Keep only data within selected time range
@@ -72,13 +96,20 @@ export function HistoricalRewardChart() {
             (point) => new Date(point.timestamp) >= cutoffDate
           );
           
-          // Save to localStorage
-          localStorage.setItem('historicalRewardData', JSON.stringify(historicalData));
+          // Save to localStorage with error handling
+          try {
+            localStorage.setItem('historicalRewardData', JSON.stringify(historicalData));
+            console.log('Historical data saved successfully', { points: historicalData.length });
+          } catch (e) {
+            console.error('Error saving historical data to localStorage:', e);
+            showNotification('Failed to save historical data. Check browser settings.', 'warning');
+          }
         }
 
         setData(historicalData);
       } catch (error) {
         console.error('Error loading historical data:', error);
+        showNotification('Failed to load historical data', 'error');
       } finally {
         setLoading(false);
       }

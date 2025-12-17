@@ -104,7 +104,7 @@ export function RewardTrendsChart() {
         <div className="chart-summary">
           <div className="summary-item">
             <span className="summary-label">Current Eligible:</span>
-            <span className="summary-value">{currentData.statistics.eligibleHolders}</span>
+            <span className="summary-value">{currentData.statistics?.eligibleHolders || 0}</span>
           </div>
           <div className="summary-item">
             <span className="summary-label">Current SOL:</span>

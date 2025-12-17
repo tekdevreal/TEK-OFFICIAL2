@@ -86,12 +86,9 @@ export function RewardSummary({ refreshInterval = 60000 }: RewardSummaryProps) {
     );
   }
 
-  // Temporarily skip tokenPrice validation for debugging
-  // if (!data.tokenPrice) {
-  //   data.tokenPrice = { sol: null, usd: null, source: null };
-  // }
-
   const stats = data.statistics;
+  const tokenPrice = data.tokenPrice || { sol: null, usd: null, source: null };
+  const dex = data.dex || null;
 
   return (
     <div className="reward-summary-container">
@@ -119,8 +116,31 @@ export function RewardSummary({ refreshInterval = 60000 }: RewardSummaryProps) {
             <div className="time-until">({getTimeUntilNext(data.nextRun)})</div>
           </div>
         </div>
+        
+        <div className="summary-card">
+          <div className="card-label">Token Price (SOL)</div>
+          <div className="card-value">
+            {tokenPrice.sol !== null && !isNaN(tokenPrice.sol)
+              ? `${tokenPrice.sol.toFixed(8)} SOL`
+              : 'N/A'}
+          </div>
+        </div>
 
-        {/* Token price display removed for debugging - ensure tokenPrice is never accessed */}
+        <div className="summary-card">
+          <div className="card-label">Token Price (USD)</div>
+          <div className="card-value">
+            {tokenPrice.usd !== null && !isNaN(tokenPrice.usd)
+              ? `$${tokenPrice.usd.toFixed(6)}`
+              : 'N/A'}
+          </div>
+        </div>
+
+        <div className="summary-card">
+          <div className="card-label">Price Source</div>
+          <div className="card-value">
+            {tokenPrice.source || (dex?.source === 'raydium' ? 'raydium' : 'Unknown')}
+          </div>
+        </div>
       </div>
 
       <div className="statistics-grid">

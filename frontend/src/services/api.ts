@@ -257,19 +257,41 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
           pendingPayouts: 0,
           totalSOLDistributed: 0,
         },
-        // Temporarily removed tokenPrice for debugging
-        // tokenPrice: { sol: null, usd: null, source: null },
+        tokenPrice: {
+          sol: null,
+          usd: null,
+          source: null,
+        },
+        dex: null,
         filtered: null,
       };
     }
-    // Remove tokenPrice and dex from response if they exist (safety check)
-    const rewardsData = { ...response.data };
-    if ('tokenPrice' in rewardsData) {
-      delete rewardsData.tokenPrice;
-    }
-    if ('dex' in rewardsData) {
-      delete rewardsData.dex;
-    }
+    // Normalize tokenPrice and dex fields to always be present and safe
+    const rewardsData: RewardsResponse = {
+      ...response.data,
+      tokenPrice: {
+        sol:
+          response.data.tokenPrice && typeof response.data.tokenPrice.sol === 'number'
+            ? response.data.tokenPrice.sol
+            : null,
+        usd:
+          response.data.tokenPrice && typeof response.data.tokenPrice.usd === 'number'
+            ? response.data.tokenPrice.usd
+            : null,
+        source: response.data.tokenPrice?.source ?? null,
+      },
+      dex: response.data.dex
+        ? {
+            name: response.data.dex.name || 'raydium',
+            price:
+              typeof response.data.dex.price === 'number' && !isNaN(response.data.dex.price)
+                ? response.data.dex.price
+                : null,
+            source: response.data.dex.source ?? null,
+            updatedAt: response.data.dex.updatedAt ?? null,
+          }
+        : null,
+    };
     return rewardsData;
   } catch (error: any) {
     if (isDevelopment) {
@@ -294,11 +316,15 @@ export async function fetchRewards(pubkey?: string): Promise<RewardsResponse> {
         blacklistedHolders: 0,
         pendingPayouts: 0,
         totalSOLDistributed: 0,
-        },
-        // Temporarily removed tokenPrice for debugging
-        // tokenPrice: { sol: null, usd: null, source: null },
-        filtered: null,
-    };
+      },
+      tokenPrice: {
+        sol: null,
+        usd: null,
+        source: null,
+      },
+      dex: null,
+      filtered: null,
+    } as RewardsResponse;
   }
 }
 
