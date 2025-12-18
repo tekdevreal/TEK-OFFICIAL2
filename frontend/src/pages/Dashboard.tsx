@@ -1,84 +1,90 @@
-import { useState, useEffect } from 'react';
-import { fetchRewards, fetchHistoricalRewards, fetchDexVolume24h } from '../services/api';
-import type { RewardsResponse, RewardCycle } from '../types/api';
+import { useMemo } from 'react';
+import type { RewardCycle } from '../types/api';
 import { StatCard } from '../components/StatCard';
 import { DistributionCard, type DistributionCardItem } from '../components/DistributionCard';
 import { DistributionChart } from '../components/DistributionChart';
 import { GlassCard } from '../components/GlassCard';
+import { useRewards, useHistoricalRewards, useDexVolume24h } from '../hooks/useApiData';
 import './Dashboard.css';
 
 export function Dashboard() {
-  const [rewardsData, setRewardsData] = useState<RewardsResponse | null>(null);
-  const [distributionHistory, setDistributionHistory] = useState<DistributionCardItem[]>([]);
-  const [dexVolume24h, setDexVolume24h] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Use professional data fetching hooks with caching and deduplication
+  const {
+    data: rewardsData,
+    error: rewardsError,
+    isLoading: isLoadingRewards,
+    isFetching: isFetchingRewards,
+  } = useRewards(undefined, {
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setError(null);
+  const {
+    data: historicalData,
+    error: historicalError,
+    isLoading: isLoadingHistorical,
+  } = useHistoricalRewards({ limit: 20 });
 
-        // Fetch current rewards data
-        const rewardsResponse = await fetchRewards();
-        setRewardsData(rewardsResponse);
+  const tokenMint = import.meta.env.VITE_TOKEN_MINT;
+  const {
+    data: dexVolume24h,
+    error: dexVolumeError,
+  } = useDexVolume24h(tokenMint || '', {
+    enabled: !!tokenMint,
+  });
 
-        // Fetch historical rewards for distribution carousel (last 20)
-        const historicalResponse = await fetchHistoricalRewards({ limit: 20 });
-        
-        // Transform historical data to DistributionCard format
-        const transformedHistory: DistributionCardItem[] = historicalResponse.cycles
-          .slice(0, 20)
-          .map((cycle: RewardCycle) => {
-            const d = new Date(cycle.timestamp);
-            const hours = d.getHours();
-            const minutes = d.getMinutes();
-            const period = hours >= 12 ? 'PM' : 'AM';
-            const displayHours = hours % 12 || 12;
-            const displayMinutes = minutes.toString().padStart(2, '0');
-            return {
-              date: d.toLocaleDateString(),
-              time: `${displayHours}:${displayMinutes} ${period} EST`,
-              status: 'Completed',
-              harvestedSOL: 0, // This would need to come from tax data
-              distributedSOL: cycle.totalSOLDistributed || 0,
-              totalHolders: cycle.totalHoldersCount || 0,
-            };
-          })
-          .reverse(); // Show most recent first
+  // Transform historical data to DistributionCard format
+  const distributionHistory: DistributionCardItem[] = useMemo(() => {
+    if (!historicalData?.cycles) {
+      return [];
+    }
 
-        setDistributionHistory(transformedHistory);
+    return historicalData.cycles
+      .slice(0, 20)
+      .map((cycle: RewardCycle) => {
+        const d = new Date(cycle.timestamp);
+        const hours = d.getHours();
+        const minutes = d.getMinutes();
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        const displayMinutes = minutes.toString().padStart(2, '0');
+        return {
+          date: d.toLocaleDateString(),
+          time: `${displayHours}:${displayMinutes} ${period} EST`,
+          status: 'Completed',
+          harvestedSOL: 0, // This would need to come from tax data
+          distributedSOL: cycle.totalSOLDistributed || 0,
+          totalHolders: cycle.totalHoldersCount || 0,
+        };
+      })
+      .reverse(); // Show most recent first
+  }, [historicalData]);
 
-        // Fetch DEX volume 24h (using token mint from environment or fallback)
-        const tokenMint = import.meta.env.VITE_TOKEN_MINT;
-        if (tokenMint) {
-          try {
-            const volume = await fetchDexVolume24h(tokenMint);
-            setDexVolume24h(volume);
-          } catch (err) {
-            console.warn('Could not fetch DEX volume:', err);
-          }
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch data';
-        setError(errorMessage);
-        console.error('Error loading dashboard data:', err);
-      }
-    };
-
-    loadData();
-    const interval = setInterval(loadData, 300000); // Refresh every 5 minutes
-    return () => clearInterval(interval);
-  }, []);
-
-  // If we have no data at all yet, show a simple loading state
-  if (!rewardsData) {
-  return (
+  // Loading state
+  if (isLoadingRewards || isLoadingHistorical) {
+    return (
       <div className="dashboard-page">
-        {error ? (
-          <div className="error-message">Error: {error}</div>
-        ) : (
-          <div className="loading">Loading dashboard...</div>
-        )}
+        <div className="loading">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  // Error state (show error but still render if we have some data)
+  const error = rewardsError || historicalError || dexVolumeError;
+  if (error && !rewardsData) {
+    return (
+      <div className="dashboard-page">
+        <div className="error-message">
+          Error: {error instanceof Error ? error.message : 'Failed to load dashboard data'}
+        </div>
+      </div>
+    );
+  }
+
+  // If we have no data at all yet, show loading
+  if (!rewardsData) {
+    return (
+      <div className="dashboard-page">
+        <div className="loading">Loading dashboard...</div>
       </div>
     );
   }
@@ -119,6 +125,23 @@ export function Dashboard() {
 
   return (
     <div className="dashboard-page">
+      {/* Show subtle indicator when data is being fetched in background */}
+      {isFetchingRewards && !isLoadingRewards && (
+        <div style={{
+          position: 'fixed',
+          top: '100px',
+          right: '20px',
+          padding: '0.5rem 1rem',
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: 'white',
+          borderRadius: '4px',
+          fontSize: '0.875rem',
+          zIndex: 1000,
+        }}>
+          Updating...
+        </div>
+      )}
+
       {/* Section 1: Two-Column Stats Layout */}
       <section className="dashboard-section">
         <div className="stats-two-column">
