@@ -171,12 +171,12 @@ export const rateLimitLogger = new RateLimitLogger();
 /**
  * Suppress Solana web3.js retry messages
  */
-let originalConsoleLog: typeof console.log;
+let originalConsoleLog: typeof console.log | undefined;
 let retryMessageCount = 0;
 const MAX_RETRY_MESSAGES = 3;
 
 export function suppressSolanaRetryMessages(): void {
-  if (originalConsoleLog) {
+  if (originalConsoleLog !== undefined) {
     return; // Already suppressed
   }
 
@@ -187,23 +187,25 @@ export function suppressSolanaRetryMessages(): void {
     // Suppress Solana retry messages
     if (message.includes('Server responded with 429') && message.includes('Retrying after')) {
       retryMessageCount++;
-      if (retryMessageCount <= MAX_RETRY_MESSAGES) {
+      if (retryMessageCount <= MAX_RETRY_MESSAGES && originalConsoleLog) {
         originalConsoleLog(...args);
-      } else if (retryMessageCount === MAX_RETRY_MESSAGES + 1) {
+      } else if (retryMessageCount === MAX_RETRY_MESSAGES + 1 && originalConsoleLog) {
         originalConsoleLog('[Solana] Suppressing further 429 retry messages (logged', MAX_RETRY_MESSAGES, 'times)');
       }
       return;
     }
 
     // Allow all other messages
-    originalConsoleLog(...args);
+    if (originalConsoleLog) {
+      originalConsoleLog(...args);
+    }
   };
 }
 
 export function restoreConsoleLog(): void {
-  if (originalConsoleLog) {
+  if (originalConsoleLog !== undefined) {
     console.log = originalConsoleLog;
-    originalConsoleLog = undefined as any;
+    originalConsoleLog = undefined;
     retryMessageCount = 0;
   }
 }
