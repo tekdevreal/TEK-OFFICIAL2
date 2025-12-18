@@ -3,9 +3,13 @@ import { createApp, startServer } from './server';
 import { logger } from './utils/logger';
 import { loadKeypairFromEnv, loadKeypairFromEnvOptional } from './utils/loadKeypairFromEnv';
 import { PublicKey } from '@solana/web3.js';
+import { suppressSolanaRetryMessages } from './utils/rateLimitLogger';
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Suppress Solana web3.js retry messages (limit to 3)
+suppressSolanaRetryMessages();
 
 /**
  * Validate and load all required wallets on startup

@@ -11,6 +11,7 @@ import { getRaydiumData } from '../services/raydiumService';
 import { isBlacklisted } from '../config/blacklist';
 import { REWARD_CONFIG } from '../config/constants';
 import { logger } from '../utils/logger';
+import { rateLimitLogger } from '../utils/rateLimitLogger';
 
 const router = Router();
 
@@ -161,10 +162,11 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
     } catch (error) {
       // If we get a rate limit error, try to use cached data from rewardService
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests')) {
-        logger.warn('Rate limit error in dashboard/rewards, using fallback data', {
+      if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests') || errorMessage.includes('max usage reached')) {
+        rateLimitLogger.logRateLimit('Rate limit error in dashboard/rewards, using fallback data', {
           query: req.query,
         });
+        rateLimitLogger.recordRateLimitError();
         // Return empty array - the response will still work with tax stats
         allHolders = [];
       } else {

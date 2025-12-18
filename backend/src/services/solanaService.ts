@@ -129,9 +129,11 @@ export async function getMintInfo(): Promise<MintInfo> {
       
       // Only log non-rate-limit errors as errors
       if (isRateLimitError(error)) {
-        logger.warn('Rate limit error fetching mint info (no cache available)', {
+        const { rateLimitLogger } = await import('../utils/rateLimitLogger');
+        rateLimitLogger.logRateLimit('Rate limit error fetching mint info (no cache available)', {
           mint: tokenMint.toBase58(),
         });
+        rateLimitLogger.recordRateLimitError();
       } else {
         logger.error('Error fetching mint info', {
           error: error instanceof Error ? error.message : String(error),
@@ -288,9 +290,11 @@ export async function getTokenHolders(): Promise<TokenHolder[]> {
       
       // Only log non-rate-limit errors as errors, rate limits are logged as warnings
       if (isRateLimitError(error)) {
-        logger.warn('Rate limit error fetching token holders (no cache available)', {
+        const { rateLimitLogger } = await import('../utils/rateLimitLogger');
+        rateLimitLogger.logRateLimit('Rate limit error fetching token holders (no cache available)', {
           mint: tokenMint.toBase58(),
         });
+        rateLimitLogger.recordRateLimitError();
       } else {
         logger.error('Error fetching token holders', {
           error: error instanceof Error ? error.message : String(error),

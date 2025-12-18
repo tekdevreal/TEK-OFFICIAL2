@@ -430,7 +430,9 @@ export async function getRaydiumData(): Promise<{
 
       // Only log non-rate-limit errors as errors
       if (isRateLimitError(error)) {
-        logger.warn('Rate limit error fetching Raydium data (no cache available)');
+        const { rateLimitLogger } = await import('../utils/rateLimitLogger');
+        rateLimitLogger.logRateLimit('Rate limit error fetching Raydium data (no cache available)');
+        rateLimitLogger.recordRateLimitError();
       } else {
         logger.error('Error fetching Raydium data', {
           error: error instanceof Error ? error.message : String(error),

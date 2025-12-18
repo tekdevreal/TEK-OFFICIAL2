@@ -285,9 +285,21 @@ export async function getEligibleHolders(minHoldingUSD: number = REWARD_CONFIG.M
     
     return eligibleHolders;
   } catch (error) {
-    logger.error('Error fetching eligible holders', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isRateLimit = errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('max usage reached');
+    
+    // Use rate limit logger for rate limit errors
+    if (isRateLimit) {
+      const { rateLimitLogger } = await import('../utils/rateLimitLogger');
+      rateLimitLogger.logRateLimit('Error fetching eligible holders', {
+        error: errorMessage,
+      });
+      rateLimitLogger.recordRateLimitError();
+    } else {
+      logger.error('Error fetching eligible holders', {
+        error: errorMessage,
+      });
+    }
     throw error;
   }
 }
