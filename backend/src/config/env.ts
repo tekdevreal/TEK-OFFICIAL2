@@ -8,7 +8,7 @@ interface EnvConfig {
   NODE_ENV: string;
   PORT: number;
   SOLANA_NETWORK?: string;
-  HELIUS_RPC_URL: string;
+  SOLANA_RPC_URL: string;
   TOKEN_MINT: string;
   ADMIN_WALLET_JSON: string;
   // Additional environment variables can be added here as needed
@@ -26,8 +26,10 @@ export function loadEnv(): EnvConfig {
     throw new Error('PORT must be a valid number between 1 and 65535');
   }
 
-  if (!process.env.HELIUS_RPC_URL) {
-    throw new Error('HELIUS_RPC_URL environment variable is required');
+  // Support both HELIUS_RPC_URL (legacy) and SOLANA_RPC_URL (new)
+  const rpcUrl = process.env.SOLANA_RPC_URL || process.env.HELIUS_RPC_URL;
+  if (!rpcUrl) {
+    throw new Error('SOLANA_RPC_URL (or HELIUS_RPC_URL for backward compatibility) environment variable is required');
   }
 
   if (!process.env.TOKEN_MINT) {
@@ -42,7 +44,7 @@ export function loadEnv(): EnvConfig {
     NODE_ENV: nodeEnv,
     PORT: port,
     SOLANA_NETWORK: process.env.SOLANA_NETWORK,
-    HELIUS_RPC_URL: process.env.HELIUS_RPC_URL,
+    SOLANA_RPC_URL: rpcUrl,
     TOKEN_MINT: process.env.TOKEN_MINT,
     ADMIN_WALLET_JSON: process.env.ADMIN_WALLET_JSON,
   };
