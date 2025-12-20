@@ -35,9 +35,9 @@ const DEFAULT_SLIPPAGE_BPS = 200; // 2% = 200 basis points
 // Minimum SOL output to proceed with swap (0.001 SOL)
 const MIN_SOL_OUTPUT = 0.001 * LAMPORTS_PER_SOL;
 
-// Raydium CPMM Program ID (devnet)
-// AMM ID for NUKE/USDC liquidity pool
-const RAYDIUM_CPMM_PROGRAM_ID = new PublicKey('14nA4A3DMMXrpPBhrX1sLTG4dSQKCwPHnoe3k4P1nZbx');
+// Use the actual Raydium CPMM program ID (not a pool ID)
+// This is the program that executes CPMM swaps on all CPMM pools
+const RAYDIUM_CPMM_PROGRAM_ID = RAYDIUM_AMM_PROGRAM_ID;
 
 /**
  * Get reward wallet keypair
