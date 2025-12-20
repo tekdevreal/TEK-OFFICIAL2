@@ -362,9 +362,28 @@ export async function swapNukeToSOL(
     });
 
     // Step 6: Calculate expected SOL output using constant product formula
-    // Get pool reserves
-    const sourceVaultAccount = await getAccount(connection, poolSourceVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
-    const destVaultAccount = await getAccount(connection, poolDestVault, 'confirmed', TOKEN_PROGRAM_ID); // SOL vault uses TOKEN_PROGRAM_ID
+    // Get pool reserves - try both program IDs since we don't know which one the pool uses
+    let sourceVaultAccount;
+    try {
+      sourceVaultAccount = await getAccount(connection, poolSourceVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
+    } catch (error) {
+      try {
+        sourceVaultAccount = await getAccount(connection, poolSourceVault, 'confirmed', TOKEN_PROGRAM_ID);
+      } catch (error2) {
+        throw new Error(`Failed to fetch source vault account ${poolSourceVault.toBase58()}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    let destVaultAccount;
+    try {
+      destVaultAccount = await getAccount(connection, poolDestVault, 'confirmed', TOKEN_PROGRAM_ID); // SOL vault typically uses TOKEN_PROGRAM_ID
+    } catch (error) {
+      try {
+        destVaultAccount = await getAccount(connection, poolDestVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      } catch (error2) {
+        throw new Error(`Failed to fetch destination vault account ${poolDestVault.toBase58()}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
     
     const sourceReserve = sourceVaultAccount.amount;
     const destReserve = destVaultAccount.amount;
