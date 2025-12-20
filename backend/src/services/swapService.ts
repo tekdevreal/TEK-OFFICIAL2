@@ -472,32 +472,78 @@ export async function swapNukeToSOL(
     });
 
     // Verify all accounts exist before building instruction
-    const accountChecks = await Promise.all([
-      connection.getAccountInfo(rewardNukeAccount).catch(() => null),
-      connection.getAccountInfo(userSolAccount).catch(() => null),
-      connection.getAccountInfo(poolSourceVault).catch(() => null),
-      connection.getAccountInfo(poolDestVault).catch(() => null),
-      connection.getAccountInfo(poolId).catch(() => null),
-    ]);
+    // Use getAccount() for token accounts (with proper program ID) and getAccountInfo() for regular accounts
+    let rewardNukeAccountExists = false;
+    let poolSourceVaultExists = false;
+    let poolDestVaultExists = false;
+    let userSolAccountExists = false;
+    let poolAccountExists = false;
+
+    try {
+      await getAccount(connection, rewardNukeAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      rewardNukeAccountExists = true;
+    } catch {
+      // Account doesn't exist or error
+    }
+
+    try {
+      // Pool source vault (NUKE) - try TOKEN_2022_PROGRAM_ID first, then TOKEN_PROGRAM_ID
+      await getAccount(connection, poolSourceVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      poolSourceVaultExists = true;
+    } catch {
+      try {
+        await getAccount(connection, poolSourceVault, 'confirmed', TOKEN_PROGRAM_ID);
+        poolSourceVaultExists = true;
+      } catch {
+        // Vault doesn't exist
+      }
+    }
+
+    try {
+      // Pool destination vault (WSOL) - try TOKEN_PROGRAM_ID first, then TOKEN_2022_PROGRAM_ID
+      await getAccount(connection, poolDestVault, 'confirmed', TOKEN_PROGRAM_ID);
+      poolDestVaultExists = true;
+    } catch {
+      try {
+        await getAccount(connection, poolDestVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
+        poolDestVaultExists = true;
+      } catch {
+        // Vault doesn't exist
+      }
+    }
+
+    try {
+      await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID);
+      userSolAccountExists = true;
+    } catch {
+      // Account doesn't exist yet (will be created if needed)
+    }
+
+    try {
+      const poolAccount = await connection.getAccountInfo(poolId);
+      poolAccountExists = !!poolAccount;
+    } catch {
+      // Pool doesn't exist
+    }
 
     logger.info('Account existence checks', {
-      rewardNukeAccount: accountChecks[0] ? 'exists' : 'missing',
-      userSolAccount: accountChecks[1] ? 'exists' : 'missing',
-      poolSourceVault: accountChecks[2] ? 'exists' : 'missing',
-      poolDestVault: accountChecks[3] ? 'exists' : 'missing',
-      poolId: accountChecks[4] ? 'exists' : 'missing',
+      rewardNukeAccount: rewardNukeAccountExists ? 'exists' : 'missing',
+      userSolAccount: userSolAccountExists ? 'exists' : 'missing (will create if needed)',
+      poolSourceVault: poolSourceVaultExists ? 'exists' : 'missing',
+      poolDestVault: poolDestVaultExists ? 'exists' : 'missing',
+      poolId: poolAccountExists ? 'exists' : 'missing',
     });
 
-    if (!accountChecks[0]) {
+    if (!rewardNukeAccountExists) {
       throw new Error(`Reward NUKE account does not exist: ${rewardNukeAccount.toBase58()}`);
     }
-    if (!accountChecks[2]) {
-      throw new Error(`Pool source vault does not exist: ${poolSourceVault.toBase58()}`);
+    if (!poolSourceVaultExists) {
+      throw new Error(`Pool source vault does not exist: ${poolSourceVault.toBase58()}. This may indicate an incorrect pool ID or vault addresses.`);
     }
-    if (!accountChecks[3]) {
-      throw new Error(`Pool destination vault does not exist: ${poolDestVault.toBase58()}`);
+    if (!poolDestVaultExists) {
+      throw new Error(`Pool destination vault does not exist: ${poolDestVault.toBase58()}. This may indicate an incorrect pool ID or vault addresses.`);
     }
-    if (!accountChecks[4]) {
+    if (!poolAccountExists) {
       throw new Error(`Pool account does not exist: ${poolId.toBase58()}`);
     }
 
