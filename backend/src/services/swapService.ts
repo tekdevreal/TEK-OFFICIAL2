@@ -279,72 +279,80 @@ function verifyLiquidity(
 }
 
 /**
- * Create Raydium swap instruction (for Standard AMM v4 or CPMM)
+ * Create Raydium swap instruction for CPMM pools
  * 
- * Uses the official Raydium AMM v4 program ID and proper instruction format.
- * Standard AMM (v4) and CPMM pools both use this same instruction format.
+ * CRITICAL: CPMM pools use the pool's specific program ID from API (not the standard AMM v4 ID).
+ * The instruction format for CPMM is different from Standard AMM v4.
  * 
- * CRITICAL: For Token-2022 compatibility, we must use TOKEN_2022_PROGRAM_ID when
- * the source token (NUKE) is Token-2022. Raydium supports mixed-program swaps
- * (Token-2022 source, SPL Token destination).
+ * For Token-2022 source tokens (NUKE), we must handle the transfer fee correctly.
+ * The amountIn is the amount we want to swap, and the 4% transfer fee will be deducted
+ * during the token transfer, so the pool receives amountIn * 0.96.
  * 
- * NOTE: Raydium swap instruction format (same for Standard and CPMM):
- * - Instruction discriminator: 9 (Swap)
- * - amountIn: u64 (8 bytes)
- * - minimumAmountOut: u64 (8 bytes)
+ * CPMM Swap Instruction Format:
+ * - Instruction discriminator: varies by pool program, but typically 9 (Swap)
+ * - amountIn: u64 (8 bytes) - Amount BEFORE transfer fee deduction
+ * - minimumAmountOut: u64 (8 bytes) - Minimum amount to receive (with slippage)
  * 
- * Accounts (in order):
- * 0. poolId (writable)
- * 1. userSourceTokenAccount (writable) - user's NUKE account (Token-2022)
- * 2. userDestinationTokenAccount (writable) - user's WSOL account (SPL Token)
- * 3. poolSourceTokenAccount (writable) - pool's NUKE vault (Token-2022)
- * 4. poolDestinationTokenAccount (writable) - pool's WSOL vault (SPL Token)
+ * Accounts for CPMM swap (Token-2022 source, SPL Token destination):
+ * 0. poolId (writable) - Pool account
+ * 1. userSourceTokenAccount (writable) - User's NUKE account (Token-2022)
+ * 2. userDestinationTokenAccount (writable) - User's WSOL account (SPL Token)
+ * 3. poolSourceTokenAccount (writable) - Pool's NUKE vault (Token-2022)
+ * 4. poolDestinationTokenAccount (writable) - Pool's WSOL vault (SPL Token)
  * 5. poolCoinMint - NUKE mint (Token-2022)
  * 6. poolPcMint - WSOL mint (SPL Token)
- * 7. userWallet (signer, writable)
- * 8. tokenProgramId - TOKEN_2022_PROGRAM_ID (required for Token-2022 source)
- * 9. systemProgram
+ * 7. userWallet (signer, writable) - User's wallet
+ * 8. tokenProgramId - TOKEN_2022_PROGRAM_ID (required for Token-2022 source transfers)
+ * 9. systemProgram - System program
  * 
- * IMPORTANT: The tokenProgramId account must be TOKEN_2022_PROGRAM_ID when swapping
- * from a Token-2022 token, even if the destination is SPL Token. Raydium handles
- * mixed-program swaps internally.
+ * NOTE: For mixed token programs (Token-2022 source, SPL Token destination),
+ * we use TOKEN_2022_PROGRAM_ID because the source token is Token-2022.
+ * The destination token program is handled internally by the pool program.
  */
-function createRaydiumSwapInstruction(
+function createRaydiumCpmmSwapInstruction(
   poolId: PublicKey,
-  poolProgramId: PublicKey, // Pool's program ID from API response
+  poolProgramId: PublicKey, // CRITICAL: Use pool's program ID from API (e.g., DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb)
   userSourceTokenAccount: PublicKey,
   userDestinationTokenAccount: PublicKey,
   poolSourceTokenAccount: PublicKey,
   poolDestinationTokenAccount: PublicKey,
   poolCoinMint: PublicKey,
   poolPcMint: PublicKey,
-  amountIn: bigint,
+  amountIn: bigint, // Amount BEFORE transfer fee (4% will be deducted during transfer)
   minimumAmountOut: bigint,
-  userWallet: PublicKey,
-  sourceTokenProgram: PublicKey // MUST be TOKEN_2022_PROGRAM_ID for Token-2022 source
+  userWallet: PublicKey
 ): TransactionInstruction {
-  // Instruction discriminator: 9 (Swap)
+  // CPMM swap instruction discriminator: 9 (Swap)
   const instructionData = Buffer.alloc(17);
   instructionData.writeUInt8(9, 0);
-  instructionData.writeBigUInt64LE(amountIn, 1);
+  instructionData.writeBigUInt64LE(amountIn, 1); // Amount before transfer fee
   instructionData.writeBigUInt64LE(minimumAmountOut, 9);
 
-  // CRITICAL: Use TOKEN_2022_PROGRAM_ID for Token-2022 source tokens
-  // Raydium supports mixed-program swaps (Token-2022 source, SPL Token destination)
-  const tokenProgramId = sourceTokenProgram; // TOKEN_2022_PROGRAM_ID for NUKE
+  // CRITICAL: For Token-2022 source (NUKE), use TOKEN_2022_PROGRAM_ID
+  // Even though destination is SPL Token (WSOL), the source transfer requires Token-2022 program
+  const tokenProgramId = TOKEN_2022_PROGRAM_ID;
+
+  logger.info('Creating CPMM swap instruction', {
+    poolProgramId: poolProgramId.toBase58(),
+    poolId: poolId.toBase58(),
+    amountIn: amountIn.toString(),
+    minimumAmountOut: minimumAmountOut.toString(),
+    tokenProgramId: tokenProgramId.toBase58(),
+    note: 'Using pool program ID from API for CPMM pool',
+  });
 
   return new TransactionInstruction({
-    programId: poolProgramId, // Use pool's program ID from API response
+    programId: poolProgramId, // CRITICAL: Use pool's program ID from API
     keys: [
       { pubkey: poolId, isSigner: false, isWritable: true },
-      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: poolSourceTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: poolDestinationTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: poolCoinMint, isSigner: false, isWritable: false },
-      { pubkey: poolPcMint, isSigner: false, isWritable: false },
+      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true }, // NUKE (Token-2022)
+      { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true }, // WSOL (SPL Token)
+      { pubkey: poolSourceTokenAccount, isSigner: false, isWritable: true }, // Pool NUKE vault (Token-2022)
+      { pubkey: poolDestinationTokenAccount, isSigner: false, isWritable: true }, // Pool WSOL vault (SPL Token)
+      { pubkey: poolCoinMint, isSigner: false, isWritable: false }, // NUKE mint (Token-2022)
+      { pubkey: poolPcMint, isSigner: false, isWritable: false }, // WSOL mint (SPL Token)
       { pubkey: userWallet, isSigner: true, isWritable: true },
-      { pubkey: tokenProgramId, isSigner: false, isWritable: false }, // TOKEN_2022_PROGRAM_ID for NUKE
+      { pubkey: tokenProgramId, isSigner: false, isWritable: false }, // TOKEN_2022_PROGRAM_ID
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: instructionData,
@@ -352,19 +360,27 @@ function createRaydiumSwapInstruction(
 }
 
 /**
- * Swap NUKE tokens to SOL via Raydium (Standard AMM v4 or CPMM)
+ * Swap NUKE tokens to SOL via Raydium CPMM pool
  * 
  * This function:
- * 1. Validates pool is Standard AMM (v4) or CPMM (rejects CLMM and others)
- * 2. Uses official Raydium AMM v4 program ID (same for both pool types)
+ * 1. Validates pool is CPMM type (rejects CLMM and other unsupported types)
+ * 2. Uses pool's program ID from API response (CRITICAL: CPMM pools use pool-specific program IDs)
  * 3. Handles NUKE's transfer fees (4% - tokens arrive at pool with fee deducted)
- * 4. Simulates transaction before sending
- * 5. Aborts distribution if swap fails
+ * 4. Pre-creates WSOL destination account if needed
+ * 5. Verifies liquidity before swap calculation
+ * 6. Simulates transaction before sending
+ * 7. Aborts distribution if swap fails
  * 
- * NOTE: Standard AMM (v4) and CPMM use the same program ID and instruction format.
- * The pool type field from the API is metadata; both execute identically.
+ * CRITICAL: CPMM pools require using the pool's specific program ID from the API response,
+ * not the standard Raydium AMM v4 program ID. The pool program ID is: DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb
+ * 
+ * Token-2022 Handling:
+ * - NUKE (source) uses TOKEN_2022_PROGRAM_ID
+ * - WSOL (destination) uses TOKEN_PROGRAM_ID
+ * - The swap instruction uses TOKEN_2022_PROGRAM_ID because the source is Token-2022
  * 
  * @param amountNuke - Amount of NUKE to swap (in raw token units, with decimals)
+ *                    - This is the amount BEFORE transfer fee deduction (4% will be deducted during transfer)
  * @param slippageBps - Slippage tolerance in basis points (default: 200 = 2%)
  * @returns SOL received and transaction signature
  */
@@ -376,11 +392,10 @@ export async function swapNukeToSOL(
   txSignature: string;
 }> {
   try {
-    logger.info('Starting NUKE to SOL swap via Raydium', {
+    logger.info('Starting NUKE to SOL swap via Raydium CPMM pool', {
       amountNuke: amountNuke.toString(),
       slippageBps,
-      programId: RAYDIUM_AMM_V4_PROGRAM_ID.toBase58(),
-      note: 'Supports both Standard AMM (v4) and CPMM pools',
+      note: 'Using pool program ID from API response',
     });
 
     // Step 1: Validate inputs
@@ -593,27 +608,6 @@ export async function swapNukeToSOL(
       );
     }
 
-    // Create swap instruction using official Raydium AMM v4 program (works for both Standard and CPMM)
-    // CRITICAL: Must use TOKEN_2022_PROGRAM_ID for Token-2022 source (NUKE)
-    // Raydium supports mixed-program swaps (Token-2022 source, SPL Token destination)
-    logger.info('Swap instruction debug - accounts verification', {
-      poolId: poolId.toBase58(),
-      poolType: poolInfo.poolType,
-      poolProgramId: poolInfo.poolProgramId.toBase58(),
-      tokenProgramId: sourceTokenProgram.toBase58(),
-      sourceMint: poolSourceMint.toBase58(),
-      destinationMint: poolDestMint.toBase58(),
-      userSourceTokenAccount: rewardNukeAccount.toBase58(),
-      userDestTokenAccount: userSolAccount.toBase58(),
-      poolSourceVault: poolSourceVault.toBase58(),
-      poolDestVault: poolDestVault.toBase58(),
-      rewardWallet: rewardWalletAddress.toBase58(),
-      isToken2022Source: NUKE_IS_TOKEN_2022,
-      isToken2022Dest: WSOL_IS_TOKEN_2022,
-      amountIn: amountNuke.toString(),
-      minAmountOut: minDestAmount.toString(),
-      note: 'Using TOKEN_2022_PROGRAM_ID for Token-2022 source (NUKE)',
-    });
 
     // Verify all accounts exist before building instruction
     // Use getAccount() for token accounts (with proper program ID) and getAccountInfo() for regular accounts
@@ -691,19 +685,29 @@ export async function swapNukeToSOL(
       throw new Error(`Pool account does not exist: ${poolId.toBase58()}`);
     }
 
-    const swapInstruction = createRaydiumSwapInstruction(
+    // Create CPMM swap instruction using pool's program ID from API
+    // CRITICAL: For CPMM pools, we MUST use the pool's specific program ID, not the standard AMM v4 ID
+    logger.info('Creating CPMM swap instruction', {
+      poolType: poolInfo.poolType,
+      poolProgramId: poolInfo.poolProgramId.toBase58(),
+      poolId: poolId.toBase58(),
+      amountNuke: amountNuke.toString(),
+      minDestAmount: minDestAmount.toString(),
+      note: 'CPMM pools use pool-specific program ID from API',
+    });
+
+    const swapInstruction = createRaydiumCpmmSwapInstruction(
       poolId,
-      poolInfo.poolProgramId, // Pool's program ID from API response
+      poolInfo.poolProgramId, // CRITICAL: Use pool's program ID from API (e.g., DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb)
       rewardNukeAccount, // userSourceTokenAccount (NUKE - Token-2022)
       userSolAccount, // userDestinationTokenAccount (WSOL - SPL Token)
       poolSourceVault, // poolSourceTokenAccount (NUKE vault - Token-2022)
       poolDestVault, // poolDestinationTokenAccount (WSOL vault - SPL Token)
       poolSourceMint, // poolCoinMint (NUKE - Token-2022)
       poolDestMint, // poolPcMint (WSOL - SPL Token)
-      amountNuke, // amountIn (transfer fee will be deducted during transfer)
-      minDestAmount, // minimumAmountOut
-      rewardWalletAddress, // userWallet
-      sourceTokenProgram // TOKEN_2022_PROGRAM_ID (required for Token-2022 source)
+      amountNuke, // amountIn (4% transfer fee will be deducted during Token-2022 transfer)
+      minDestAmount, // minimumAmountOut (with slippage)
+      rewardWalletAddress // userWallet (signer)
     );
 
     transaction.add(swapInstruction);
@@ -754,10 +758,10 @@ export async function swapNukeToSOL(
     // Step 11: Sign and send transaction
     transaction.sign(rewardWallet);
 
-    logger.info('Sending Raydium swap transaction', {
+    logger.info('Sending Raydium CPMM swap transaction', {
       expectedSolLamports: expectedDestAmount.toString(),
       minSolLamports: minDestAmount.toString(),
-      programId: RAYDIUM_AMM_V4_PROGRAM_ID.toBase58(),
+      poolProgramId: poolInfo.poolProgramId.toBase58(),
       poolType: poolInfo.poolType,
     });
 
@@ -808,11 +812,10 @@ export async function swapNukeToSOL(
       txSignature: signature,
     };
   } catch (error) {
-    logger.error('Error swapping NUKE to SOL via Raydium', {
+    logger.error('Error swapping NUKE to SOL via Raydium CPMM pool', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       amountNuke: amountNuke.toString(),
-      programId: RAYDIUM_AMM_V4_PROGRAM_ID.toBase58(),
     });
     throw error; // Re-throw to abort reward distribution
   }
