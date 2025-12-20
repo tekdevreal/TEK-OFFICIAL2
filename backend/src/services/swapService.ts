@@ -1,11 +1,13 @@
 /**
  * Swap Service
  * 
- * Handles swapping NUKE tokens to SOL via Raydium CPMM pool on devnet
+ * Handles swapping NUKE tokens to SOL via Raydium (Standard AMM v4 or CPMM) on devnet
  * 
- * IMPORTANT: Uses Raydium SDK for CPMM swap instruction generation.
- * CPMM pools require the official Raydium AMM program ID and proper instruction format.
- * NUKE is a Token-2022 transfer-fee token (4% fee), so received amounts account for fees.
+ * IMPORTANT: 
+ * - Supports both Standard AMM (v4) and CPMM pool types
+ * - Both pool types use the same Raydium AMM v4 program ID and instruction format
+ * - NUKE is a Token-2022 transfer-fee token (4% fee), so received amounts account for fees
+ * - Rejects CLMM and other unsupported pool types
  */
 
 import {
@@ -34,10 +36,10 @@ import { RAYDIUM_CONFIG, WSOL_MINT, getRaydiumPoolId, RAYDIUM_AMM_PROGRAM_ID } f
 import { logger } from '../utils/logger';
 import { loadKeypairFromEnv } from '../utils/loadKeypairFromEnv';
 
-// Official Raydium CPMM AMM Program ID (same for devnet and mainnet)
-// This is the executable program that handles CPMM swaps
+// Official Raydium AMM Program ID (same for devnet and mainnet)
+// Standard AMM (v4) and CPMM pools both use this same program ID
 // DO NOT use pool IDs, config programs, or API metadata program IDs
-const RAYDIUM_CPMM_AMM_PROGRAM_ID = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
+const RAYDIUM_AMM_V4_PROGRAM_ID = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
 
 // Default slippage tolerance (2%)
 const DEFAULT_SLIPPAGE_BPS = 200; // 2% = 200 basis points
@@ -60,7 +62,7 @@ interface RaydiumApiPoolInfo {
   quoteMint?: string;
   mintAmountA?: number;
   mintAmountB?: number;
-  type?: string; // Pool type: "Cpmm" or "Clmm"
+  type?: string; // Pool type: "Standard", "Cpmm", "Clmm", etc.
 }
 
 interface RaydiumApiResponse {
@@ -70,10 +72,11 @@ interface RaydiumApiResponse {
 
 /**
  * Fetch pool info from Raydium API to validate pool type and get reserves
- * Enforces CPMM pool logic only - rejects CLMM pools
+ * Supports both Standard AMM (v4) and CPMM pools - rejects other types (e.g., CLMM)
+ * NOTE: Standard and CPMM use the same program ID and instruction format
  */
 async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
-  isCpmm: boolean;
+  poolType: 'Standard' | 'Cpmm';
   mintA: PublicKey;
   mintB: PublicKey;
   reserveA: bigint;
@@ -102,9 +105,11 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
 
   const poolInfo = apiData.data[0];
 
-  // Enforce CPMM pool logic only - reject CLMM
-  if (poolInfo.type && poolInfo.type.toLowerCase() !== 'cpmm') {
-    throw new Error(`Pool type "${poolInfo.type}" is not CPMM. Only CPMM pools are supported.`);
+  // Support both Standard AMM (v4) and CPMM pools - reject other types
+  const poolType = poolInfo.type || '';
+  const normalizedType = poolType.toLowerCase();
+  if (!['standard', 'cpmm'].includes(normalizedType)) {
+    throw new Error(`Unsupported Raydium pool type: "${poolInfo.type}". Only Standard AMM (v4) and CPMM pools are supported.`);
   }
 
   if (!poolInfo.mintA || !poolInfo.mintB || poolInfo.mintAmountA === undefined || poolInfo.mintAmountB === undefined) {
@@ -120,8 +125,11 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
   const reserveA = BigInt(Math.floor(poolInfo.mintAmountA * Math.pow(10, decimalsA)));
   const reserveB = BigInt(Math.floor(poolInfo.mintAmountB * Math.pow(10, decimalsB)));
 
+  // Normalize pool type for return (capitalize first letter)
+  const normalizedPoolType = normalizedType === 'standard' ? 'Standard' : 'Cpmm';
+
   return {
-    isCpmm: true,
+    poolType: normalizedPoolType as 'Standard' | 'Cpmm',
     mintA,
     mintB,
     reserveA,
@@ -132,12 +140,12 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
 }
 
 /**
- * Create Raydium CPMM swap instruction
+ * Create Raydium swap instruction (for Standard AMM v4 or CPMM)
  * 
- * Uses the official Raydium CPMM AMM program ID and proper instruction format.
- * This replaces manual instruction building which was causing "program may not be used" errors.
+ * Uses the official Raydium AMM v4 program ID and proper instruction format.
+ * Standard AMM (v4) and CPMM pools both use this same instruction format.
  * 
- * NOTE: Raydium CPMM swap instruction format:
+ * NOTE: Raydium swap instruction format (same for Standard and CPMM):
  * - Instruction discriminator: 9 (Swap)
  * - amountIn: u64 (8 bytes)
  * - minimumAmountOut: u64 (8 bytes)
@@ -154,7 +162,7 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
  * 8. tokenProgramId - TOKEN_2022_PROGRAM_ID for NUKE, TOKEN_PROGRAM_ID for WSOL
  * 9. systemProgram
  */
-function createRaydiumCpmmSwapInstruction(
+function createRaydiumSwapInstruction(
   poolId: PublicKey,
   userSourceTokenAccount: PublicKey,
   userDestinationTokenAccount: PublicKey,
@@ -175,7 +183,7 @@ function createRaydiumCpmmSwapInstruction(
   instructionData.writeBigUInt64LE(minimumAmountOut, 9);
 
   return new TransactionInstruction({
-    programId: RAYDIUM_CPMM_AMM_PROGRAM_ID, // Use official executable program ID
+    programId: RAYDIUM_AMM_V4_PROGRAM_ID, // Use official Raydium AMM v4 program ID (same for Standard and CPMM)
     keys: [
       { pubkey: poolId, isSigner: false, isWritable: true },
       { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
@@ -193,14 +201,17 @@ function createRaydiumCpmmSwapInstruction(
 }
 
 /**
- * Swap NUKE tokens to SOL via Raydium CPMM pool
+ * Swap NUKE tokens to SOL via Raydium (Standard AMM v4 or CPMM)
  * 
  * This function:
- * 1. Validates pool is CPMM (not CLMM)
- * 2. Uses official Raydium CPMM AMM program ID
+ * 1. Validates pool is Standard AMM (v4) or CPMM (rejects CLMM and others)
+ * 2. Uses official Raydium AMM v4 program ID (same for both pool types)
  * 3. Handles NUKE's transfer fees (4% - tokens arrive at pool with fee deducted)
  * 4. Simulates transaction before sending
  * 5. Aborts distribution if swap fails
+ * 
+ * NOTE: Standard AMM (v4) and CPMM use the same program ID and instruction format.
+ * The pool type field from the API is metadata; both execute identically.
  * 
  * @param amountNuke - Amount of NUKE to swap (in raw token units, with decimals)
  * @param slippageBps - Slippage tolerance in basis points (default: 200 = 2%)
@@ -214,10 +225,11 @@ export async function swapNukeToSOL(
   txSignature: string;
 }> {
   try {
-    logger.info('Starting NUKE to SOL swap via Raydium CPMM', {
+    logger.info('Starting NUKE to SOL swap via Raydium', {
       amountNuke: amountNuke.toString(),
       slippageBps,
-      programId: RAYDIUM_CPMM_AMM_PROGRAM_ID.toBase58(),
+      programId: RAYDIUM_AMM_V4_PROGRAM_ID.toBase58(),
+      note: 'Supports both Standard AMM (v4) and CPMM pools',
     });
 
     // Step 1: Validate inputs
@@ -238,13 +250,11 @@ export async function swapNukeToSOL(
     logger.info('Fetching pool info from Raydium API', { poolId: poolId.toBase58() });
     const poolInfo = await fetchPoolInfoFromAPI(poolId);
     
-    if (!poolInfo.isCpmm) {
-      throw new Error('Pool is not a CPMM pool. Only CPMM pools are supported.');
-    }
-
-    logger.info('Pool validated as CPMM', {
+    logger.info('Pool validated', {
+      poolType: poolInfo.poolType,
       mintA: poolInfo.mintA.toBase58(),
       mintB: poolInfo.mintB.toBase58(),
+      note: 'Standard AMM (v4) and CPMM use the same swap instruction format',
     });
 
     // Step 4: Determine swap direction and map mints
@@ -414,8 +424,8 @@ export async function swapNukeToSOL(
       );
     }
 
-    // Create swap instruction using official Raydium CPMM program
-    const swapInstruction = createRaydiumCpmmSwapInstruction(
+    // Create swap instruction using official Raydium AMM v4 program (works for both Standard and CPMM)
+    const swapInstruction = createRaydiumSwapInstruction(
       poolId,
       rewardNukeAccount, // userSourceTokenAccount (NUKE)
       userSolAccount, // userDestinationTokenAccount (WSOL)
@@ -481,7 +491,8 @@ export async function swapNukeToSOL(
     logger.info('Sending Raydium swap transaction', {
       expectedSolLamports: expectedDestAmount.toString(),
       minSolLamports: minDestAmount.toString(),
-      programId: RAYDIUM_CPMM_AMM_PROGRAM_ID.toBase58(),
+      programId: RAYDIUM_AMM_V4_PROGRAM_ID.toBase58(),
+      poolType: poolInfo.poolType,
     });
 
     let signature: string;
@@ -535,7 +546,7 @@ export async function swapNukeToSOL(
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       amountNuke: amountNuke.toString(),
-      programId: RAYDIUM_CPMM_AMM_PROGRAM_ID.toBase58(),
+      programId: RAYDIUM_AMM_V4_PROGRAM_ID.toBase58(),
     });
     throw error; // Re-throw to abort reward distribution
   }
