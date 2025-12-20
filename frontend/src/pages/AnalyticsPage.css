@@ -1,42 +1,210 @@
+/* Analytics page uses global page spacing */
 .analytics-page {
-  padding: 8.85rem 1.5rem 2rem;
-  max-width: 1280px;
+  padding: var(--page-padding-top) var(--page-padding-horizontal) var(--page-padding-bottom);
+  max-width: var(--page-max-width);
   margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap);
 }
 
-.analytics-page .page-header {
+.dashboard-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-section-card {
+  padding: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Analytics Page specific section title and subtitle - override global styles */
+.analytics-page .dashboard-section-card .section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .analytics-page .dashboard-section-card .section-title {
+    font-size: 1.5rem;
+    margin-bottom: 0 !important;
+  }
+}
+
+.analytics-page .dashboard-section-card .section-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+  margin-top: 0.0625rem !important; /* 1px - minimal spacing */
+  padding-top: 0 !important;
+  line-height: 1.2;
+}
+
+/* Analytics Stats - Similar to LP Summary */
+.analytics-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 3rem;
+}
+
+@media (max-width: 1024px) {
+  .analytics-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .analytics-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Chart Sections */
+.analytics-chart-section {
+  margin-bottom: 3rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='light'] .analytics-chart-section {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chart-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  margin-top: 0;
+}
+
+.chart-section-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  margin-top: 0;
+}
+
+/* Table Section */
+.analytics-table-section {
+  margin-bottom: 3rem;
+}
+
+.analytics-table-container {
+  width: 100%;
   margin-top: 1rem;
 }
 
-.page-header {
-  margin-bottom: 30px;
-  padding: 20px;
-  background: var(--bg-card);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-color);
+.analytics-table-container .table-info {
+  display: none; /* Hide "Showing X of X entries" */
 }
 
-.page-header h2 {
-  margin: 0 0 10px 0;
-  font-size: 1.75rem;
+/* Reliability Metrics Section */
+.analytics-metrics-section {
+  margin-bottom: 3rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='light'] .analytics-metrics-section {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.reliability-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .reliability-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.metric-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 1.125rem;
   color: var(--text-primary);
   font-weight: 600;
 }
 
-.page-subtitle {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 1rem;
+/* Data Access Section */
+.analytics-data-access-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-@media (max-width: 768px) {
-  .analytics-page {
-    padding: 8.85rem 1rem 2rem;
-  }
-
-  .page-header h2 {
-    font-size: 1.5rem;
-  }
+[data-theme='light'] .analytics-data-access-section {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.data-access-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.data-access-button {
+  padding: 0.75rem 1.5rem;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+.data-access-button:hover:not(:disabled) {
+  background-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.data-access-button:disabled {
+  cursor: not-allowed;
+}
+
+[data-theme='light'] .data-access-button {
+  background-color: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+[data-theme='light'] .data-access-button:hover:not(:disabled) {
+  background-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.35);
+}

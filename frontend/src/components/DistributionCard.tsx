@@ -4,42 +4,80 @@ import './DistributionCard.css';
 export interface DistributionCardItem {
   date: string;
   time?: string;
-  status: string;
-  harvestedSOL: number;
+  status: 'Completed' | 'Failed';
+  harvestedNUKE: number;
   distributedSOL: number;
-  totalHolders: number;
+  epochNumber?: number; // Epoch number from backend (e.g., 1, 2, 3, 4)
 }
 
 interface DistributionCardProps {
   item: DistributionCardItem;
+  rewardWalletAddress?: string;
 }
 
-export function DistributionCard({ item }: DistributionCardProps) {
+export function DistributionCard({ item, rewardWalletAddress }: DistributionCardProps) {
+  // Get reward wallet from env or prop
+  const walletAddress = rewardWalletAddress || import.meta.env.VITE_REWARD_WALLET_ADDRESS || '';
+  const solscanUrl = walletAddress 
+    ? `https://solscan.io/account/${walletAddress}?cluster=devnet`
+    : '#';
+
   return (
     <GlassCard className="distribution-card">
-      <div className="distribution-card-header">
-        <div className="distribution-card-status">{item.status}</div>
-        <div className="distribution-card-datetime">
-          {item.time ? (
-            <span className="distribution-card-datetime-text">{item.date} • {item.time}</span>
-          ) : (
-            <span className="distribution-card-datetime-text">{item.date}</span>
-          )}
+      {/* Reward Epoch on left, Status badge on right */}
+      <div className="distribution-card-status-section">
+        <div className="epoch-section">
+          <span className="status-label">Reward Epoch:</span>
+          <span className="epoch-number">
+            {item.epochNumber !== undefined 
+              ? String(item.epochNumber).padStart(4, '0')
+              : '0001'}
+          </span>
         </div>
+        <span className={`distribution-status distribution-status-${item.status.toLowerCase()}`}>
+          {item.status}
+        </span>
       </div>
+
+      {/* Details section */}
       <div className="distribution-card-details">
         <div className="distribution-detail">
           <span className="detail-label">Harvested:</span>
-          <span className="detail-value">{item.harvestedSOL} SOL</span>
+          <span className="detail-value">{item.harvestedNUKE.toLocaleString(undefined, { maximumFractionDigits: 2 })} NUKE</span>
         </div>
         <div className="distribution-detail">
           <span className="detail-label">Distributed:</span>
-          <span className="detail-value">{item.distributedSOL} SOL</span>
+          <span className="detail-value">{item.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL</span>
         </div>
-        <div className="distribution-detail">
-          <span className="detail-label">Holders:</span>
-          <span className="detail-value">{item.totalHolders}</span>
+      </div>
+
+      {/* Time and Date at the bottom */}
+      <div className="distribution-card-header">
+        <div className="distribution-card-time">
+          {item.time ? (
+            <span className="distribution-card-time-text">{item.time}</span>
+          ) : null}
         </div>
+        <div className="distribution-card-date">
+          <span className="distribution-card-date-text">{item.date}</span>
+        </div>
+      </div>
+
+      {/* Solscan button at the bottom */}
+      <div className="distribution-card-footer">
+        <a 
+          href={solscanUrl} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="solscan-button"
+          onClick={(e) => {
+            if (!walletAddress) {
+              e.preventDefault();
+            }
+          }}
+        >
+          View on Solscan
+        </a>
       </div>
     </GlassCard>
   );

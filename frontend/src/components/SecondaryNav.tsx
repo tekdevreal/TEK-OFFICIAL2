@@ -10,7 +10,9 @@ const navItems: NavItem[] = [
   { path: '/', label: 'Main' },
   { path: '/harvesting', label: 'Harvesting' },
   { path: '/distribution', label: 'Distribution' },
-  { path: '/holders', label: 'Holders' },
+  { path: '/holders', label: 'Treasury' },
+  { path: '/system-status', label: 'System Status' },
+  { path: '/analytics', label: 'Analytics' },
   { path: '/docs', label: 'Docs' },
 ];
 

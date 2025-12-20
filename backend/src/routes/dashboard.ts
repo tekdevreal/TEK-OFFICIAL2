@@ -12,6 +12,8 @@ import { isBlacklisted } from '../config/blacklist';
 import { REWARD_CONFIG } from '../config/constants';
 import { logger } from '../utils/logger';
 import { rateLimitLogger } from '../utils/rateLimitLogger';
+import { TaxService } from '../services/taxService';
+import { getHistoricalRewardCycles } from '../services/rewardHistoryService';
 
 const router = Router();
 
@@ -490,6 +492,280 @@ router.get('/diagnostics', async (req: Request, res: Response): Promise<void> =>
     });
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /dashboard/token-stats
+ * Returns aggregated token statistics for the main page
+ */
+router.get('/token-stats', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    logger.debug('Dashboard API: GET /dashboard/token-stats');
+
+    // Get tax statistics
+    const taxStats = TaxService.getTaxStatistics();
+    const totalDistributionsSOL = parseFloat(taxStats.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
+
+    // Get last distribution timestamp
+    let lastDistribution: string | null = null;
+    if (taxStats.lastTaxDistribution) {
+      lastDistribution = new Date(taxStats.lastTaxDistribution).toISOString();
+    }
+
+    // Get total holders
+    let totalHolders = 0;
+    try {
+      const allHolders = await getDeduplicatedRequest('tokenHolders', () => getTokenHolders());
+      totalHolders = allHolders.length;
+    } catch (error) {
+      // Fallback: try to get from reward service
+      try {
+        const holders = await getDeduplicatedRequest('allHolders', () => getAllHoldersWithStatus());
+        totalHolders = holders.length;
+      } catch (fallbackError) {
+        logger.warn('Could not fetch total holders for token-stats', {
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+        });
+      }
+    }
+
+    // Get DEX volume 24h (placeholder for now - can be enhanced with real data)
+    // TODO: Implement real DEX volume tracking
+    const dexVolume24h = 0; // Placeholder
+
+    const response = {
+      totalDistributionsSOL: parseFloat(totalDistributionsSOL.toFixed(6)),
+      lastDistribution,
+      totalHolders,
+      dexVolume24h,
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/token-stats completed', {
+      duration: `${duration}ms`,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching token stats', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      totalDistributionsSOL: 0,
+      lastDistribution: null,
+      totalHolders: 0,
+      dexVolume24h: 0,
+    });
+  }
+});
+
+/**
+ * GET /dashboard/processing
+ * Returns current processing state for the main page
+ */
+router.get('/processing', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    logger.debug('Dashboard API: GET /dashboard/processing');
+
+    // Get scheduler status
+    const schedulerStatus = getSchedulerStatus();
+    const nextDistribution = schedulerStatus.nextRun ? new Date(schedulerStatus.nextRun).toISOString() : null;
+
+    // Get tax statistics for current cycle
+    const taxStats = TaxService.getTaxStatistics();
+    const nukeCollected = parseFloat(taxStats.totalNukeHarvested || '0');
+
+    // Estimate SOL from NUKE collected (rough estimate - can be enhanced)
+    // TODO: Use actual price data for more accurate estimation
+    const estimatedSOL = nukeCollected > 0 ? (nukeCollected / 13333).toFixed(6) : '0.000000'; // Rough estimate
+
+    // Determine status
+    let status: 'Idle' | 'Processing' | 'Pending' | 'Error' = 'Idle';
+    if (schedulerStatus.isRunning) {
+      status = 'Processing';
+    } else if (schedulerStatus.nextRun && schedulerStatus.nextRun > Date.now()) {
+      status = 'Pending';
+    }
+
+    const response = {
+      nextDistribution,
+      nukeCollected: parseFloat(nukeCollected.toFixed(2)),
+      estimatedSOL: parseFloat(estimatedSOL),
+      status,
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/processing completed', {
+      duration: `${duration}ms`,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching processing stats', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      nextDistribution: null,
+      nukeCollected: 0,
+      estimatedSOL: 0,
+      status: 'Error',
+    });
+  }
+});
+
+/**
+ * GET /dashboard/distributions/recent
+ * Returns recent distribution epochs for the main page
+ */
+router.get('/distributions/recent', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 10, 50); // Max 50 recent distributions
+    logger.debug('Dashboard API: GET /dashboard/distributions/recent', { limit });
+
+    // Get recent reward cycles
+    const { cycles } = getHistoricalRewardCycles({
+      limit,
+      offset: 0,
+    });
+
+    // Get tax statistics for harvested NUKE data
+    const taxStats = TaxService.getTaxStatistics();
+
+    // Transform cycles to distribution format
+    const distributions = cycles.map((cycle, index) => {
+      // Determine status based on distribution success
+      const status: 'Complete' | 'Failed' = cycle.totalSOLDistributed > 0 ? 'Complete' : 'Failed';
+      
+      // Calculate epoch number (most recent = highest number)
+      // For now, use index + 1, but ideally this should come from cycle data
+      const epoch = cycles.length - index;
+
+      // Get harvested NUKE - approximate from SOL distributed
+      // TODO: Link to actual harvesting data when available
+      const harvestedNUKE = cycle.totalSOLDistributed > 0 
+        ? Math.floor(cycle.totalSOLDistributed * 13333) // Rough estimate
+        : 0;
+
+      return {
+        epoch,
+        status,
+        harvestedNUKE,
+        distributedSOL: parseFloat(cycle.totalSOLDistributed.toFixed(6)),
+        timestamp: cycle.timestamp,
+      };
+    });
+
+    const response = {
+      distributions,
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/distributions/recent completed', {
+      duration: `${duration}ms`,
+      count: distributions.length,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching recent distributions', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      distributions: [],
+    });
+  }
+});
+
+/**
+ * GET /dashboard/liquidity/summary
+ * Returns liquidity pool summary statistics for the main page
+ */
+router.get('/liquidity/summary', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    logger.debug('Dashboard API: GET /dashboard/liquidity/summary');
+
+    // TODO: Implement real liquidity pool data fetching
+    // For now, return placeholder data
+    // This should eventually query Raydium or other DEX APIs
+    
+    const response = {
+      totalLiquidityUSD: 4200000, // Placeholder
+      volume24hUSD: 1100000, // Placeholder
+      activePools: 27, // Placeholder
+      treasuryPools: 18, // Placeholder
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/liquidity/summary completed', {
+      duration: `${duration}ms`,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching liquidity summary', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      totalLiquidityUSD: 0,
+      volume24hUSD: 0,
+      activePools: 0,
+      treasuryPools: 0,
+    });
+  }
+});
+
+/**
+ * GET /dashboard/liquidity/pools
+ * Returns individual liquidity pool data for the main page
+ */
+router.get('/liquidity/pools', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    logger.debug('Dashboard API: GET /dashboard/liquidity/pools');
+
+    // TODO: Implement real liquidity pool data fetching
+    // For now, return placeholder data
+    // This should eventually query Raydium or other DEX APIs
+    
+    const response = {
+      pools: [
+        {
+          pair: 'NUKE / SOL',
+          liquidityUSD: 482300, // Placeholder
+          volume24hUSD: 124800, // Placeholder
+        },
+        {
+          pair: 'NUKE / USDC',
+          liquidityUSD: 310500, // Placeholder
+          volume24hUSD: 98200, // Placeholder
+        },
+      ],
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/liquidity/pools completed', {
+      duration: `${duration}ms`,
+      count: response.pools.length,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching liquidity pools', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      pools: [],
     });
   }
 });

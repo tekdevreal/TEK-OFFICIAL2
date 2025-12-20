@@ -1,179 +1,301 @@
-import { useState, useEffect } from 'react';
-import { fetchRewards } from '../services/api';
-import type { RewardsResponse } from '../types/api';
-import { ChartsSection } from '../components/ChartsSection';
-import { RewardSummary } from '../components/RewardSummary';
+import { useMemo, useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
+import { GlassCard } from '../components/GlassCard';
+import { Table, type TableColumn } from '../components/Table';
+import { useRewards } from '../hooks/useApiData';
 import './HarvestingPage.css';
 
+export interface HarvestingData {
+  id: string;
+  date: string;
+  time: string;
+  nukeSold: number;
+  rewardPoolSOL: number;
+  allocatedSOL: number;
+}
+
 export function HarvestingPage() {
-  const [data, setData] = useState<RewardsResponse | null>(null);
-  const [, setLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
+  const {
+    data: rewardsData,
+    isLoading: isLoadingRewards,
+  } = useRewards(undefined, {
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setError(null);
-        const response = await fetchRewards();
-        setData(response);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch data';
-        setError(errorMessage);
-        console.error('Error loading harvesting data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Year filter state
+  const [selectedYear, setSelectedYear] = useState<number>(2025);
 
-    loadData();
-    const interval = setInterval(loadData, 300000);
-    return () => clearInterval(interval);
+  // Placeholder harvesting data for demonstration
+  const allHarvestingData: HarvestingData[] = useMemo(() => {
+    return [
+      {
+        id: 'HARV-001',
+        date: '2025-01-15',
+        time: '10:30 AM EST',
+        nukeSold: 125000,
+        rewardPoolSOL: 9.375,
+        allocatedSOL: 7.031,
+      },
+      {
+        id: 'HARV-002',
+        date: '2025-01-14',
+        time: '10:30 AM EST',
+        nukeSold: 118500,
+        rewardPoolSOL: 8.888,
+        allocatedSOL: 6.666,
+      },
+      {
+        id: 'HARV-003',
+        date: '2025-01-13',
+        time: '10:30 AM EST',
+        nukeSold: 132000,
+        rewardPoolSOL: 9.900,
+        allocatedSOL: 7.425,
+      },
+      {
+        id: 'HARV-004',
+        date: '2025-01-12',
+        time: '10:30 AM EST',
+        nukeSold: 110000,
+        rewardPoolSOL: 8.250,
+        allocatedSOL: 6.188,
+      },
+      {
+        id: 'HARV-005',
+        date: '2025-01-11',
+        time: '10:30 AM EST',
+        nukeSold: 140000,
+        rewardPoolSOL: 10.500,
+        allocatedSOL: 7.875,
+      },
+    ];
   }, []);
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleString();
-  };
+  // Get available months for selected year
+  const availableMonths = useMemo(() => {
+    const months = new Set<number>();
+    allHarvestingData.forEach((item) => {
+      const itemDate = new Date(item.date);
+      if (itemDate.getFullYear() === selectedYear) {
+        months.add(itemDate.getMonth() + 1);
+      }
+    });
+    return Array.from(months).sort((a, b) => a - b);
+  }, [allHarvestingData, selectedYear]);
 
-  const getTimeUntilNext = (nextRun: string | null) => {
-    if (!nextRun) return 'N/A';
-    const now = new Date().getTime();
-    const next = new Date(nextRun).getTime();
-    const diff = next - now;
-    
-    if (diff <= 0) return 'Due now';
-    
-    const minutes = Math.floor(diff / 60000);
-    const seconds = Math.floor((diff % 60000) / 1000);
-    
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
+  // Month names
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // Initialize selected month to the latest available month
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+
+  // Update selected month when available months change
+  useEffect(() => {
+    if (availableMonths.length > 0 && (selectedMonth === null || !availableMonths.includes(selectedMonth))) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1]);
     }
-    return `${seconds}s`;
+  }, [availableMonths, selectedMonth]);
+
+  // Filter data by year and month
+  const harvestingData: HarvestingData[] = useMemo(() => {
+    return allHarvestingData.filter((item) => {
+      const itemDate = new Date(item.date);
+      const itemYear = itemDate.getFullYear();
+      const itemMonth = itemDate.getMonth() + 1; // getMonth() returns 0-11
+      
+      if (itemYear !== selectedYear) return false;
+      if (selectedMonth !== null && itemMonth !== selectedMonth) return false;
+      return true;
+    });
+  }, [allHarvestingData, selectedYear, selectedMonth]);
+
+  // Calculate stats from data
+  const totalNukeHarvested = useMemo(() => {
+    return harvestingData.reduce((sum, item) => sum + item.nukeSold, 0);
+  }, [harvestingData]);
+
+  const lastHarvesting = harvestingData.length > 0 ? harvestingData[0].date : 'N/A';
+  const nextHarvesting = rewardsData?.nextRun 
+    ? new Date(rewardsData.nextRun).toLocaleDateString()
+    : 'N/A';
+
+  const estimatedSOL = useMemo(() => {
+    const totalRewardPool = harvestingData.reduce((sum, item) => sum + item.rewardPoolSOL, 0);
+    return totalRewardPool.toFixed(6);
+  }, [harvestingData]);
+
+  // Table columns
+  const columns: TableColumn<HarvestingData>[] = useMemo(() => [
+    {
+      key: 'id',
+      header: 'ID',
+      accessor: (row) => (
+        <a 
+          href="#" 
+          className="harvesting-id-link"
+          onClick={(e) => {
+            e.preventDefault();
+            // TODO: Link to detailed spreadsheet
+          }}
+        >
+          {row.id}
+        </a>
+      ),
+      sortable: true,
+      sortFn: (a, b) => a.id.localeCompare(b.id),
+    },
+    {
+      key: 'date',
+      header: 'DATE',
+      accessor: (row) => row.date,
+      sortable: true,
+      sortFn: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    },
+    {
+      key: 'time',
+      header: 'TIME',
+      accessor: (row) => row.time,
+      sortable: true,
+      sortFn: (a, b) => a.time.localeCompare(b.time),
+    },
+    {
+      key: 'nukeSold',
+      header: 'NUKE SOLD',
+      accessor: (row) => row.nukeSold.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+      sortable: true,
+      sortFn: (a, b) => a.nukeSold - b.nukeSold,
+    },
+    {
+      key: 'rewardPoolSOL',
+      header: 'REWARD POOL (SOL)',
+      accessor: (row) => row.rewardPoolSOL.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+      sortable: true,
+      sortFn: (a, b) => a.rewardPoolSOL - b.rewardPoolSOL,
+    },
+    {
+      key: 'allocatedSOL',
+      header: 'ALLOCATED (SOL)',
+      accessor: (row) => row.allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+      sortable: true,
+      sortFn: (a, b) => a.allocatedSOL - b.allocatedSOL,
+    },
+  ], []);
+
+  // Export CSV handler
+  const handleExportCSV = () => {
+    const headers = ['ID', 'DATE', 'TIME', 'NUKE SOLD', 'REWARD POOL (SOL)', 'ALLOCATED (SOL)'];
+    const rows = harvestingData.map((row) => [
+      row.id,
+      row.date,
+      row.time,
+      row.nukeSold.toString(),
+      row.rewardPoolSOL.toString(),
+      row.allocatedSOL.toString(),
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `harvesting-data-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const stats = data?.statistics || {
-    totalHolders: 0,
-    eligibleHolders: 0,
-    excludedHolders: 0,
-    blacklistedHolders: 0,
-    pendingPayouts: 0,
-    totalSOLDistributed: 0,
-  };
-  const tax = data?.tax || {
-    totalNukeHarvested: '0',
-    totalNukeSold: '0',
-    totalSolDistributed: '0',
-    totalSolToTreasury: '0',
-    lastTaxDistribution: null,
-    lastSwapTx: null,
-    lastDistributionTx: null,
-    distributionCount: 0,
-  };
+  if (isLoadingRewards) {
+    return (
+      <div className="harvesting-page">
+        <div className="loading">Loading harvesting data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="harvesting-page">
-      {/* Tax & Rewards Statistics */}
+      {/* Harvesting Data Section */}
       <section className="dashboard-section">
-        <RewardSummary refreshInterval={300000} />
-      </section>
-
-      {/* Detailed Statistics */}
-      <section className="dashboard-section">
-        <h2 className="section-title">System Status</h2>
-        <div className="stats-grid">
-          <StatCard
-            label="Scheduler Status"
-            value={data?.isRunning ? 'Running' : 'Idle'}
-          />
-          <StatCard
-            label="Last Run"
-            value={formatDate(data?.lastRun || null)}
-          />
-          <StatCard
-            label="Next Run"
-            value={formatDate(data?.nextRun || null) + ` (${getTimeUntilNext(data?.nextRun || null)})`}
-          />
-          <StatCard
-            label="Distribution Count"
-            value={(tax.distributionCount || 0).toLocaleString()}
-          />
-        </div>
-      </section>
-
-      {/* Holder Statistics */}
-      <section className="dashboard-section">
-        <h2 className="section-title">Holder Statistics</h2>
-        <div className="stats-grid">
-          <StatCard
-            label="Total Holders"
-            value={(stats.totalHolders || 0).toLocaleString()}
-          />
-          <StatCard
-            label="Eligible Holders"
-            value={(stats.eligibleHolders || 0).toLocaleString()}
-          />
-          <StatCard
-            label="Excluded Holders"
-            value={(stats.excludedHolders || 0).toLocaleString()}
-          />
-          <StatCard
-            label="Blacklisted"
-            value={(stats.blacklistedHolders || 0).toLocaleString()}
-          />
-          <StatCard
-            label="Pending Payouts"
-            value={(stats.pendingPayouts || 0).toLocaleString()}
-          />
-          <StatCard
-            label="Total SOL Distributed"
-            value={(() => {
-              const sol = stats.totalSOLDistributed;
-              if (sol === null || sol === undefined || isNaN(sol)) {
-                return '0.000000 SOL';
-              }
-              return `${Number(sol).toFixed(6)} SOL`;
-            })()}
-          />
-        </div>
-      </section>
-
-      {/* Transaction Links */}
-      {(tax.lastSwapTx || tax.lastDistributionTx) && (
-        <section className="dashboard-section">
-          <h2 className="section-title">Recent Transactions</h2>
-          <div className="transaction-links">
-            {tax.lastSwapTx && (
-              <a
-                href={`https://solscan.io/tx/${tax.lastSwapTx}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tx-link"
-              >
-                Last Swap: {tax.lastSwapTx.slice(0, 8)}...{tax.lastSwapTx.slice(-8)}
-              </a>
-            )}
-            {tax.lastDistributionTx && (
-              <a
-                href={`https://solscan.io/tx/${tax.lastDistributionTx}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tx-link"
-              >
-                Last Distribution: {tax.lastDistributionTx.slice(0, 8)}...{tax.lastDistributionTx.slice(-8)}
-              </a>
-            )}
+        <GlassCard className="dashboard-section-card">
+          <h2 className="section-title">Harvesting Data</h2>
+          <p className="section-subtitle">Track NUKE token harvesting activities and reward pool distributions.</p>
+          
+          {/* Stats Summary */}
+          <div className="harvesting-stats">
+            <StatCard
+              label="Total Nuke Harvested"
+              value={totalNukeHarvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            />
+            <StatCard
+              label="Next Harvesting"
+              value={nextHarvesting}
+            />
+            <StatCard
+              label="Last Harvesting"
+              value={lastHarvesting}
+            />
+            <StatCard
+              label="Estimated SOL"
+              value={`${estimatedSOL} SOL`}
+            />
           </div>
-        </section>
-      )}
 
-      {/* Analytics Charts Section */}
-      <section className="dashboard-section">
-        <h2 className="section-title">Analytics & Trends</h2>
-        <ChartsSection />
+          {/* Year and Month Filters with Export */}
+          <div className="harvesting-filters-row">
+            <div className="filter-group">
+              <label className="filter-label">Year:</label>
+              <button
+                className="filter-button active"
+                onClick={() => {
+                  setSelectedYear(2025);
+                }}
+              >
+                2025
+              </button>
+            </div>
+            
+            {availableMonths.length > 0 && selectedMonth !== null && (
+              <div className="filter-group">
+                <label className="filter-label">Month:</label>
+                <button
+                  className="filter-button active"
+                >
+                  {monthNames[selectedMonth - 1]}
+                </button>
+              </div>
+            )}
+
+            <div className="filter-export">
+              <button
+                className="export-csv-button"
+                onClick={handleExportCSV}
+              >
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Harvesting Data Table */}
+          <div className="harvesting-table-container">
+            <Table
+              data={harvestingData}
+              columns={columns}
+              searchable={false}
+              pagination={true}
+              pageSize={10}
+              exportable={false}
+              exportFilename="harvesting-data"
+              loading={false}
+            />
+          </div>
+        </GlassCard>
       </section>
     </div>
   );
 }
-

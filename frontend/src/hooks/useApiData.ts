@@ -10,6 +10,8 @@ import {
   fetchHistoricalRewards,
   fetchHistoricalPayouts,
   fetchDexVolume24h,
+  fetchLiquidityPools,
+  fetchLiquiditySummary,
 } from '../services/api';
 import type {
   RewardsResponse,
@@ -17,6 +19,8 @@ import type {
   PayoutsResponse,
   RewardCyclesResponse,
   HistoricalPayoutsResponse,
+  LiquidityPoolsResponse,
+  LiquiditySummaryResponse,
 } from '../types/api';
 
 /**
@@ -131,6 +135,38 @@ export function useDexVolume24h(tokenAddress: string, options?: { enabled?: bool
       ttl: 5 * 60 * 1000, // 5 minutes
       staleTime: 2.5 * 60 * 1000, // 2.5 minutes
       enabled: options?.enabled !== false && !!tokenAddress,
+    }
+  );
+}
+
+/**
+ * Hook for fetching liquidity pools
+ */
+export function useLiquidityPools(options?: { enabled?: boolean; refetchInterval?: number }) {
+  return useQuery<LiquidityPoolsResponse>(
+    'liquidity-pools',
+    () => fetchLiquidityPools(),
+    {
+      ttl: 5 * 60 * 1000, // 5 minutes
+      staleTime: 2.5 * 60 * 1000, // 2.5 minutes
+      refetchInterval: options?.refetchInterval ?? 5 * 60 * 1000, // 5 minutes
+      enabled: options?.enabled !== false,
+    }
+  );
+}
+
+/**
+ * Hook for fetching liquidity summary
+ */
+export function useLiquiditySummary(options?: { enabled?: boolean; refetchInterval?: number }) {
+  return useQuery<LiquiditySummaryResponse>(
+    'liquidity-summary',
+    () => fetchLiquiditySummary(),
+    {
+      ttl: 5 * 60 * 1000, // 5 minutes
+      staleTime: 2.5 * 60 * 1000, // 2.5 minutes
+      refetchInterval: options?.refetchInterval ?? 5 * 60 * 1000, // 5 minutes
+      enabled: options?.enabled !== false,
     }
   );
 }

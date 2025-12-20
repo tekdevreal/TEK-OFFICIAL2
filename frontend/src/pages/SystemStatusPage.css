@@ -1,0 +1,116 @@
+/* System Status page uses global page spacing */
+.system-status-page {
+  padding: var(--page-padding-top) var(--page-padding-horizontal) var(--page-padding-bottom);
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap);
+}
+
+.dashboard-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-section-card {
+  padding: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* System Status Page specific section title and subtitle - override global styles */
+/* Only apply to System Status page, not Dashboard */
+.system-status-page .dashboard-section-card .section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
+}
+
+@media (min-width: 768px) {
+  .system-status-page .dashboard-section-card .section-title {
+    font-size: 1.5rem;
+    margin-bottom: 0 !important;
+  }
+}
+
+.system-status-page .dashboard-section-card .section-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+  margin-top: 0.0625rem !important; /* 1px - minimal spacing */
+  padding-top: 0 !important;
+  line-height: 1.2;
+}
+
+/* System Status Stats - Similar to LP Summary */
+.system-status-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .system-status-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .system-status-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* System Status Table Container */
+.system-status-table-container {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* Status Indicator */
+.status-indicator {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Move table info to bottom */
+.system-status-table-container .table-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.system-status-table-container .table-toolbar {
+  order: 1;
+}
+
+.system-status-table-container .table-container {
+  order: 2;
+}
+
+.system-status-table-container .table-pagination {
+  order: 3;
+  margin-top: 1rem;
+}
+
+.system-status-table-container .table-info {
+  display: none; /* Hide "Showing X of X entries" for System Status */
+}
+
+.loading,
+.error-message {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.error-message {
+  color: var(--accent-danger);
+}
+

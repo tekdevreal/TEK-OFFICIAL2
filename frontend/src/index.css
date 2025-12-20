@@ -123,6 +123,17 @@
   --spacing-lg: 2rem;
   --spacing-xl: 3rem;
   
+  /* Page Layout Spacing - Global Configuration */
+  --page-padding-top: 10rem;          /* Space below top toolbar/navbar (increased for better spacing) */
+  --page-padding-horizontal: 2rem;     /* Horizontal padding for page content */
+  --page-padding-horizontal-mobile: 1rem; /* Horizontal padding on mobile */
+  --page-padding-bottom: 3rem;        /* Bottom padding for page */
+  --page-padding-bottom-mobile: 2rem;   /* Bottom padding on mobile */
+  --page-section-gap: 2rem;            /* Gap between sections (comfortable spacing) */
+  --page-section-gap-mobile: 1.5rem;  /* Gap between sections on mobile */
+  --page-max-width: 1400px;            /* Maximum width for page content */
+  --page-max-width-narrow: 1280px;     /* Maximum width for narrower pages */
+  
   /* Border Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -292,6 +303,29 @@ body {
   color: var(--text-muted); /* Uses theme-aware color variable */
 }
 
+/* Distribution Card - All text bold */
+.distribution-card,
+.distribution-card * {
+  font-weight: var(--font-weight-semibold) !important; /* Uses --font-weight-semibold (600) */
+}
+
+/* Exception for status badge which should remain at 600 (already bold) */
+.distribution-status {
+  font-weight: var(--font-weight-semibold) !important;
+}
+
+/* Exception for time and date - normal font weight (not bold) */
+.distribution-card-time-text,
+.distribution-card-date-text {
+  font-weight: var(--font-weight-normal) !important; /* Uses --font-weight-normal (400) */
+}
+
+/* Liquidity Pool Card - All text bold (same as Distribution Card) */
+.liquidity-pool-card,
+.liquidity-pool-card * {
+  font-weight: var(--font-weight-semibold) !important; /* Uses --font-weight-semibold (600) */
+}
+
 /* High Specificity Selectors for StatCard Components */
 .stat-card-wrapper .text-stat-value,
 .glass-card .text-stat-value,
@@ -365,5 +399,56 @@ body {
   }
   100% {
     background-position: 1000px 0;
+  }
+}
+
+/* ============================================
+   PAGE LAYOUT - Global Page Spacing System
+   ============================================ */
+
+/* Base Page Container - Use this class on all page containers */
+.page-container {
+  padding: var(--page-padding-top) var(--page-padding-horizontal) var(--page-padding-bottom);
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap);
+}
+
+/* Narrow Page Container - For pages that need less width */
+.page-container-narrow {
+  padding: var(--page-padding-top) var(--page-padding-horizontal) var(--page-padding-bottom);
+  max-width: var(--page-max-width-narrow);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap);
+}
+
+/* Page Section - Standard section spacing */
+.page-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive adjustments for page containers */
+@media (max-width: 1024px) {
+  .page-container,
+  .page-container-narrow {
+    padding-left: var(--page-padding-horizontal-mobile);
+    padding-right: var(--page-padding-horizontal-mobile);
+    gap: var(--page-section-gap-mobile);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-container,
+  .page-container-narrow {
+    padding-bottom: var(--page-padding-bottom-mobile);
+    gap: var(--page-section-gap-mobile);
   }
 }

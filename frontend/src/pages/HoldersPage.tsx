@@ -1,186 +1,342 @@
-import { useState, useEffect } from 'react';
-import { fetchHolders } from '../services/api';
-import type { Holder } from '../types/api';
-import { Table } from '../components/Table';
-import type { TableColumn } from '../components/Table';
+import { useMemo, useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
+import { GlassCard } from '../components/GlassCard';
+import { Table, type TableColumn } from '../components/Table';
+import { useRewards } from '../hooks/useApiData';
 import './HoldersPage.css';
 
+export interface TreasuryActivityData {
+  id: string;
+  date: string;
+  time: string;
+  action: string;
+  amount: string;
+  detail: string;
+  reference: string; // Transaction signature for Solscan link
+}
+
 export function HoldersPage() {
-  const [holders, setHolders] = useState<Holder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
+  const {
+    isLoading: isLoadingRewards,
+  } = useRewards(undefined, {
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Load all holders (with pagination handled by table)
-        const response = await fetchHolders({ limit: 1000, offset: 0 });
-        setHolders(response.holders);
-        setTotal(response.total);
-      } catch (error) {
-        console.error('Error loading holders:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Year filter state
+  const [selectedYear, setSelectedYear] = useState<number>(2025);
 
-    loadData();
-    const interval = setInterval(loadData, 300000);
-    return () => clearInterval(interval);
+  // Treasury wallet address
+  const treasuryWalletAddress = import.meta.env.VITE_TREASURY_WALLET_ADDRESS || '6PpZCPj72mdzBfrSJCJab9y535v2greCBe6YVW7XeXpo';
+
+  // Placeholder treasury activity data for demonstration
+  const allTreasuryActivity: TreasuryActivityData[] = useMemo(() => {
+    return [
+      {
+        id: 'TREAS-001',
+        date: '2025-01-15',
+        time: '2:30 PM EST',
+        action: 'Add Liquidity',
+        amount: '$5,000',
+        detail: 'Added liquidity to NUKE/SOL Pool',
+        reference: '5KJp8vN2mQr9xYz3wE7tR4bC6dF1gH8jL0pM9nQ2sT5uV7xY',
+      },
+      {
+        id: 'TREAS-002',
+        date: '2025-01-14',
+        time: '1:15 PM EST',
+        action: 'Withdraw',
+        amount: '$2,000',
+        detail: 'Withdrew funds for protocol operations',
+        reference: '4HJp7vM1mQr8xYz2wE6tR3bC5dF0gH7jK9pL8nQ1sT4uV6xY',
+      },
+      {
+        id: 'TREAS-003',
+        date: '2025-01-13',
+        time: '11:45 AM EST',
+        action: 'Add Liquidity',
+        amount: '$3,500',
+        detail: 'Added liquidity to NUKE/USDC Pool',
+        reference: '3GJp6vL1mQr7xYz1wE5tR2bC4dF9gH6jJ8pK7nQ0sT3uV5xY',
+      },
+      {
+        id: 'TREAS-004',
+        date: '2025-01-12',
+        time: '10:20 AM EST',
+        action: 'Transfer',
+        amount: '$1,500',
+        detail: 'Transferred to reward pool',
+        reference: '2FJp5vK1mQr6xYz0wE4tR1bC3dF8gH5jI7pJ6nQ9sT2uV4xY',
+      },
+      {
+        id: 'TREAS-005',
+        date: '2025-01-11',
+        time: '9:00 AM EST',
+        action: 'Add Liquidity',
+        amount: '$4,200',
+        detail: 'Added liquidity to NUKE/SOL Pool',
+        reference: '1EJp4vJ1mQr5xYz9wE3tR0bC2dF7gH4jH6pI5nQ8sT1uV3xY',
+      },
+    ];
   }, []);
 
-  const formatBalance = (balance: string) => {
-    const num = BigInt(balance);
-    return (Number(num) / 1e9).toLocaleString(undefined, {
-      maximumFractionDigits: 2,
+  // Get available months for selected year
+  const availableMonths = useMemo(() => {
+    const months = new Set<number>();
+    allTreasuryActivity.forEach((item) => {
+      const itemDate = new Date(item.date);
+      if (itemDate.getFullYear() === selectedYear) {
+        months.add(itemDate.getMonth() + 1);
+      }
     });
+    return Array.from(months).sort((a, b) => a - b);
+  }, [allTreasuryActivity, selectedYear]);
+
+  // Month names
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // Initialize selected month to the latest available month
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+
+  // Update selected month when available months change
+  useEffect(() => {
+    if (availableMonths.length > 0 && (selectedMonth === null || !availableMonths.includes(selectedMonth))) {
+      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    }
+  }, [availableMonths, selectedMonth]);
+
+  // Filter data by year and month
+  const treasuryActivity: TreasuryActivityData[] = useMemo(() => {
+    return allTreasuryActivity.filter((item) => {
+      const itemDate = new Date(item.date);
+      const itemYear = itemDate.getFullYear();
+      const itemMonth = itemDate.getMonth() + 1; // getMonth() returns 0-11
+      
+      if (itemYear !== selectedYear) return false;
+      if (selectedMonth !== null && itemMonth !== selectedMonth) return false;
+      return true;
+    });
+  }, [allTreasuryActivity, selectedYear, selectedMonth]);
+
+  // Calculate stats from data
+  const treasuryBalance = '$2,000';
+  const pendingAllocation = '$0';
+  const activeDeployments = '2';
+  const lastTreasuryAction = allTreasuryActivity.length > 0 
+    ? allTreasuryActivity[0].date
+    : 'N/A';
+
+  // Table columns
+  const columns: TableColumn<TreasuryActivityData>[] = useMemo(() => [
+    {
+      key: 'date',
+      header: 'DATE',
+      accessor: (row) => row.date,
+      sortable: true,
+      sortFn: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    },
+    {
+      key: 'time',
+      header: 'TIME',
+      accessor: (row) => row.time,
+      sortable: true,
+      sortFn: (a, b) => a.time.localeCompare(b.time),
+    },
+    {
+      key: 'action',
+      header: 'ACTION',
+      accessor: (row) => row.action,
+      sortable: true,
+      sortFn: (a, b) => a.action.localeCompare(b.action),
+    },
+    {
+      key: 'amount',
+      header: 'AMOUNT',
+      accessor: (row) => row.amount,
+      sortable: true,
+      sortFn: (a, b) => {
+        const aNum = parseFloat(a.amount.replace(/[^0-9.]/g, ''));
+        const bNum = parseFloat(b.amount.replace(/[^0-9.]/g, ''));
+        return aNum - bNum;
+      },
+    },
+    {
+      key: 'detail',
+      header: 'DETAIL',
+      accessor: (row) => row.detail,
+      sortable: true,
+      sortFn: (a, b) => a.detail.localeCompare(b.detail),
+    },
+    {
+      key: 'reference',
+      header: 'REFERENCE',
+      accessor: (row) => (
+        <a 
+          href={`https://solscan.io/tx/${row.reference}?cluster=devnet`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="treasury-reference-link"
+        >
+          {`${row.reference.substring(0, 8)}...${row.reference.substring(row.reference.length - 8)}`}
+        </a>
+      ),
+      sortable: true,
+      sortFn: (a, b) => a.reference.localeCompare(b.reference),
+    },
+  ], []);
+
+  // Export CSV handler
+  const handleExportCSV = () => {
+    const headers = ['DATE', 'TIME', 'ACTION', 'AMOUNT', 'DETAIL', 'REFERENCE'];
+    const rows = treasuryActivity.map((row) => [
+      row.date,
+      row.time,
+      row.action,
+      row.amount,
+      row.detail,
+      row.reference,
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `treasury-activity-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'eligible':
-        return 'badge-eligible';
-      case 'excluded':
-        return 'badge-excluded';
-      case 'blacklisted':
-        return 'badge-blacklisted';
-      default:
-        return '';
+  // Copy wallet address to clipboard
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(treasuryWalletAddress);
+      // Could add a notification here if needed
+    } catch (err) {
+      console.error('Failed to copy address:', err);
     }
   };
 
-  const columns: TableColumn<Holder>[] = [
-    {
-      key: 'pubkey',
-      header: 'Pubkey',
-      accessor: (row) => (
-        <span className="pubkey-cell" title={row.pubkey}>
-          {`${row.pubkey.substring(0, 8)}...${row.pubkey.substring(row.pubkey.length - 8)}`}
-        </span>
-      ),
-      sortable: false,
-    },
-    {
-      key: 'balance',
-      header: 'Balance',
-      accessor: (row) => formatBalance(row.balance),
-      sortable: true,
-      sortFn: (a, b) => {
-        const aNum = BigInt(a.balance);
-        const bNum = BigInt(b.balance);
-        return aNum > bNum ? 1 : aNum < bNum ? -1 : 0;
-      },
-    },
-    {
-      key: 'usdValue',
-      header: 'USD Value',
-      accessor: (row) => {
-        const usd = row.usdValue;
-        if (usd === null || usd === undefined || isNaN(usd)) {
-          return '$0.00';
-        }
-        return `$${Number(usd).toFixed(2)}`;
-      },
-      sortable: true,
-      sortFn: (a, b) => {
-        const aVal = (a.usdValue !== null && a.usdValue !== undefined && !isNaN(a.usdValue)) ? Number(a.usdValue) : 0;
-        const bVal = (b.usdValue !== null && b.usdValue !== undefined && !isNaN(b.usdValue)) ? Number(b.usdValue) : 0;
-        return aVal - bVal;
-      },
-    },
-    {
-      key: 'eligibilityStatus',
-      header: 'Status',
-      accessor: (row) => (
-        <span className={`badge ${getStatusBadgeClass(row.eligibilityStatus)}`}>
-          {row.eligibilityStatus}
-        </span>
-      ),
-      sortable: true,
-      sortFn: (a, b) => a.eligibilityStatus.localeCompare(b.eligibilityStatus),
-    },
-    {
-      key: 'lastReward',
-      header: 'Last Reward',
-      accessor: (row) =>
-        row.lastReward ? new Date(row.lastReward).toLocaleString() : 'Never',
-      sortable: true,
-      sortFn: (a, b) => {
-        if (!a.lastReward && !b.lastReward) return 0;
-        if (!a.lastReward) return 1;
-        if (!b.lastReward) return -1;
-        return new Date(a.lastReward).getTime() - new Date(b.lastReward).getTime();
-      },
-    },
-    {
-      key: 'retryCount',
-      header: 'Retry Count',
-      accessor: (row) => row.retryCount,
-      sortable: true,
-      sortFn: (a, b) => a.retryCount - b.retryCount,
-    },
-  ];
+  // Solscan link for treasury wallet
+  const solscanWalletUrl = `https://solscan.io/account/${treasuryWalletAddress}?cluster=devnet`;
 
-  const statusFilter = {
-    key: 'eligibilityStatus',
-    label: 'Status',
-    options: [
-      { value: 'eligible', label: 'Eligible' },
-      { value: 'excluded', label: 'Excluded' },
-      { value: 'blacklisted', label: 'Blacklisted' },
-    ],
-  };
+  if (isLoadingRewards) {
+    return (
+      <div className="holders-page">
+        <div className="loading">Loading treasury data...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="holders-page">
+      {/* Treasury Data Section */}
       <section className="dashboard-section">
-        <h2 className="section-title">Holder Summary</h2>
-        <div className="stats-grid">
-          <StatCard
-            label="Total Holders"
-            value={total.toLocaleString()}
-          />
-          <StatCard
-            label="Eligible"
-            value={holders.filter((h) => h.eligibilityStatus === 'eligible').length.toLocaleString()}
-          />
-          <StatCard
-            label="Excluded"
-            value={holders.filter((h) => h.eligibilityStatus === 'excluded').length.toLocaleString()}
-          />
-          <StatCard
-            label="Blacklisted"
-            value={holders.filter((h) => h.eligibilityStatus === 'blacklisted').length.toLocaleString()}
-          />
-        </div>
-      </section>
+        <GlassCard className="dashboard-section-card">
+          <h2 className="section-title">Treasury Data</h2>
+          <p className="section-subtitle">Real-time visibility into protocol funds, allocations, and treasury activity.</p>
+          
+          {/* Stats Summary */}
+          <div className="treasury-stats">
+            <StatCard
+              label="Treasury Balance"
+              value={treasuryBalance}
+            />
+            <StatCard
+              label="Pending Allocation"
+              value={pendingAllocation}
+            />
+            <StatCard
+              label="Active Deployments"
+              value={activeDeployments}
+            />
+            <StatCard
+              label="Last Treasury Action"
+              value={lastTreasuryAction}
+            />
+          </div>
 
-      <section className="dashboard-section">
-      <Table
-        data={holders}
-        columns={columns}
-        searchable={true}
-        searchPlaceholder="Search by pubkey..."
-        searchKeys={['pubkey']}
-        filterable={true}
-        filters={[statusFilter]}
-        onFilter={(row, filterKey, filterValue) => {
-          if (filterKey === 'eligibilityStatus') {
-            return row.eligibilityStatus === filterValue;
-          }
-          return true;
-        }}
-        exportable={true}
-        exportFilename="token-holders"
-        exportHeaders={columns.map((col) => col.header)}
-        pagination={true}
-        pageSize={50}
-        loading={loading}
-        emptyMessage="No holders found"
-      />
+          {/* Treasury Wallet Address */}
+          <div className="treasury-wallet-section">
+            <label className="wallet-label">Treasury wallet address:</label>
+            <div className="wallet-address-container">
+              <span className="wallet-address">{treasuryWalletAddress}</span>
+              <div className="wallet-buttons-group">
+                <button
+                  className="copy-button"
+                  onClick={handleCopyAddress}
+                  title="Copy address"
+                >
+                  Copy
+                </button>
+                <a
+                  href={solscanWalletUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="solscan-button"
+                >
+                  Solscan
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Year and Month Filters with Export */}
+          <div className="treasury-filters-row">
+            <div className="filter-group">
+              <label className="filter-label">Year:</label>
+              <button
+                className="filter-button active"
+                onClick={() => {
+                  setSelectedYear(2025);
+                }}
+              >
+                2025
+              </button>
+            </div>
+            
+            {availableMonths.length > 0 && selectedMonth !== null && (
+              <div className="filter-group">
+                <label className="filter-label">Month:</label>
+                <button
+                  className="filter-button active"
+                >
+                  {monthNames[selectedMonth - 1]}
+                </button>
+              </div>
+            )}
+
+            <div className="filter-export">
+              <button
+                className="export-csv-button"
+                onClick={handleExportCSV}
+              >
+                Export CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Treasury Activity Log Table */}
+          <div className="treasury-table-container">
+            <Table
+              data={treasuryActivity}
+              columns={columns}
+              searchable={false}
+              pagination={true}
+              pageSize={10}
+              exportable={false}
+              exportFilename="treasury-activity"
+              loading={false}
+            />
+          </div>
+        </GlassCard>
       </section>
     </div>
   );
 }
-

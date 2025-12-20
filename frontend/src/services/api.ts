@@ -7,6 +7,8 @@ import type {
   RewardCyclesResponse,
   HistoricalPayoutsResponse,
   ExportResponse,
+  LiquidityPoolsResponse,
+  LiquiditySummaryResponse,
 } from '../types/api';
 
 // Production check
@@ -557,6 +559,87 @@ export async function fetchDexVolume24h(tokenAddress: string): Promise<number | 
       console.warn('[API] Could not fetch DEX volume 24h:', error);
     }
     return null;
+  }
+}
+
+/**
+ * Fetch liquidity pools data
+ */
+export async function fetchLiquidityPools(): Promise<LiquidityPoolsResponse> {
+  try {
+    const response = await retryRequest(() =>
+      apiClient.get<LiquidityPoolsResponse>('/dashboard/liquidity/pools')
+    );
+    // Validate and provide fallback
+    if (!response || !response.data) {
+      if (isDevelopment) {
+        console.warn('[API] Invalid liquidity pools response structure, using fallback');
+      }
+      return { pools: [] };
+    }
+    return {
+      pools: response.data.pools || [],
+    };
+  } catch (error: any) {
+    if (isDevelopment) {
+      console.error('[API] Error fetching liquidity pools:', {
+        response: error.response?.data || null,
+        request: error.request ? 'Request made' : 'No request',
+        message: error.message || 'Unknown error',
+        status: error.response?.status || null,
+      });
+    } else {
+      console.error('[API] Error fetching liquidity pools');
+    }
+    // Return fallback data instead of throwing
+    return { pools: [] };
+  }
+}
+
+/**
+ * Fetch liquidity summary statistics
+ */
+export async function fetchLiquiditySummary(): Promise<LiquiditySummaryResponse> {
+  try {
+    const response = await retryRequest(() =>
+      apiClient.get<LiquiditySummaryResponse>('/dashboard/liquidity/summary')
+    );
+    // Validate and provide fallback
+    if (!response || !response.data) {
+      if (isDevelopment) {
+        console.warn('[API] Invalid liquidity summary response structure, using fallback');
+      }
+      return {
+        totalLiquidityUSD: 0,
+        volume24hUSD: 0,
+        activePools: 0,
+        treasuryPools: 0,
+      };
+    }
+    return {
+      totalLiquidityUSD: response.data.totalLiquidityUSD || 0,
+      volume24hUSD: response.data.volume24hUSD || 0,
+      activePools: response.data.activePools || 0,
+      treasuryPools: response.data.treasuryPools || 0,
+    };
+  } catch (error: any) {
+    if (isDevelopment) {
+      console.error('[API] Error fetching liquidity summary:', {
+        response: error.response?.data || null,
+        request: error.request ? 'Request made' : 'No request',
+        message: error.message || 'Unknown error',
+        status: error.response?.status || null,
+      });
+    } else {
+      console.error('[API] Error fetching liquidity summary');
+    }
+    // Return fallback data instead of throwing
+    return {
+      totalLiquidityUSD: 0,
+      volume24hUSD: 0,
+      activePools: 0,
+      treasuryPools: 0,
+    };
   }
 }
 

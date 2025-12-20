@@ -155,3 +155,21 @@ export interface ExportResponse {
   };
 }
 
+// Liquidity Pool
+export interface LiquidityPool {
+  pair: string;
+  liquidityUSD: number;
+  volume24hUSD: number;
+}
+
+export interface LiquidityPoolsResponse {
+  pools: LiquidityPool[];
+}
+
+export interface LiquiditySummaryResponse {
+  totalLiquidityUSD: number;
+  volume24hUSD: number;
+  activePools: number;
+  treasuryPools: number;
+}
+

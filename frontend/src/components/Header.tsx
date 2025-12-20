@@ -10,7 +10,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/', label: 'Dashboard' },
   { path: '/harvesting', label: 'Harvesting & Distribution' },
-  { path: '/holders', label: 'Holders' },
+  { path: '/holders', label: 'Treasury' },
   { path: '/payouts', label: 'Payouts' },
 ];
 

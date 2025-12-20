@@ -10,16 +10,10 @@ import { HarvestingPage } from './pages/HarvestingPage';
 import { DistributionPage } from './pages/DistributionPage';
 import { HoldersPage } from './pages/HoldersPage';
 import { PayoutsPage } from './pages/PayoutsPage';
+import { SystemStatusPage } from './pages/SystemStatusPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { DocumentationPage } from './pages/DocumentationPage';
 import './App.css';
-
-function DocsPage() {
-  return (
-    <div className="dashboard-page">
-      <h1 className="dashboard-title">Documentation</h1>
-      <p className="dashboard-subtitle">Documentation coming soon...</p>
-    </div>
-  );
-}
 
 function App() {
   return (
@@ -33,11 +27,13 @@ function App() {
               <NotificationManager />
               <Routes>
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/harvesting" element={<HarvestingPage />} />
                 <Route path="/distribution" element={<DistributionPage />} />
                 <Route path="/holders" element={<HoldersPage />} />
                 <Route path="/payouts" element={<PayoutsPage />} />
-                <Route path="/docs" element={<DocsPage />} />
+                <Route path="/system-status" element={<SystemStatusPage />} />
+                <Route path="/docs" element={<DocumentationPage />} />
               </Routes>
             </div>
           </BrowserRouter>

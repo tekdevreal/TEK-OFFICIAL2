@@ -1,0 +1,137 @@
+.liquidity-pool-card {
+  min-width: 320px;
+  padding: 1rem 1.25rem;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.liquidity-pool-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Top Row: Pair Info and DEX Logo */
+.liquidity-pool-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+/* Left Side: Pair Info */
+.pair-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pair-logos {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.token-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+.pair-name {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold); /* Bold to match global liquidity pool card font */
+  color: var(--text-primary);
+}
+
+/* Right Side: DEX Logo */
+.dex-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.dex-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+/* Stats Section */
+.liquidity-pool-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.pool-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold); /* Bold to match global liquidity pool card font */
+}
+
+/* Override StatCard.css .stat-value styles for Liquidity Pool cards */
+.liquidity-pool-card .stat-value,
+.liquidity-pool-stats .stat-value,
+.pool-stat .stat-value {
+  color: var(--text-secondary) !important; /* Same color as Distribution card detail-value */
+  font-size: 0.875rem !important; /* Same size as stat-label to match Distribution cards */
+  font-weight: var(--font-weight-semibold) !important; /* Bold to match global liquidity pool card font */
+  line-height: normal !important; /* Override StatCard line-height */
+  margin-bottom: 0 !important; /* Override StatCard margin */
+}
+
+/* Action Buttons */
+.liquidity-pool-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='light'] .liquidity-pool-actions {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.pool-action-button {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold); /* Bold to match global liquidity pool card font */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.pool-action-button:hover {
+  background-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+}
+
+[data-theme='light'] .pool-action-button {
+  background-color: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+[data-theme='light'] .pool-action-button:hover {
+  background-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+

@@ -36,8 +36,8 @@ const DEFAULT_SLIPPAGE_BPS = 200; // 2% = 200 basis points
 const MIN_SOL_OUTPUT = 0.001 * LAMPORTS_PER_SOL;
 
 // Raydium CPMM Program ID (devnet)
-// From pool info: programId: "DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb"
-const RAYDIUM_CPMM_PROGRAM_ID = new PublicKey('DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb');
+// AMM ID for NUKE/USDC liquidity pool
+const RAYDIUM_CPMM_PROGRAM_ID = new PublicKey('14nA4A3DMMXrpPBhrX1sLTG4dSQKCwPHnoe3k4P1nZbx');
 
 /**
  * Get reward wallet keypair

@@ -1,135 +1,230 @@
+/* Distribution page uses global page spacing */
 .distribution-page {
-  padding: 8.85rem 1.5rem 2rem;
-  max-width: 1280px;
+  padding: var(--page-padding-top) var(--page-padding-horizontal) var(--page-padding-bottom);
+  max-width: var(--page-max-width);
   margin: 0 auto;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap);
 }
 
 .dashboard-section {
-  margin-bottom: 3rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.dashboard-section:first-of-type {
-  margin-top: 1rem;
+.dashboard-section-card {
+  padding: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.dashboard-title {
-  font-size: 1.875rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.dashboard-subtitle {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 1rem;
-}
-
-.section-title {
+/* Distribution Page specific section title and subtitle - override global styles */
+/* Only apply to Distribution page, not Dashboard */
+.distribution-page .dashboard-section-card .section-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
-}
-}
-
-@media (min-width: 1024px) {
-  .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
+@media (min-width: 768px) {
+  .distribution-page .dashboard-section-card .section-title {
+    font-size: 1.5rem;
+    margin-bottom: 0 !important;
   }
 }
 
-.pubkey-cell {
-  font-family: monospace;
-  font-size: 0.875rem;
-  cursor: help;
-  color: var(--text-primary);
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.status-badge.status-pending {
-  background: rgba(245, 158, 11, 0.2);
-  color: var(--accent-warning);
-}
-
-.status-badge.status-failed {
-  background: rgba(239, 68, 68, 0.2);
-  color: var(--accent-danger);
-}
-
-.export-toolbar {
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.export-excel-btn {
-  padding: 0.75rem 1.5rem;
-  background: var(--accent-success);
-  color: var(--text-primary);
-  border: none;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.export-excel-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-/* Light theme adjustments */
-[data-theme='light'] .dashboard-subtitle {
+.distribution-page .dashboard-section-card .section-subtitle {
   color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+  margin-top: 0.0625rem !important; /* 1px - minimal spacing */
+  padding-top: 0 !important;
+  line-height: 1.2;
 }
 
-[data-theme='light'] .status-badge.status-pending {
-  background: rgba(245, 158, 11, 0.1);
+/* Distribution Stats - Similar to LP Summary */
+.distribution-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
 }
 
-[data-theme='light'] .status-badge.status-failed {
-  background: rgba(239, 68, 68, 0.1);
+@media (max-width: 1024px) {
+  .distribution-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
-  .distribution-page {
-    padding: 8.85rem 1rem 2rem;
+  .distribution-stats {
+    grid-template-columns: 1fr;
   }
+}
 
-  /* Stats grid responsive handled above */
+/* Distribution Filters Row - Single row layout */
+.distribution-filters-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap;
+}
 
-  .dashboard-title {
-    font-size: 1.5rem;
-  }
+[data-theme='light'] .distribution-filters-row {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
 
-  .export-toolbar {
-    justify-content: stretch;
-  }
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
 
-  .export-excel-btn {
-    width: 100%;
-  }
+.filter-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.filter-button {
+  padding: 0.5rem 1rem;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-button:hover {
+  background-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.filter-button.active {
+  background-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #818cf8;
+}
+
+[data-theme='light'] .filter-button {
+  background-color: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+[data-theme='light'] .filter-button:hover {
+  background-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+[data-theme='light'] .filter-button.active {
+  background-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #6366f1;
+}
+
+/* Export CSV Button */
+.filter-export {
+  margin-left: auto;
+}
+
+.export-csv-button {
+  padding: 0.5rem 1rem;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.export-csv-button:hover {
+  background-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+[data-theme='light'] .export-csv-button {
+  background-color: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+[data-theme='light'] .export-csv-button:hover {
+  background-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+/* Distribution Table Container */
+.distribution-table-container {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+/* Move table info to bottom */
+.distribution-table-container .table-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.distribution-table-container .table-toolbar {
+  order: 1;
+}
+
+.distribution-table-container .table-container {
+  order: 2;
+}
+
+.distribution-table-container .table-pagination {
+  order: 3;
+  margin-top: 1rem;
+}
+
+.distribution-table-container .table-info {
+  order: 4;
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  padding: 0.5rem 0;
+}
+
+/* Distribution ID Link */
+.distribution-id-link {
+  color: var(--accent-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.distribution-id-link:hover {
+  color: var(--accent-secondary);
+  text-decoration: underline;
+}
+
+.loading,
+.error-message {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.error-message {
+  color: var(--accent-danger);
 }
