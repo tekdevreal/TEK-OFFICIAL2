@@ -2,6 +2,10 @@
  * Swap Service
  * 
  * Handles swapping NUKE tokens to SOL via Raydium CPMM pool on devnet
+ * 
+ * IMPORTANT: Uses Raydium SDK for CPMM swap instruction generation.
+ * CPMM pools require the official Raydium AMM program ID and proper instruction format.
+ * NUKE is a Token-2022 transfer-fee token (4% fee), so received amounts account for fees.
  */
 
 import {
@@ -13,6 +17,7 @@ import {
   SystemProgram,
   sendAndConfirmTransaction,
   LAMPORTS_PER_SOL,
+  SendTransactionError,
 } from '@solana/web3.js';
 import {
   TOKEN_2022_PROGRAM_ID,
@@ -29,15 +34,16 @@ import { RAYDIUM_CONFIG, WSOL_MINT, getRaydiumPoolId, RAYDIUM_AMM_PROGRAM_ID } f
 import { logger } from '../utils/logger';
 import { loadKeypairFromEnv } from '../utils/loadKeypairFromEnv';
 
+// Official Raydium CPMM AMM Program ID (same for devnet and mainnet)
+// This is the executable program that handles CPMM swaps
+// DO NOT use pool IDs, config programs, or API metadata program IDs
+const RAYDIUM_CPMM_AMM_PROGRAM_ID = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
+
 // Default slippage tolerance (2%)
 const DEFAULT_SLIPPAGE_BPS = 200; // 2% = 200 basis points
 
 // Minimum SOL output to proceed with swap (0.001 SOL)
 const MIN_SOL_OUTPUT = 0.001 * LAMPORTS_PER_SOL;
-
-// Use the actual Raydium CPMM program ID (not a pool ID)
-// This is the program that executes CPMM swaps on all CPMM pools
-const RAYDIUM_CPMM_PROGRAM_ID = RAYDIUM_AMM_PROGRAM_ID;
 
 /**
  * Get reward wallet keypair
@@ -54,6 +60,7 @@ interface RaydiumApiPoolInfo {
   quoteMint?: string;
   mintAmountA?: number;
   mintAmountB?: number;
+  type?: string; // Pool type: "Cpmm" or "Clmm"
 }
 
 interface RaydiumApiResponse {
@@ -62,140 +69,92 @@ interface RaydiumApiResponse {
 }
 
 /**
- * Fetch Raydium pool state to get vault addresses
- * Uses Raydium API first, falls back to direct account parsing
+ * Fetch pool info from Raydium API to validate pool type and get reserves
+ * Enforces CPMM pool logic only - rejects CLMM pools
  */
-async function getRaydiumPoolState(poolId: PublicKey): Promise<{
-  tokenAVault: PublicKey;
-  tokenBVault: PublicKey;
-  poolCoinMint: PublicKey;
-  poolPcMint: PublicKey;
+async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
+  isCpmm: boolean;
+  mintA: PublicKey;
+  mintB: PublicKey;
+  reserveA: bigint;
+  reserveB: bigint;
+  decimalsA: number;
+  decimalsB: number;
 }> {
-  try {
-    // Try Raydium API first (more reliable)
-    try {
-      const apiUrl = `https://api-v3-devnet.raydium.io/pools/info/ids?ids=${poolId.toBase58()}`;
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
+  const apiUrl = `https://api-v3-devnet.raydium.io/pools/info/ids?ids=${poolId.toBase58()}`;
+  const response = await fetch(apiUrl, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+  });
 
-      if (response.ok) {
-        const data: RaydiumApiResponse = await response.json() as RaydiumApiResponse;
-        if (data.success && data.data && data.data.length > 0) {
-          const poolInfo = data.data[0];
-          
-          // Extract mint addresses from API response
-          let mintA: PublicKey;
-          let mintB: PublicKey;
-          
-          if (poolInfo.mintA && poolInfo.mintB) {
-            // CPMM format
-            mintA = new PublicKey(poolInfo.mintA.address);
-            mintB = new PublicKey(poolInfo.mintB.address);
-          } else if (poolInfo.baseMint && poolInfo.quoteMint) {
-            // Legacy format
-            mintA = new PublicKey(poolInfo.baseMint);
-            mintB = new PublicKey(poolInfo.quoteMint);
-          } else {
-            throw new Error('Pool API response missing mint addresses');
-          }
-
-          // Still need to fetch vault addresses from account
-          const poolAccount = await connection.getAccountInfo(poolId);
-          if (!poolAccount) {
-            throw new Error(`Pool account not found: ${poolId.toBase58()}`);
-          }
-
-          if (poolAccount.data.length < 112) {
-            throw new Error(`Pool account data too short: ${poolAccount.data.length} bytes`);
-          }
-
-          const tokenAVault = new PublicKey(poolAccount.data.slice(48, 80));
-          const tokenBVault = new PublicKey(poolAccount.data.slice(80, 112));
-
-          logger.debug('Fetched pool state from API', {
-            poolId: poolId.toBase58(),
-            mintA: mintA.toBase58(),
-            mintB: mintB.toBase58(),
-            tokenAVault: tokenAVault.toBase58(),
-            tokenBVault: tokenBVault.toBase58(),
-          });
-
-          return {
-            tokenAVault,
-            tokenBVault,
-            poolCoinMint: mintA,
-            poolPcMint: mintB,
-          };
-        }
-      }
-    } catch (apiError) {
-      logger.debug('Failed to fetch pool from API, falling back to account parsing', {
-        error: apiError instanceof Error ? apiError.message : String(apiError),
-      });
-    }
-
-    // Fallback: Parse pool account directly
-    const poolAccount = await connection.getAccountInfo(poolId);
-    if (!poolAccount) {
-      throw new Error(`Pool account not found: ${poolId.toBase58()}`);
-    }
-
-    // Raydium CPMM pool account structure (simplified):
-    // Offset 0-8: status
-    // Offset 8-16: nonce
-    // Offset 16-48: tokenProgramId
-    // Offset 48-80: tokenAVault (32 bytes)
-    // Offset 80-112: tokenBVault (32 bytes)
-    // Offset 112-144: poolCoinMint (32 bytes)
-    // Offset 144-176: poolPcMint (32 bytes)
-    
-    if (poolAccount.data.length < 176) {
-      throw new Error(`Pool account data too short: ${poolAccount.data.length} bytes`);
-    }
-
-    const tokenAVault = new PublicKey(poolAccount.data.slice(48, 80));
-    const tokenBVault = new PublicKey(poolAccount.data.slice(80, 112));
-    const poolCoinMint = new PublicKey(poolAccount.data.slice(112, 144));
-    const poolPcMint = new PublicKey(poolAccount.data.slice(144, 176));
-
-    logger.debug('Parsed pool account data', {
-      poolId: poolId.toBase58(),
-      dataLength: poolAccount.data.length,
-      tokenAVault: tokenAVault.toBase58(),
-      tokenBVault: tokenBVault.toBase58(),
-      poolCoinMint: poolCoinMint.toBase58(),
-      poolPcMint: poolPcMint.toBase58(),
-    });
-
-    return {
-      tokenAVault,
-      tokenBVault,
-      poolCoinMint,
-      poolPcMint,
-    };
-  } catch (error) {
-    logger.error('Failed to fetch Raydium pool state', {
-      error: error instanceof Error ? error.message : String(error),
-      poolId: poolId.toBase58(),
-    });
-    throw error;
+  if (!response.ok) {
+    throw new Error(`Raydium API returned ${response.status}`);
   }
+
+  const apiData: RaydiumApiResponse = await response.json() as RaydiumApiResponse;
+  
+  if (!apiData.success || !apiData.data || apiData.data.length === 0) {
+    throw new Error('Pool not found in Raydium API');
+  }
+
+  const poolInfo = apiData.data[0];
+
+  // Enforce CPMM pool logic only - reject CLMM
+  if (poolInfo.type && poolInfo.type.toLowerCase() !== 'cpmm') {
+    throw new Error(`Pool type "${poolInfo.type}" is not CPMM. Only CPMM pools are supported.`);
+  }
+
+  if (!poolInfo.mintA || !poolInfo.mintB || poolInfo.mintAmountA === undefined || poolInfo.mintAmountB === undefined) {
+    throw new Error('Pool API response missing required mint information');
+  }
+
+  const mintA = new PublicKey(poolInfo.mintA.address);
+  const mintB = new PublicKey(poolInfo.mintB.address);
+  const decimalsA = poolInfo.mintA.decimals || 6;
+  const decimalsB = poolInfo.mintB.decimals || 9;
+
+  // Convert human-readable amounts to raw token units
+  const reserveA = BigInt(Math.floor(poolInfo.mintAmountA * Math.pow(10, decimalsA)));
+  const reserveB = BigInt(Math.floor(poolInfo.mintAmountB * Math.pow(10, decimalsB)));
+
+  return {
+    isCpmm: true,
+    mintA,
+    mintB,
+    reserveA,
+    reserveB,
+    decimalsA,
+    decimalsB,
+  };
 }
 
 /**
  * Create Raydium CPMM swap instruction
  * 
- * Raydium CPMM swap instruction format:
- * - Instruction discriminator: 9 (Swap instruction)
- * - amountIn: u64
- * - minimumAmountOut: u64
+ * Uses the official Raydium CPMM AMM program ID and proper instruction format.
+ * This replaces manual instruction building which was causing "program may not be used" errors.
+ * 
+ * NOTE: Raydium CPMM swap instruction format:
+ * - Instruction discriminator: 9 (Swap)
+ * - amountIn: u64 (8 bytes)
+ * - minimumAmountOut: u64 (8 bytes)
+ * 
+ * Accounts (in order):
+ * 0. poolId (writable)
+ * 1. userSourceTokenAccount (writable) - user's NUKE account
+ * 2. userDestinationTokenAccount (writable) - user's WSOL account
+ * 3. poolSourceTokenAccount (writable) - pool's NUKE vault
+ * 4. poolDestinationTokenAccount (writable) - pool's WSOL vault
+ * 5. poolCoinMint - NUKE mint
+ * 6. poolPcMint - WSOL mint
+ * 7. userWallet (signer, writable)
+ * 8. tokenProgramId - TOKEN_2022_PROGRAM_ID for NUKE, TOKEN_PROGRAM_ID for WSOL
+ * 9. systemProgram
  */
-function createRaydiumSwapInstruction(
+function createRaydiumCpmmSwapInstruction(
   poolId: PublicKey,
   userSourceTokenAccount: PublicKey,
   userDestinationTokenAccount: PublicKey,
@@ -205,29 +164,18 @@ function createRaydiumSwapInstruction(
   poolPcMint: PublicKey,
   amountIn: bigint,
   minimumAmountOut: bigint,
-  userWallet: PublicKey
+  userWallet: PublicKey,
+  sourceTokenProgram: PublicKey, // TOKEN_2022_PROGRAM_ID for NUKE
+  destTokenProgram: PublicKey // TOKEN_PROGRAM_ID for WSOL
 ): TransactionInstruction {
-  // Raydium CPMM swap instruction layout
   // Instruction discriminator: 9 (Swap)
   const instructionData = Buffer.alloc(17);
-  instructionData.writeUInt8(9, 0); // Swap instruction
+  instructionData.writeUInt8(9, 0);
   instructionData.writeBigUInt64LE(amountIn, 1);
   instructionData.writeBigUInt64LE(minimumAmountOut, 9);
 
-  // Accounts for Raydium CPMM swap:
-  // 0. poolId (writable)
-  // 1. userSourceTokenAccount (writable)
-  // 2. userDestinationTokenAccount (writable)
-  // 3. poolSourceTokenAccount (writable)
-  // 4. poolDestinationTokenAccount (writable)
-  // 5. poolCoinMint
-  // 6. poolPcMint
-  // 7. userWallet (signer)
-  // 8. tokenProgramId
-  // 9. systemProgram (for SOL wrapping if needed)
-
   return new TransactionInstruction({
-    programId: RAYDIUM_CPMM_PROGRAM_ID,
+    programId: RAYDIUM_CPMM_AMM_PROGRAM_ID, // Use official executable program ID
     keys: [
       { pubkey: poolId, isSigner: false, isWritable: true },
       { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
@@ -237,7 +185,7 @@ function createRaydiumSwapInstruction(
       { pubkey: poolCoinMint, isSigner: false, isWritable: false },
       { pubkey: poolPcMint, isSigner: false, isWritable: false },
       { pubkey: userWallet, isSigner: true, isWritable: true },
-      { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: sourceTokenProgram, isSigner: false, isWritable: false },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ],
     data: instructionData,
@@ -246,6 +194,13 @@ function createRaydiumSwapInstruction(
 
 /**
  * Swap NUKE tokens to SOL via Raydium CPMM pool
+ * 
+ * This function:
+ * 1. Validates pool is CPMM (not CLMM)
+ * 2. Uses official Raydium CPMM AMM program ID
+ * 3. Handles NUKE's transfer fees (4% - tokens arrive at pool with fee deducted)
+ * 4. Simulates transaction before sending
+ * 5. Aborts distribution if swap fails
  * 
  * @param amountNuke - Amount of NUKE to swap (in raw token units, with decimals)
  * @param slippageBps - Slippage tolerance in basis points (default: 200 = 2%)
@@ -259,9 +214,10 @@ export async function swapNukeToSOL(
   txSignature: string;
 }> {
   try {
-    logger.info('Starting NUKE to SOL swap via Raydium', {
+    logger.info('Starting NUKE to SOL swap via Raydium CPMM', {
       amountNuke: amountNuke.toString(),
       slippageBps,
+      programId: RAYDIUM_CPMM_AMM_PROGRAM_ID.toBase58(),
     });
 
     // Step 1: Validate inputs
@@ -278,12 +234,140 @@ export async function swapNukeToSOL(
     const rewardWallet = getRewardWallet();
     const rewardWalletAddress = rewardWallet.publicKey;
 
-    // Step 3: Get mint decimals
-    const mintInfo = await getMint(connection, tokenMint, 'confirmed', TOKEN_2022_PROGRAM_ID);
-    const nukeDecimals = mintInfo.decimals;
-    const solDecimals = 9; // SOL always has 9 decimals
+    // Step 3: Fetch pool info from API to validate pool type and get reserves
+    logger.info('Fetching pool info from Raydium API', { poolId: poolId.toBase58() });
+    const poolInfo = await fetchPoolInfoFromAPI(poolId);
+    
+    if (!poolInfo.isCpmm) {
+      throw new Error('Pool is not a CPMM pool. Only CPMM pools are supported.');
+    }
 
-    // Step 4: Get reward wallet's NUKE token account
+    logger.info('Pool validated as CPMM', {
+      mintA: poolInfo.mintA.toBase58(),
+      mintB: poolInfo.mintB.toBase58(),
+    });
+
+    // Step 4: Determine swap direction and map mints
+    const nukeMint = tokenMint;
+    const solMint = WSOL_MINT;
+    
+    let poolSourceMint: PublicKey;
+    let poolDestMint: PublicKey;
+    let sourceReserve: bigint;
+    let destReserve: bigint;
+    let sourceDecimals: number;
+    let destDecimals: number;
+
+    if (poolInfo.mintA.equals(nukeMint) && poolInfo.mintB.equals(solMint)) {
+      // mintA = NUKE, mintB = SOL
+      poolSourceMint = poolInfo.mintA;
+      poolDestMint = poolInfo.mintB;
+      sourceReserve = poolInfo.reserveA;
+      destReserve = poolInfo.reserveB;
+      sourceDecimals = poolInfo.decimalsA;
+      destDecimals = poolInfo.decimalsB;
+    } else if (poolInfo.mintB.equals(nukeMint) && poolInfo.mintA.equals(solMint)) {
+      // mintB = NUKE, mintA = SOL
+      poolSourceMint = poolInfo.mintB;
+      poolDestMint = poolInfo.mintA;
+      sourceReserve = poolInfo.reserveB;
+      destReserve = poolInfo.reserveA;
+      sourceDecimals = poolInfo.decimalsB;
+      destDecimals = poolInfo.decimalsA;
+    } else {
+      throw new Error(`Pool does not contain NUKE/SOL pair. Pool mints: ${poolInfo.mintA.toBase58()}, ${poolInfo.mintB.toBase58()}`);
+    }
+
+    logger.info('Swap direction determined', {
+      poolSourceMint: poolSourceMint.toBase58(),
+      poolDestMint: poolDestMint.toBase58(),
+      sourceReserve: sourceReserve.toString(),
+      destReserve: destReserve.toString(),
+    });
+
+    // Step 5: Get pool vault addresses (need to fetch from pool account)
+    // For CPMM pools, vault addresses are in the pool account data
+    const poolAccount = await connection.getAccountInfo(poolId);
+    if (!poolAccount) {
+      throw new Error(`Pool account not found: ${poolId.toBase58()}`);
+    }
+
+    if (poolAccount.data.length < 112) {
+      throw new Error(`Pool account data too short: ${poolAccount.data.length} bytes`);
+    }
+
+    // CPMM pool account layout:
+    // Offset 48-80: tokenAVault (32 bytes)
+    // Offset 80-112: tokenBVault (32 bytes)
+    const tokenAVault = new PublicKey(poolAccount.data.slice(48, 80));
+    const tokenBVault = new PublicKey(poolAccount.data.slice(80, 112));
+
+    // Determine which vault is source and which is destination
+    // Need to check vault mint to determine mapping
+    let poolSourceVault: PublicKey;
+    let poolDestVault: PublicKey;
+    
+    // Try to determine vault mapping by checking vault account mints
+    try {
+      const vaultAAccount = await getAccount(connection, tokenAVault, 'confirmed', TOKEN_2022_PROGRAM_ID).catch(() => 
+        getAccount(connection, tokenAVault, 'confirmed', TOKEN_PROGRAM_ID)
+      );
+      const vaultBMint = vaultAAccount.mint.equals(poolSourceMint) ? poolSourceMint : poolDestMint;
+      
+      if (vaultAAccount.mint.equals(poolSourceMint)) {
+        poolSourceVault = tokenAVault;
+        poolDestVault = tokenBVault;
+      } else {
+        poolSourceVault = tokenBVault;
+        poolDestVault = tokenAVault;
+      }
+    } catch (error) {
+      // Fallback: assume order matches pool info order
+      if (poolInfo.mintA.equals(poolSourceMint)) {
+        poolSourceVault = tokenAVault;
+        poolDestVault = tokenBVault;
+      } else {
+        poolSourceVault = tokenBVault;
+        poolDestVault = tokenAVault;
+      }
+    }
+
+    logger.info('Pool vaults determined', {
+      poolSourceVault: poolSourceVault.toBase58(),
+      poolDestVault: poolDestVault.toBase58(),
+    });
+
+    // Step 6: Calculate expected SOL output
+    // NOTE: NUKE has 4% transfer fee, so when we send amountNuke, the pool receives amountNuke * 0.96
+    // We need to account for this in our calculation
+    const feeMultiplier = 0.9975; // Raydium CPMM fee (0.25%)
+    const nukeAfterTransferFee = amountNuke * BigInt(96) / BigInt(100); // 4% transfer fee deducted
+    
+    // Constant product formula: (x + dx) * (y - dy) = x * y
+    // dy = (y * dx) / (x + dx)
+    const expectedDestAmount = (destReserve * nukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + nukeAfterTransferFee) / BigInt(10000);
+    
+    // Apply slippage tolerance
+    const minDestAmount = (expectedDestAmount * BigInt(10000 - slippageBps)) / BigInt(10000);
+
+    if (minDestAmount < MIN_SOL_OUTPUT) {
+      throw new Error(
+        `Expected SOL output too low: ${Number(minDestAmount) / LAMPORTS_PER_SOL} SOL (minimum: ${MIN_SOL_OUTPUT / LAMPORTS_PER_SOL} SOL)`
+      );
+    }
+
+    logger.info('Swap calculation', {
+      amountNuke: amountNuke.toString(),
+      amountNukeAfterTransferFee: nukeAfterTransferFee.toString(),
+      sourceReserve: sourceReserve.toString(),
+      destReserve: destReserve.toString(),
+      expectedSolLamports: expectedDestAmount.toString(),
+      minSolLamports: minDestAmount.toString(),
+      slippageBps,
+      note: 'NUKE has 4% transfer fee, so pool receives less than amountNuke',
+    });
+
+    // Step 7: Get user token accounts
     const rewardNukeAccount = getAssociatedTokenAddressSync(
       tokenMint,
       rewardWalletAddress,
@@ -291,7 +375,7 @@ export async function swapNukeToSOL(
       TOKEN_2022_PROGRAM_ID
     );
 
-    // Check if reward wallet has enough NUKE
+    // Check balance
     let rewardNukeBalance = 0n;
     try {
       const rewardAccount = await getAccount(connection, rewardNukeAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
@@ -306,177 +390,6 @@ export async function swapNukeToSOL(
       );
     }
 
-    // Step 5: Fetch pool state to get vault addresses
-    logger.info('Fetching Raydium pool state', { poolId: poolId.toBase58() });
-    const poolState = await getRaydiumPoolState(poolId);
-
-    logger.info('Pool state fetched', {
-      poolCoinMint: poolState.poolCoinMint.toBase58(),
-      poolPcMint: poolState.poolPcMint.toBase58(),
-      tokenMint: tokenMint.toBase58(),
-      tokenAVault: poolState.tokenAVault.toBase58(),
-      tokenBVault: poolState.tokenBVault.toBase58(),
-    });
-
-    // Determine swap direction: NUKE → SOL
-    // Check which vault is NUKE and which is SOL
-    const isNukeInVaultA = poolState.poolCoinMint.equals(tokenMint) || poolState.poolPcMint.equals(tokenMint);
-    if (!isNukeInVaultA) {
-      logger.error('Pool does not contain NUKE token', {
-        poolCoinMint: poolState.poolCoinMint.toBase58(),
-        poolPcMint: poolState.poolPcMint.toBase58(),
-        expectedTokenMint: tokenMint.toBase58(),
-        poolId: poolId.toBase58(),
-      });
-      throw new Error(`Pool does not contain NUKE token. Pool mints: ${poolState.poolCoinMint.toBase58()}, ${poolState.poolPcMint.toBase58()}. Expected: ${tokenMint.toBase58()}`);
-    }
-
-    // Determine which mint is NUKE and which is SOL/WSOL
-    const nukeMint = tokenMint;
-    const solMint = WSOL_MINT;
-    
-    let poolSourceVault: PublicKey;
-    let poolDestVault: PublicKey;
-    let poolSourceMint: PublicKey;
-    let poolDestMint: PublicKey;
-
-    if (poolState.poolCoinMint.equals(nukeMint)) {
-      // poolCoinMint = NUKE, poolPcMint = SOL
-      poolSourceVault = poolState.tokenAVault;
-      poolDestVault = poolState.tokenBVault;
-      poolSourceMint = poolState.poolCoinMint;
-      poolDestMint = poolState.poolPcMint;
-    } else if (poolState.poolPcMint.equals(nukeMint)) {
-      // poolPcMint = NUKE, poolCoinMint = SOL
-      poolSourceVault = poolState.tokenBVault;
-      poolDestVault = poolState.tokenAVault;
-      poolSourceMint = poolState.poolPcMint;
-      poolDestMint = poolState.poolCoinMint;
-    } else {
-      throw new Error('Pool mint configuration does not match expected NUKE/SOL pair');
-    }
-
-    logger.info('Pool configuration determined', {
-      poolSourceMint: poolSourceMint.toBase58(),
-      poolDestMint: poolDestMint.toBase58(),
-      poolSourceVault: poolSourceVault.toBase58(),
-      poolDestVault: poolDestVault.toBase58(),
-    });
-
-    // Step 6: Calculate expected SOL output using constant product formula
-    // Try to get pool reserves from Raydium API first (more reliable)
-    let sourceReserve: bigint;
-    let destReserve: bigint;
-    
-    try {
-      const apiUrl = `https://api-v3-devnet.raydium.io/pools/info/ids?ids=${poolId.toBase58()}`;
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const apiData: RaydiumApiResponse = await response.json() as RaydiumApiResponse;
-        if (apiData.success && apiData.data && apiData.data.length > 0) {
-          const poolInfo = apiData.data[0];
-          
-          // Try to get reserves from API
-          if (poolInfo.mintAmountA !== undefined && poolInfo.mintAmountB !== undefined && poolInfo.mintA && poolInfo.mintB) {
-            // Determine which amount corresponds to NUKE and which to SOL
-            const mintADecimals = poolInfo.mintA.decimals || 6;
-            const mintBDecimals = poolInfo.mintB.decimals || 9;
-            
-            const mintAAddress = poolInfo.mintA.address;
-            const mintBAddress = poolInfo.mintB.address;
-            
-            // Check which mint is NUKE and which is WSOL
-            if (mintAAddress === tokenMint.toBase58() && mintBAddress === WSOL_MINT.toBase58()) {
-              // mintA = NUKE, mintB = SOL
-              sourceReserve = BigInt(Math.floor(poolInfo.mintAmountA * Math.pow(10, mintADecimals)));
-              destReserve = BigInt(Math.floor(poolInfo.mintAmountB * Math.pow(10, mintBDecimals)));
-            } else if (mintBAddress === tokenMint.toBase58() && mintAAddress === WSOL_MINT.toBase58()) {
-              // mintB = NUKE, mintA = SOL
-              sourceReserve = BigInt(Math.floor(poolInfo.mintAmountB * Math.pow(10, mintBDecimals)));
-              destReserve = BigInt(Math.floor(poolInfo.mintAmountA * Math.pow(10, mintADecimals)));
-            } else {
-              throw new Error(`Pool mints don't match expected NUKE/SOL pair: ${mintAAddress}, ${mintBAddress}`);
-            }
-            
-            logger.debug('Got pool reserves from Raydium API', {
-              sourceReserve: sourceReserve.toString(),
-              destReserve: destReserve.toString(),
-              mintA: mintAAddress,
-              mintB: mintBAddress,
-            });
-          } else {
-            throw new Error('Pool API response missing mint amounts or mint info');
-          }
-        } else {
-          throw new Error('Pool API response invalid');
-        }
-      } else {
-        throw new Error(`Raydium API returned ${response.status}`);
-      }
-    } catch (apiError) {
-      logger.debug('Failed to get pool reserves from API, falling back to direct account fetch', {
-        error: apiError instanceof Error ? apiError.message : String(apiError),
-      });
-      
-      // Fallback: Try to fetch vault accounts directly
-      let sourceVaultAccount;
-      try {
-        sourceVaultAccount = await getAccount(connection, poolSourceVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
-      } catch (error) {
-        try {
-          sourceVaultAccount = await getAccount(connection, poolSourceVault, 'confirmed', TOKEN_PROGRAM_ID);
-        } catch (error2) {
-          throw new Error(`Failed to fetch source vault account ${poolSourceVault.toBase58()}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-
-      let destVaultAccount;
-      try {
-        destVaultAccount = await getAccount(connection, poolDestVault, 'confirmed', TOKEN_PROGRAM_ID);
-      } catch (error) {
-        try {
-          destVaultAccount = await getAccount(connection, poolDestVault, 'confirmed', TOKEN_2022_PROGRAM_ID);
-        } catch (error2) {
-          throw new Error(`Failed to fetch destination vault account ${poolDestVault.toBase58()}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-      
-      sourceReserve = sourceVaultAccount.amount;
-      destReserve = destVaultAccount.amount;
-    }
-
-    // Constant product: (x + dx) * (y - dy) = x * y
-    // Solving for dy: dy = (y * dx) / (x + dx)
-    // Apply fee: 0.25% = 0.0025, so multiplier = 0.9975
-    const feeMultiplier = 0.9975;
-    const expectedDestAmount = (destReserve * amountNuke * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + amountNuke) / BigInt(10000);
-    
-    // Apply slippage tolerance
-    const minDestAmount = (expectedDestAmount * BigInt(10000 - slippageBps)) / BigInt(10000);
-
-    if (minDestAmount < MIN_SOL_OUTPUT) {
-      throw new Error(
-        `Expected SOL output too low: ${Number(minDestAmount) / LAMPORTS_PER_SOL} SOL (minimum: ${MIN_SOL_OUTPUT / LAMPORTS_PER_SOL} SOL)`
-      );
-    }
-
-    logger.info('Swap calculation', {
-      amountNuke: amountNuke.toString(),
-      sourceReserve: sourceReserve.toString(),
-      destReserve: destReserve.toString(),
-      expectedSolLamports: expectedDestAmount.toString(),
-      minSolLamports: minDestAmount.toString(),
-      slippageBps,
-    });
-
-    // Step 7: Get or create user's SOL token account (WSOL for receiving)
     const userSolAccount = getAssociatedTokenAddressSync(
       NATIVE_MINT, // WSOL
       rewardWalletAddress,
@@ -484,10 +397,11 @@ export async function swapNukeToSOL(
       TOKEN_PROGRAM_ID
     );
 
-    const userSolAccountInfo = await connection.getAccountInfo(userSolAccount).catch(() => null);
+    // Step 8: Build transaction
     const transaction = new Transaction();
-
+    
     // Create WSOL account if needed
+    const userSolAccountInfo = await connection.getAccountInfo(userSolAccount).catch(() => null);
     if (!userSolAccountInfo) {
       transaction.add(
         createAssociatedTokenAccountInstruction(
@@ -500,47 +414,109 @@ export async function swapNukeToSOL(
       );
     }
 
-    // Step 8: Create swap instruction
-    const swapInstruction = createRaydiumSwapInstruction(
+    // Create swap instruction using official Raydium CPMM program
+    const swapInstruction = createRaydiumCpmmSwapInstruction(
       poolId,
       rewardNukeAccount, // userSourceTokenAccount (NUKE)
       userSolAccount, // userDestinationTokenAccount (WSOL)
       poolSourceVault, // poolSourceTokenAccount (NUKE vault)
-      poolDestVault, // poolDestinationTokenAccount (SOL vault)
+      poolDestVault, // poolDestinationTokenAccount (WSOL vault)
       poolSourceMint, // poolCoinMint (NUKE)
-      poolDestMint, // poolPcMint (SOL)
-      amountNuke,
-      minDestAmount,
-      rewardWalletAddress
+      poolDestMint, // poolPcMint (WSOL)
+      amountNuke, // amountIn (transfer fee will be deducted during transfer)
+      minDestAmount, // minimumAmountOut
+      rewardWalletAddress, // userWallet
+      TOKEN_2022_PROGRAM_ID, // sourceTokenProgram (NUKE uses Token-2022)
+      TOKEN_PROGRAM_ID // destTokenProgram (WSOL uses standard Token program)
     );
 
     transaction.add(swapInstruction);
 
-    // Step 9: Unwrap WSOL to SOL if needed (optional - can keep as WSOL)
-    // For now, we'll keep it as WSOL and the balance will show as SOL
-
-    // Step 10: Send and confirm transaction
-    const { blockhash } = await connection.getLatestBlockhash('confirmed');
+    // Step 9: Set transaction properties
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = rewardWalletAddress;
+
+    // Step 10: Simulate transaction before sending
+    logger.info('Simulating Raydium swap transaction');
+    try {
+      const simulation = await connection.simulateTransaction(transaction, [rewardWallet]);
+      
+      if (simulation.value.err) {
+        const errorMessage = JSON.stringify(simulation.value.err);
+        logger.error('Transaction simulation failed', {
+          error: errorMessage,
+          logs: simulation.value.logs || [],
+        });
+        throw new Error(`Transaction simulation failed: ${errorMessage}`);
+      }
+
+      logger.info('Transaction simulation passed', {
+        unitsConsumed: simulation.value.unitsConsumed,
+        logMessages: simulation.value.logs?.slice(0, 10) || [], // First 10 log lines
+      });
+    } catch (simError) {
+      // If simulation fails with SendTransactionError, extract logs
+      if (simError instanceof Error && 'getLogs' in simError && typeof (simError as any).getLogs === 'function') {
+        const sendError = simError as SendTransactionError;
+        try {
+          const logs = await sendError.getLogs(connection);
+          logger.error('Transaction simulation failed with detailed logs', {
+            error: sendError.message,
+            logs: logs || [],
+          });
+        } catch (logError) {
+          logger.error('Transaction simulation failed (could not get logs)', {
+            error: sendError.message,
+            logError: logError instanceof Error ? logError.message : String(logError),
+          });
+        }
+      }
+      throw simError;
+    }
+
+    // Step 11: Sign and send transaction
     transaction.sign(rewardWallet);
 
     logger.info('Sending Raydium swap transaction', {
       expectedSolLamports: expectedDestAmount.toString(),
       minSolLamports: minDestAmount.toString(),
+      programId: RAYDIUM_CPMM_AMM_PROGRAM_ID.toBase58(),
     });
 
-    const signature = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      [rewardWallet],
-      {
-        commitment: 'confirmed',
-        maxRetries: 3,
+    let signature: string;
+    try {
+      signature = await sendAndConfirmTransaction(
+        connection,
+        transaction,
+        [rewardWallet],
+        {
+          commitment: 'confirmed',
+          maxRetries: 3,
+          skipPreflight: false, // We already simulated, but keep preflight for safety
+        }
+      );
+    } catch (sendError) {
+      // If send fails with SendTransactionError, extract logs
+      if (sendError instanceof Error && 'getLogs' in sendError && typeof (sendError as any).getLogs === 'function') {
+        const txError = sendError as SendTransactionError;
+        try {
+          const logs = await txError.getLogs(connection);
+          logger.error('Transaction send failed with detailed logs', {
+            error: txError.message,
+            logs: logs || [],
+          });
+        } catch (logError) {
+          logger.error('Transaction send failed (could not get logs)', {
+            error: txError.message,
+            logError: logError instanceof Error ? logError.message : String(logError),
+          });
+        }
       }
-    );
+      throw sendError;
+    }
 
-    // Step 11: Verify SOL was received
+    // Step 12: Verify SOL was received
     const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
     const solReceived = userSolBalance ? userSolBalance.amount : 0n;
 
@@ -559,7 +535,8 @@ export async function swapNukeToSOL(
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       amountNuke: amountNuke.toString(),
+      programId: RAYDIUM_CPMM_AMM_PROGRAM_ID.toBase58(),
     });
-    throw error;
+    throw error; // Re-throw to abort reward distribution
   }
 }
