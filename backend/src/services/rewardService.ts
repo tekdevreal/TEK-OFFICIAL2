@@ -705,8 +705,33 @@ export function getPendingPayouts(): PendingPayout[] {
   return state.pendingPayouts || [];
 }
 
+// Cache for holders with status (5 minute TTL, same as token holders cache)
+interface HoldersWithStatusCache {
+  holders: Array<{
+    pubkey: string;
+    balance: string;
+    usdValue: number;
+    eligibilityStatus: 'eligible' | 'excluded' | 'blacklisted';
+    lastReward: number | null;
+    retryCount: number;
+  }>;
+  timestamp: number;
+}
+
+let cachedHoldersWithStatus: HoldersWithStatusCache | null = null;
+const HOLDERS_STATUS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let pendingHoldersWithStatusFetch: Promise<Array<{
+  pubkey: string;
+  balance: string;
+  usdValue: number;
+  eligibilityStatus: 'eligible' | 'excluded' | 'blacklisted';
+  lastReward: number | null;
+  retryCount: number;
+}>> | null = null;
+
 /**
  * Get all holders with their eligibility status and reward info
+ * Cached for 5 minutes to prevent excessive RPC calls
  */
 export async function getAllHoldersWithStatus(): Promise<Array<{
   pubkey: string;
@@ -716,89 +741,133 @@ export async function getAllHoldersWithStatus(): Promise<Array<{
   lastReward: number | null;
   retryCount: number;
 }>> {
-  try {
-    // Fetch all data in parallel to optimize performance
-    const [allHolders, priceData] = await Promise.all([
-      getTokenHolders(),
-      getNUKEPriceSOL().catch(() => {
-        logger.warn('Failed to fetch price for holder status');
-        return { price: null, source: null };
-      }),
-    ]);
-    
-    const tokenPriceSOL = priceData.price;
-    if (tokenPriceSOL === null) {
-      logger.warn('Token price unavailable, using fallback for holder status');
-      // Return holders with zero values if price unavailable
-      return allHolders.map(holder => ({
-        pubkey: holder.owner,
-        balance: holder.amount,
-        usdValue: 0,
-        eligibilityStatus: 'excluded' as const,
-        lastReward: getLastReward(holder.owner),
-        retryCount: getRetryCount(holder.owner),
-      }));
-    }
-    
-    // Calculate eligibility inline instead of calling getEligibleHolders() which fetches holders again
-    const minHoldingUSD = REWARD_CONFIG.MIN_HOLDING_USD;
-    const SOL_TO_USD_RATE = 100; // Devnet conversion rate
-    const minHoldingSOL = minHoldingUSD / SOL_TO_USD_RATE;
-    const eligiblePubkeys = new Set<string>();
-    
-    // Determine eligibility for each holder without fetching again
-    for (const holder of allHolders) {
-      // Skip blacklisted addresses
-      if (isBlacklisted(holder.owner)) {
-        continue;
-      }
-      
-      // Calculate SOL value
-      const tokenAmount = Number(holder.amount) / Math.pow(10, holder.decimals);
-      const holdingSOL = tokenAmount * tokenPriceSOL;
-      
-      // Check if eligible (using SOL comparison)
-      if (holdingSOL >= minHoldingSOL) {
-        eligiblePubkeys.add(holder.owner);
-      }
-    }
-    
-    // Map holders to status
-    const holdersWithStatus = allHolders.map(holder => {
-      const isBlacklistedAddr = isBlacklisted(holder.owner);
-      const isEligible = eligiblePubkeys.has(holder.owner);
-      
-      let eligibilityStatus: 'eligible' | 'excluded' | 'blacklisted';
-      if (isBlacklistedAddr) {
-        eligibilityStatus = 'blacklisted';
-      } else if (isEligible) {
-        eligibilityStatus = 'eligible';
-      } else {
-        eligibilityStatus = 'excluded';
-      }
-      
-      // Calculate USD value for all holders (for compatibility, using fixed conversion)
-      const tokenAmount = Number(holder.amount) / Math.pow(10, holder.decimals);
-      const holdingSOL = tokenAmount * tokenPriceSOL;
-      const usdValue = holdingSOL * SOL_TO_USD_RATE;
-      
-      return {
-        pubkey: holder.owner,
-        balance: holder.amount,
-        usdValue,
-        eligibilityStatus,
-        lastReward: getLastReward(holder.owner),
-        retryCount: getRetryCount(holder.owner),
-      };
+  // Check cache first
+  const now = Date.now();
+  if (cachedHoldersWithStatus && (now - cachedHoldersWithStatus.timestamp) < HOLDERS_STATUS_CACHE_TTL) {
+    logger.debug('Using cached holders with status', {
+      count: cachedHoldersWithStatus.holders.length,
+      cachedAt: new Date(cachedHoldersWithStatus.timestamp).toISOString(),
     });
+    return cachedHoldersWithStatus.holders;
+  }
+
+  // If there's already a pending fetch, wait for it
+  if (pendingHoldersWithStatusFetch) {
+    logger.debug('Holders with status fetch already in progress, waiting...');
+    return pendingHoldersWithStatusFetch;
+  }
+
+  // Create new fetch promise
+  pendingHoldersWithStatusFetch = (async () => {
+    const fetchStartTime = Date.now();
+    try {
+      // Fetch all data in parallel to optimize performance
+      const [allHolders, priceData] = await Promise.all([
+        getTokenHolders(), // This already has its own cache/cooldown
+        getNUKEPriceSOL().catch(() => {
+          logger.warn('Failed to fetch price for holder status');
+          return { price: null, source: null };
+        }),
+      ]);
+    
+      const tokenPriceSOL = priceData.price;
+      if (tokenPriceSOL === null) {
+        logger.warn('Token price unavailable, using fallback for holder status');
+        // Return holders with zero values if price unavailable
+        const holdersWithStatusFallback = allHolders.map(holder => ({
+          pubkey: holder.owner,
+          balance: holder.amount,
+          usdValue: 0,
+          eligibilityStatus: 'excluded' as const,
+          lastReward: getLastReward(holder.owner),
+          retryCount: getRetryCount(holder.owner),
+        }));
+        
+        // Update cache
+        cachedHoldersWithStatus = {
+          holders: holdersWithStatusFallback,
+          timestamp: fetchStartTime,
+        };
+        
+        return holdersWithStatusFallback;
+      }
+      
+      // Calculate eligibility inline instead of calling getEligibleHolders() which fetches holders again
+      const minHoldingUSD = REWARD_CONFIG.MIN_HOLDING_USD;
+      const SOL_TO_USD_RATE = 100; // Devnet conversion rate
+      const minHoldingSOL = minHoldingUSD / SOL_TO_USD_RATE;
+      const eligiblePubkeys = new Set<string>();
+      
+      // Determine eligibility for each holder without fetching again
+      for (const holder of allHolders) {
+        // Skip blacklisted addresses
+        if (isBlacklisted(holder.owner)) {
+          continue;
+        }
+        
+        // Calculate SOL value
+        const tokenAmount = Number(holder.amount) / Math.pow(10, holder.decimals);
+        const holdingSOL = tokenAmount * tokenPriceSOL;
+        
+        // Check if eligible (using SOL comparison)
+        if (holdingSOL >= minHoldingSOL) {
+          eligiblePubkeys.add(holder.owner);
+        }
+      }
+      
+      // Map holders to status
+      const holdersWithStatus = allHolders.map(holder => {
+        const isBlacklistedAddr = isBlacklisted(holder.owner);
+        const isEligible = eligiblePubkeys.has(holder.owner);
+        
+        let eligibilityStatus: 'eligible' | 'excluded' | 'blacklisted';
+        if (isBlacklistedAddr) {
+          eligibilityStatus = 'blacklisted';
+        } else if (isEligible) {
+          eligibilityStatus = 'eligible';
+        } else {
+          eligibilityStatus = 'excluded';
+        }
+        
+        // Calculate USD value for all holders (for compatibility, using fixed conversion)
+        const tokenAmount = Number(holder.amount) / Math.pow(10, holder.decimals);
+        const holdingSOL = tokenAmount * tokenPriceSOL;
+        const usdValue = holdingSOL * SOL_TO_USD_RATE;
+        
+        return {
+          pubkey: holder.owner,
+          balance: holder.amount,
+          usdValue,
+          eligibilityStatus,
+          lastReward: getLastReward(holder.owner),
+          retryCount: getRetryCount(holder.owner),
+        };
+      });
+      
+      // Update cache
+      cachedHoldersWithStatus = {
+        holders: holdersWithStatus,
+        timestamp: fetchStartTime,
+      };
+
+      logger.debug('Holders with status cached', {
+        count: holdersWithStatus.length,
+        cachedAt: new Date(fetchStartTime).toISOString(),
+      });
     
     return holdersWithStatus;
-  } catch (error) {
-    logger.error('Error getting all holders with status', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
+    } catch (error) {
+      logger.error('Error getting all holders with status', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      // Clear pending fetch
+      pendingHoldersWithStatusFetch = null;
+    }
+  })();
+
+  return pendingHoldersWithStatusFetch;
 }
 
 /**

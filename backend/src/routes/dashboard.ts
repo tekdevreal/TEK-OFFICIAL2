@@ -1,11 +1,9 @@
 import { Router, Request, Response } from 'express';
 import {
   getAllHoldersWithStatus,
-  getEligibleHolders,
   getLastReward,
 } from '../services/rewardService';
 import { getSchedulerStatus } from '../scheduler/rewardScheduler';
-import { getTokenHolders } from '../services/solanaService';
 import { getNUKEPriceSOL, getNUKEPriceUSD, getPriceDiagnostics } from '../services/priceService';
 import { getRaydiumData } from '../services/raydiumService';
 import { isBlacklisted } from '../config/blacklist';
@@ -156,37 +154,38 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
     // Get scheduler status
     const schedulerStatus = getSchedulerStatus();
 
-    // Get all holders and eligible holders (with graceful error handling and deduplication)
-    let allHolders: Array<{ address: string; owner: string; amount: string; decimals: number }> = [];
+    // Get holders with status (this function has built-in caching and uses cached getTokenHolders)
+    // This prevents redundant RPC calls - all holder data comes from one cached source
+    let holdersWithStatus: Array<{
+      pubkey: string;
+      balance: string;
+      usdValue: number;
+      eligibilityStatus: 'eligible' | 'excluded' | 'blacklisted';
+      lastReward: number | null;
+      retryCount: number;
+    }> = [];
     let totalHoldersFallback: number | null = null;
-    
+
     try {
-      // Use deduplication to prevent concurrent requests
-      allHolders = await getDeduplicatedRequest('tokenHolders', () => getTokenHolders());
+      // Use cached getAllHoldersWithStatus which internally uses cached getTokenHolders
+      holdersWithStatus = await getAllHoldersWithStatus();
+      totalHoldersFallback = holdersWithStatus.length;
     } catch (error) {
-      // If we get a rate limit error, try to use cached data from rewardService
+      // If we get a rate limit error, return null and let frontend handle it
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes('429') || errorMessage.includes('Too Many Requests') || errorMessage.includes('max usage reached')) {
-        rateLimitLogger.logRateLimit('Rate limit error in dashboard/rewards, using fallback data', {
+        rateLimitLogger.logRateLimit('Rate limit error in dashboard/rewards, holders unavailable', {
           query: req.query,
         });
         rateLimitLogger.recordRateLimitError();
-        // Try to get holder count from getAllHoldersWithStatus which might have cached data
-        try {
-          const holdersWithStatus = await getAllHoldersWithStatus();
-          totalHoldersFallback = holdersWithStatus.length;
-        } catch (fallbackError) {
-          // If that also fails, we'll return null and let frontend handle it
-          logger.debug('Could not get fallback holder count');
-        }
-        // Keep empty array - the response will use fallback count if available
-        allHolders = [];
+        // Keep empty array - will use fallback count which is null
       } else {
         throw error;
       }
     }
-    
-    const eligibleHolders = await getDeduplicatedRequest('eligibleHolders', () => getEligibleHolders()).catch(() => []);
+
+    // Extract eligible holders from holders with status (no additional fetch needed)
+    const eligibleHolders = holdersWithStatus.filter(h => h.eligibilityStatus === 'eligible');
     
     // Fetch Raydium-based pricing with strong fallbacks
     const [tokenPriceSOLResult, tokenPriceUSDResult, raydiumData] = await Promise.all([
@@ -210,13 +209,10 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
     const taxStats = TaxService.getTaxStatistics();
     const totalSOLDistributed = parseFloat(taxStats.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
 
-    // Calculate statistics
-    // Use fallback count if we have it, otherwise use actual allHolders array length
-    const actualHolderCount = totalHoldersFallback !== null ? totalHoldersFallback : allHolders.length;
-    const blacklistedCount = totalHoldersFallback !== null 
-      ? 0 // Can't calculate if we don't have holder list
-      : allHolders.filter(h => isBlacklisted(h.owner)).length;
-    const excludedCount = actualHolderCount - eligibleHolders.length - blacklistedCount;
+    // Calculate statistics from holders with status
+    const actualHolderCount = holdersWithStatus.length;
+    const blacklistedCount = holdersWithStatus.filter(h => h.eligibilityStatus === 'blacklisted').length;
+    const excludedCount = holdersWithStatus.filter(h => h.eligibilityStatus === 'excluded').length;
 
     // Filter by pubkey if provided (for eligible holders only - no pending payouts)
     let filteredEligible = eligibleHolders;
@@ -229,7 +225,7 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
       nextRun: schedulerStatus.nextRun ? new Date(schedulerStatus.nextRun).toISOString() : null,
       isRunning: schedulerStatus.isRunning,
       statistics: {
-        totalHolders: totalHoldersFallback !== null ? totalHoldersFallback : allHolders.length,
+        totalHolders: actualHolderCount,
         eligibleHolders: eligibleHolders.length,
         excludedHolders: excludedCount,
         blacklistedHolders: blacklistedCount,
@@ -440,8 +436,13 @@ router.get('/diagnostics', async (req: Request, res: Response): Promise<void> =>
       timestamp: new Date().toISOString(),
     });
 
-    // Get token holders
-    const allHolders = await getTokenHolders();
+    // Get holders with status (uses cached data)
+    const allHoldersWithStatus = await getAllHoldersWithStatus().catch(() => []);
+    const allHolders = allHoldersWithStatus.map((h) => ({
+      owner: h.pubkey,
+      amount: h.balance,
+      address: h.pubkey,
+    }));
     
     // Get scheduler status
     const schedulerStatus = getSchedulerStatus();
@@ -449,8 +450,8 @@ router.get('/diagnostics', async (req: Request, res: Response): Promise<void> =>
     // Payouts are now immediate via tax distribution (no pending queue)
     const pendingPayouts: any[] = [];
     
-    // Get eligible holders
-    const eligibleHolders = await getEligibleHolders().catch(() => []);
+    // Extract eligible holders from cached data (no additional fetch)
+    const eligibleHolders = allHoldersWithStatus.filter((h) => h.eligibilityStatus === 'eligible');
     
     // Temporarily removed token price fetching for debugging
     // const tokenPriceSOL = await getNUKEPriceSOL().catch(() => ({ price: null, source: null }));
@@ -464,7 +465,7 @@ router.get('/diagnostics', async (req: Request, res: Response): Promise<void> =>
           total: allHolders.length,
           eligible: eligibleHolders.length,
           pendingPayouts: pendingPayouts.length,
-          sample: allHolders.slice(0, 5).map(h => ({
+          sample: allHolders.slice(0, 5).map((h) => ({
             owner: h.owner,
             balance: h.amount,
             address: h.address,
@@ -529,21 +530,15 @@ router.get('/token-stats', async (req: Request, res: Response): Promise<void> =>
       lastDistribution = new Date(taxStats.lastTaxDistribution).toISOString();
     }
 
-    // Get total holders
+    // Get total holders from cached getAllHoldersWithStatus
     let totalHolders = 0;
     try {
-      const allHolders = await getDeduplicatedRequest('tokenHolders', () => getTokenHolders());
-      totalHolders = allHolders.length;
+      const holdersWithStatus = await getAllHoldersWithStatus();
+      totalHolders = holdersWithStatus.length;
     } catch (error) {
-      // Fallback: try to get from reward service
-      try {
-        const holders = await getDeduplicatedRequest('allHolders', () => getAllHoldersWithStatus());
-        totalHolders = holders.length;
-      } catch (fallbackError) {
-        logger.warn('Could not fetch total holders for token-stats', {
-          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-        });
-      }
+      logger.warn('Could not fetch total holders for token-stats', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     // Get DEX volume 24h (placeholder for now - can be enhanced with real data)

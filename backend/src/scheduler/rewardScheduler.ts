@@ -3,11 +3,10 @@ import { logger } from '../utils/logger';
 import {
   getLastRewardRun,
   setLastRewardRun,
-  getEligibleHolders,
+  getAllHoldersWithStatus,
 } from '../services/rewardService';
 import { saveRewardCycle, type RewardCycle } from '../services/rewardHistoryService';
 import { generateCombinedExcel } from '../services/rewardExportService';
-import { getTokenHolders } from '../services/solanaService';
 import { getNUKEPriceUSD } from '../services/priceService';
 import { isBlacklisted } from '../config/blacklist';
 import { TaxService } from '../services/taxService';
@@ -90,18 +89,18 @@ async function processRewards(): Promise<void> {
     let tokenPriceUSD = 0.01; // Fallback
 
     try {
-      const allHolders = await getTokenHolders();
-      totalHoldersCount = allHolders.length;
+      // Use cached getAllHoldersWithStatus to prevent redundant RPC calls
+      // This internally uses cached getTokenHolders and calculates eligibility
+      const holdersWithStatus = await getAllHoldersWithStatus().catch(() => []);
+      totalHoldersCount = holdersWithStatus.length;
       
-      const eligibleHolders = await getEligibleHolders().catch(() => []);
-      eligibleHoldersCount = eligibleHolders.length;
-      
-      // Count excluded and blacklisted
-      const eligiblePubkeys = new Set(eligibleHolders.map(h => h.pubkey));
-      for (const holder of allHolders) {
-        if (isBlacklisted(holder.owner)) {
+      // Count by eligibility status
+      for (const holder of holdersWithStatus) {
+        if (holder.eligibilityStatus === 'eligible') {
+          eligibleHoldersCount++;
+        } else if (holder.eligibilityStatus === 'blacklisted') {
           blacklistedHoldersCount++;
-        } else if (!eligiblePubkeys.has(holder.owner)) {
+        } else {
           excludedHoldersCount++;
         }
       }
