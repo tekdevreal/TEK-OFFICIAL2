@@ -1257,23 +1257,102 @@ export async function swapNukeToSOL(
       // Dynamically import SDK modules
       const { Liquidity, jsonInfo2PoolKeys } = await import('@raydium-io/raydium-sdk');
       
-      // Remove non-SDK fields from pool info before passing to jsonInfo2PoolKeys
-      // The SDK expects only fields that can be converted to PublicKeys or other valid types
-      // Fields like 'type', 'price', 'tvl', 'volume24h', etc. are metadata and should be excluded
-      const { 
-        type, 
-        price, 
-        tvl, 
-        volume24h, 
-        volume24hUSD, 
-        volume7d, 
-        volume7dUSD,
-        ...cleanedPoolInfo 
-      } = sdkPoolInfo;
+      // Helper function to check if a string looks like a URL (not a PublicKey)
+      const isUrl = (str: string): boolean => {
+        if (typeof str !== 'string') return false;
+        return str.startsWith('http://') || str.startsWith('https://') || str.startsWith('//');
+      };
+      
+      // Helper function to check if a value should be included (not a URL or metadata)
+      const isValidField = (value: any): boolean => {
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'string') {
+          // Exclude URLs and very long strings that aren't PublicKeys
+          if (isUrl(value)) return false;
+          // PublicKeys are base58 encoded, typically 32-44 characters
+          // Exclude very long strings that are likely not PublicKeys
+          if (value.length > 100) return false;
+        }
+        return true;
+      };
+      
+      // Build a clean pool info object with only SDK-required fields
+      // The SDK recursively processes all fields and tries to parse strings as PublicKeys
+      // We must exclude any metadata fields (type, price, icons, URLs, etc.)
+      const cleanedPoolInfo: any = {};
+      
+      // Include id and programId (required)
+      if (isValidField(sdkPoolInfo.id)) {
+        cleanedPoolInfo.id = sdkPoolInfo.id;
+      }
+      if (isValidField(sdkPoolInfo.programId)) {
+        cleanedPoolInfo.programId = sdkPoolInfo.programId;
+      }
+      
+      // Only include mintA if it exists and has the required structure
+      if (sdkPoolInfo.mintA && sdkPoolInfo.mintA.address && isValidField(sdkPoolInfo.mintA.address)) {
+        cleanedPoolInfo.mintA = {
+          address: sdkPoolInfo.mintA.address,
+        };
+        if (typeof sdkPoolInfo.mintA.decimals === 'number') {
+          cleanedPoolInfo.mintA.decimals = sdkPoolInfo.mintA.decimals;
+        }
+        // Only include programId if it's a valid PublicKey string (not a URL)
+        if (sdkPoolInfo.mintA.programId && isValidField(sdkPoolInfo.mintA.programId)) {
+          cleanedPoolInfo.mintA.programId = sdkPoolInfo.mintA.programId;
+        }
+      }
+      
+      // Only include mintB if it exists and has the required structure
+      if (sdkPoolInfo.mintB && sdkPoolInfo.mintB.address && isValidField(sdkPoolInfo.mintB.address)) {
+        cleanedPoolInfo.mintB = {
+          address: sdkPoolInfo.mintB.address,
+        };
+        if (typeof sdkPoolInfo.mintB.decimals === 'number') {
+          cleanedPoolInfo.mintB.decimals = sdkPoolInfo.mintB.decimals;
+        }
+        // Only include programId if it's a valid PublicKey string (not a URL)
+        if (sdkPoolInfo.mintB.programId && isValidField(sdkPoolInfo.mintB.programId)) {
+          cleanedPoolInfo.mintB.programId = sdkPoolInfo.mintB.programId;
+        }
+      }
+      
+      // Include vault addresses if they exist
+      if (sdkPoolInfo.vault) {
+        cleanedPoolInfo.vault = {};
+        if (sdkPoolInfo.vault.A && isValidField(sdkPoolInfo.vault.A)) {
+          cleanedPoolInfo.vault.A = sdkPoolInfo.vault.A;
+        }
+        if (sdkPoolInfo.vault.B && isValidField(sdkPoolInfo.vault.B)) {
+          cleanedPoolInfo.vault.B = sdkPoolInfo.vault.B;
+        }
+      }
+      
+      // Include lpMint if it exists and is not a URL
+      if (sdkPoolInfo.lpMint && isValidField(sdkPoolInfo.lpMint)) {
+        cleanedPoolInfo.lpMint = sdkPoolInfo.lpMint;
+      }
+      
+      // Include baseMint/quoteMint as fallback if mintA/mintB not available
+      if (sdkPoolInfo.baseMint && isValidField(sdkPoolInfo.baseMint)) {
+        cleanedPoolInfo.baseMint = sdkPoolInfo.baseMint;
+      }
+      if (sdkPoolInfo.quoteMint && isValidField(sdkPoolInfo.quoteMint)) {
+        cleanedPoolInfo.quoteMint = sdkPoolInfo.quoteMint;
+      }
+      
+      // Include other pool structure fields that might be needed (authority, openOrders, etc.)
+      // but only if they look like valid PublicKey addresses
+      const validPoolFields = ['authority', 'openOrders', 'targetOrders', 'withdrawQueue', 'lpVault', 'ammTargetOrders', 'poolCoinTokenAccount', 'poolPcTokenAccount'];
+      for (const field of validPoolFields) {
+        if (sdkPoolInfo[field] && isValidField(sdkPoolInfo[field])) {
+          cleanedPoolInfo[field] = sdkPoolInfo[field];
+        }
+      }
       
       logger.debug('Cleaned pool info for SDK', {
-        removedFields: { type, price, tvl, volume24h },
-        remainingFields: Object.keys(cleanedPoolInfo),
+        originalFields: Object.keys(sdkPoolInfo),
+        cleanedFields: Object.keys(cleanedPoolInfo),
       });
       
       // Convert API pool info to LiquidityPoolKeys using SDK
