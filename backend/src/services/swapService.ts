@@ -1232,9 +1232,94 @@ export async function swapNukeToSOL(
       sourceTokenProgram: sourceTokenProgram.toBase58(),
     });
 
-    let swapInstruction: TransactionInstruction;
+    let swapInstruction: TransactionInstruction | null = null;
 
-    if (poolInfo.poolType === 'Standard') {
+    // Detect CPMM pool by programId or poolType
+    const isCpmmPool = poolInfo.poolType === 'Cpmm' || 
+                       poolInfo.poolProgramId.toBase58() === 'DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb';
+
+    if (isCpmmPool) {
+      // Use manual CPMM swap instruction (CPMM pools use Anchor instruction format)
+      logger.info('Using manual CPMM swap instruction', {
+        network: NETWORK,
+        poolId: poolId.toBase58(),
+        poolProgramId: poolInfo.poolProgramId.toBase58(),
+      });
+
+      // Step 1: Properly detect Token-2022 and get transfer fee from on-chain
+      let nukeTransferFeeBps = sourceTransferFeeBps;
+      try {
+        const nukeMintInfo = await getMint(connection, nukeMint, 'confirmed', TOKEN_2022_PROGRAM_ID);
+        const transferFeeConfig = getTransferFeeConfig(nukeMintInfo);
+        if (transferFeeConfig) {
+          nukeTransferFeeBps = transferFeeConfig.newerTransferFee?.transferFeeBasisPoints ?? 
+                               transferFeeConfig.olderTransferFee?.transferFeeBasisPoints ?? 0;
+        }
+        logger.info('Token-2022 transfer fee detected from on-chain', {
+          nukeMint: nukeMint.toBase58(),
+          transferFeeBps: nukeTransferFeeBps,
+        });
+      } catch (error) {
+        logger.warn('Could not fetch Token-2022 transfer fee config from on-chain, using API value', {
+          error: error instanceof Error ? error.message : String(error),
+          fallbackTransferFeeBps: sourceTransferFeeBps,
+        });
+      }
+
+      // Step 2: Calculate amount after transfer fee (4% = 400 bps)
+      const amountNukeAfterTransferFee = nukeTransferFeeBps > 0
+        ? (amountNuke * BigInt(10000 - nukeTransferFeeBps)) / BigInt(10000)
+        : amountNuke;
+
+      logger.info('CPMM swap calculation', {
+        amountNuke: amountNuke.toString(),
+        amountNukeAfterTransferFee: amountNukeAfterTransferFee.toString(),
+        transferFeeBps: nukeTransferFeeBps,
+        sourceReserve: sourceReserve.toString(),
+        destReserve: destReserve.toString(),
+      });
+
+      // Step 3: Recalculate expected output with correct transfer fee
+      const feeMultiplier = 0.9975; // Raydium CPMM fee (0.25%)
+      const expectedDestAmount = (destReserve * amountNukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + amountNukeAfterTransferFee) / BigInt(10000);
+      const minDestAmountRecalc = (expectedDestAmount * BigInt(10000 - slippageBps)) / BigInt(10000);
+
+      if (minDestAmountRecalc < MIN_SOL_OUTPUT) {
+        throw new Error(
+          `Expected SOL output too low: ${Number(minDestAmountRecalc) / LAMPORTS_PER_SOL} SOL (minimum: ${MIN_SOL_OUTPUT / LAMPORTS_PER_SOL} SOL)`
+        );
+      }
+
+      logger.info('CPMM swap amounts', {
+        amountIn: amountNuke.toString(),
+        amountInAfterFee: amountNukeAfterTransferFee.toString(),
+        expectedOut: expectedDestAmount.toString(),
+        minOut: minDestAmountRecalc.toString(),
+      });
+
+      // Step 4: Create CPMM swap instruction using existing function
+      // Note: createRaydiumClmmSwapInstruction is actually for CPMM pools (based on comments)
+      swapInstruction = createRaydiumClmmSwapInstruction(
+        poolId,
+        poolInfo.poolProgramId, // CRITICAL: Use pool's program ID from API
+        rewardNukeAccount, // userSourceTokenAccount
+        userSolAccount, // userDestinationTokenAccount
+        poolSourceVault, // poolSourceTokenAccount
+        poolDestVault, // poolDestinationTokenAccount
+        poolSourceMint, // poolCoinMint
+        poolDestMint, // poolPcMint
+        amountNuke, // amountIn (before transfer fee - fee deducted during transfer)
+        minDestAmountRecalc, // minimumAmountOut
+        rewardWalletAddress, // userWallet
+        sourceTokenProgram // sourceTokenProgram (TOKEN_2022_PROGRAM_ID for NUKE)
+      );
+
+      logger.info('CPMM swap instruction created', {
+        instructionProgramId: swapInstruction.programId.toBase58(),
+        accountCount: swapInstruction.keys.length,
+        note: 'Using manual CPMM instruction with pool program ID from API',
+      });
+    } else if (poolInfo.poolType === 'Standard') {
       // Use Raydium SDK for Standard pools
       logger.info('Using Raydium SDK for Standard pool swap', {
         network: NETWORK,
@@ -1252,128 +1337,89 @@ export async function swapNukeToSOL(
       logger.info('Creating swap transaction using Raydium SDK', {
         amountIn: amountNuke.toString(),
         slippageBps,
+        minAmountOut: minDestAmount.toString(),
       });
 
       // Dynamically import SDK modules
       const { Liquidity, jsonInfo2PoolKeys } = await import('@raydium-io/raydium-sdk');
       
-      // Helper function to check if a string looks like a URL (not a PublicKey)
-      const isUrl = (str: string): boolean => {
-        if (typeof str !== 'string') return false;
-        return str.startsWith('http://') || str.startsWith('https://') || str.startsWith('//');
+      // Map pool info properly - ONLY include required address fields, NO logoURI/symbol/metadata
+      // This is critical: SDK will try to parse ALL fields as PublicKeys, causing errors
+      const sdkPoolKeysData: any = {
+        id: sdkPoolInfo.id,
+        programId: sdkPoolInfo.programId,
       };
-      
-      // Helper function to check if a value should be included (not a URL or metadata)
-      const isValidField = (value: any): boolean => {
-        if (value === null || value === undefined) return false;
-        if (typeof value === 'string') {
-          // Exclude URLs and very long strings that aren't PublicKeys
-          if (isUrl(value)) return false;
-          // PublicKeys are base58 encoded, typically 32-44 characters
-          // Exclude very long strings that are likely not PublicKeys
-          if (value.length > 100) return false;
-        }
-        return true;
-      };
-      
-      // Build a clean pool info object with only SDK-required fields
-      // The SDK recursively processes all fields and tries to parse strings as PublicKeys
-      // We must exclude any metadata fields (type, price, icons, URLs, etc.)
-      const cleanedPoolInfo: any = {};
-      
-      // Include id and programId (required)
-      if (isValidField(sdkPoolInfo.id)) {
-        cleanedPoolInfo.id = sdkPoolInfo.id;
+
+      // Only include addresses - extract from nested objects if needed
+      if (sdkPoolInfo.mintA?.address) {
+        sdkPoolKeysData.mintA = sdkPoolInfo.mintA.address; // Just the address string
+      } else if (sdkPoolInfo.baseMint) {
+        sdkPoolKeysData.mintA = sdkPoolInfo.baseMint;
       }
-      if (isValidField(sdkPoolInfo.programId)) {
-        cleanedPoolInfo.programId = sdkPoolInfo.programId;
+
+      if (sdkPoolInfo.mintB?.address) {
+        sdkPoolKeysData.mintB = sdkPoolInfo.mintB.address; // Just the address string
+      } else if (sdkPoolInfo.quoteMint) {
+        sdkPoolKeysData.mintB = sdkPoolInfo.quoteMint;
       }
-      
-      // Only include mintA if it exists and has the required structure
-      if (sdkPoolInfo.mintA && sdkPoolInfo.mintA.address && isValidField(sdkPoolInfo.mintA.address)) {
-        cleanedPoolInfo.mintA = {
-          address: sdkPoolInfo.mintA.address,
-        };
-        if (typeof sdkPoolInfo.mintA.decimals === 'number') {
-          cleanedPoolInfo.mintA.decimals = sdkPoolInfo.mintA.decimals;
-        }
-        // Only include programId if it's a valid PublicKey string (not a URL)
-        if (sdkPoolInfo.mintA.programId && isValidField(sdkPoolInfo.mintA.programId)) {
-          cleanedPoolInfo.mintA.programId = sdkPoolInfo.mintA.programId;
+
+      // Vault addresses
+      if (sdkPoolInfo.vault?.A) {
+        sdkPoolKeysData.vaultA = sdkPoolInfo.vault.A;
+      }
+      if (sdkPoolInfo.vault?.B) {
+        sdkPoolKeysData.vaultB = sdkPoolInfo.vault.B;
+      }
+
+      // LP mint - extract address if it's an object
+      if (sdkPoolInfo.lpMint) {
+        if (typeof sdkPoolInfo.lpMint === 'string') {
+          sdkPoolKeysData.lpMint = sdkPoolInfo.lpMint;
+        } else if (sdkPoolInfo.lpMint.address) {
+          sdkPoolKeysData.lpMint = sdkPoolInfo.lpMint.address;
         }
       }
-      
-      // Only include mintB if it exists and has the required structure
-      if (sdkPoolInfo.mintB && sdkPoolInfo.mintB.address && isValidField(sdkPoolInfo.mintB.address)) {
-        cleanedPoolInfo.mintB = {
-          address: sdkPoolInfo.mintB.address,
-        };
-        if (typeof sdkPoolInfo.mintB.decimals === 'number') {
-          cleanedPoolInfo.mintB.decimals = sdkPoolInfo.mintB.decimals;
+
+      // Authority and openTime if available
+      if (sdkPoolInfo.authority) {
+        sdkPoolKeysData.authority = sdkPoolInfo.authority;
+      }
+      if (sdkPoolInfo.openTime !== undefined) {
+        sdkPoolKeysData.openTime = sdkPoolInfo.openTime;
+      }
+
+      // Remove any undefined/null values
+      Object.keys(sdkPoolKeysData).forEach(key => {
+        if (sdkPoolKeysData[key] === undefined || sdkPoolKeysData[key] === null) {
+          delete sdkPoolKeysData[key];
         }
-        // Only include programId if it's a valid PublicKey string (not a URL)
-        if (sdkPoolInfo.mintB.programId && isValidField(sdkPoolInfo.mintB.programId)) {
-          cleanedPoolInfo.mintB.programId = sdkPoolInfo.mintB.programId;
-        }
-      }
-      
-      // Include vault addresses if they exist
-      if (sdkPoolInfo.vault) {
-        cleanedPoolInfo.vault = {};
-        if (sdkPoolInfo.vault.A && isValidField(sdkPoolInfo.vault.A)) {
-          cleanedPoolInfo.vault.A = sdkPoolInfo.vault.A;
-        }
-        if (sdkPoolInfo.vault.B && isValidField(sdkPoolInfo.vault.B)) {
-          cleanedPoolInfo.vault.B = sdkPoolInfo.vault.B;
-        }
-      }
-      
-      // Include lpMint if it exists and is not a URL
-      if (sdkPoolInfo.lpMint && isValidField(sdkPoolInfo.lpMint)) {
-        cleanedPoolInfo.lpMint = sdkPoolInfo.lpMint;
-      }
-      
-      // Include baseMint/quoteMint as fallback if mintA/mintB not available
-      if (sdkPoolInfo.baseMint && isValidField(sdkPoolInfo.baseMint)) {
-        cleanedPoolInfo.baseMint = sdkPoolInfo.baseMint;
-      }
-      if (sdkPoolInfo.quoteMint && isValidField(sdkPoolInfo.quoteMint)) {
-        cleanedPoolInfo.quoteMint = sdkPoolInfo.quoteMint;
-      }
-      
-      // Include other pool structure fields that might be needed (authority, openOrders, etc.)
-      // but only if they look like valid PublicKey addresses
-      const validPoolFields = ['authority', 'openOrders', 'targetOrders', 'withdrawQueue', 'lpVault', 'ammTargetOrders', 'poolCoinTokenAccount', 'poolPcTokenAccount'];
-      for (const field of validPoolFields) {
-        if (sdkPoolInfo[field] && isValidField(sdkPoolInfo[field])) {
-          cleanedPoolInfo[field] = sdkPoolInfo[field];
-        }
-      }
-      
-      logger.debug('Cleaned pool info for SDK', {
-        originalFields: Object.keys(sdkPoolInfo),
-        cleanedFields: Object.keys(cleanedPoolInfo),
+      });
+
+      logger.debug('Mapped pool info for SDK (only addresses, no metadata)', {
+        includedFields: Object.keys(sdkPoolKeysData),
+        note: 'Excluded logoURI, symbol, price, tvl, volume, and all non-key fields',
       });
       
-      // Convert API pool info to LiquidityPoolKeys using SDK
-      const poolKeys = jsonInfo2PoolKeys(cleanedPoolInfo);
+      // Convert to SDK pool keys
+      const sdkPoolKeys = jsonInfo2PoolKeys(sdkPoolKeysData);
 
       logger.info('Pool keys extracted using SDK', {
-        programId: poolKeys.programId.toBase58(),
-        version: (poolKeys as any).version,
+        programId: sdkPoolKeys.programId.toBase58(),
+        version: (sdkPoolKeys as any).version,
       });
 
-      // SDK's makeSwapInstruction returns a transaction-like object
-      const swapTx = Liquidity.makeSwapInstruction({
-        poolKeys: poolKeys as any,
+      // Use SDK's makeSwapInstruction with proper parameters
+      // SDK handles all account fetching, vault addresses, and instruction building
+      const swapTx = await Liquidity.makeSwapInstruction({
+        poolKeys: sdkPoolKeys as any, // Type assertion needed due to SDK type definitions
         userKeys: {
           tokenAccountIn: rewardNukeAccount,
           tokenAccountOut: userSolAccount,
           owner: rewardWalletAddress,
         },
         amountIn: amountNuke,
-        amountOut: 0, // 0 = SDK calculates output for exact input
-        fixedSide: 'in', // 'in' for exact input
+        amountOut: minDestAmount, // Minimum amount out with slippage
+        fixedSide: 'in', // 'in' for exact input swap
       });
 
       // Extract the swap instruction from the SDK transaction
@@ -1383,13 +1429,19 @@ export async function swapNukeToSOL(
         throw new Error('SDK failed to generate swap instruction');
       }
 
-      swapInstruction = innerTx.instructions[0] as TransactionInstruction;
+      // Add all instructions from SDK (may include multiple instructions for account setup)
+      for (const instruction of innerTx.instructions) {
+        transaction.add(instruction);
+      }
 
       logger.info('Swap instruction created using SDK', {
-        instructionProgramId: swapInstruction.programId.toBase58(),
-        accountCount: swapInstruction.keys.length,
-        note: 'SDK handles all account fetching and instruction building automatically',
+        instructionCount: innerTx.instructions.length,
+        note: 'SDK handles all account fetching, vault addresses, and instruction building automatically',
       });
+
+      // Mark that instructions were already added
+      swapInstruction = null; // Not needed since we added instructions directly
+      (transaction as any)._sdkInstructionsAdded = true;
     } else if (poolInfo.poolType === 'Clmm') {
       // CLMM pools use pool-specific program ID with Anchor instruction format
       swapInstruction = createRaydiumClmmSwapInstruction(
@@ -1407,10 +1459,18 @@ export async function swapNukeToSOL(
         sourceTokenProgram // sourceTokenProgram
       );
     } else {
-      throw new Error(`Unsupported pool type: ${poolInfo.poolType}. Only Standard and CLMM pools are currently supported.`);
+      throw new Error(`Unsupported pool type: ${poolInfo.poolType}. Only Standard, CPMM, and CLMM pools are currently supported.`);
     }
 
-    transaction.add(swapInstruction);
+    // Add swap instruction (Standard pools add instructions via SDK, others use swapInstruction)
+    if ((transaction as any)._sdkInstructionsAdded) {
+      // SDK already added all instructions to transaction
+      logger.debug('SDK instructions already added to transaction');
+    } else if (swapInstruction) {
+      transaction.add(swapInstruction);
+    } else {
+      throw new Error('No swap instruction created');
+    }
 
     // Step 9: Set transaction properties
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
@@ -1523,14 +1583,79 @@ export async function swapNukeToSOL(
       throw sendError;
     }
 
-    // Step 12: Verify SOL was received
-    const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
-    const solReceived = userSolBalance ? userSolBalance.amount : 0n;
+    // Step 12: Unwrap WSOL to native SOL if needed (for CPMM swaps)
+    if (isCpmmPool) {
+      try {
+        const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
+        if (userSolBalance && userSolBalance.amount > 0n) {
+          logger.info('Unwrapping WSOL to native SOL', {
+            wsolAmount: userSolBalance.amount.toString(),
+          });
+
+          const unwrapTx = new Transaction();
+          unwrapTx.add(
+            createSyncNativeInstruction(userSolAccount),
+            // Close WSOL account and send SOL to reward wallet
+            new TransactionInstruction({
+              programId: TOKEN_PROGRAM_ID,
+              keys: [
+                { pubkey: userSolAccount, isSigner: false, isWritable: true },
+                { pubkey: rewardWalletAddress, isSigner: false, isWritable: true },
+                { pubkey: rewardWalletAddress, isSigner: true, isWritable: false },
+              ],
+              data: Buffer.from([9]), // CloseAccount instruction discriminator
+            })
+          );
+
+          const { blockhash: unwrapBlockhash } = await connection.getLatestBlockhash('confirmed');
+          unwrapTx.recentBlockhash = unwrapBlockhash;
+          unwrapTx.feePayer = rewardWalletAddress;
+          unwrapTx.sign(rewardWallet);
+
+          try {
+            const unwrapSignature = await sendAndConfirmTransaction(
+              connection,
+              unwrapTx,
+              [rewardWallet],
+              { commitment: 'confirmed', maxRetries: 3 }
+            );
+            logger.info('WSOL unwrapped successfully', { signature: unwrapSignature });
+          } catch (unwrapError) {
+            logger.warn('Failed to unwrap WSOL, but swap succeeded', {
+              error: unwrapError instanceof Error ? unwrapError.message : String(unwrapError),
+              note: 'SOL is still available as WSOL in token account',
+            });
+          }
+        }
+      } catch (unwrapError) {
+        logger.warn('Error checking/unwrapping WSOL', {
+          error: unwrapError instanceof Error ? unwrapError.message : String(unwrapError),
+        });
+      }
+    }
+
+    // Step 13: Verify SOL was received
+    let solReceived = 0n;
+    if (isCpmmPool) {
+      // For CPMM, check native SOL balance (after unwrap) or WSOL balance
+      try {
+        const balance = await connection.getBalance(rewardWalletAddress, 'confirmed');
+        solReceived = BigInt(balance);
+      } catch {
+        // Fallback to WSOL account balance
+        const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
+        solReceived = userSolBalance ? userSolBalance.amount : 0n;
+      }
+    } else {
+      const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
+      solReceived = userSolBalance ? userSolBalance.amount : 0n;
+    }
 
     logger.info('Raydium swap completed successfully', {
       signature,
       solReceived: solReceived.toString(),
       expectedSol: expectedDestAmount.toString(),
+      poolType: poolInfo.poolType,
     });
 
     return {
