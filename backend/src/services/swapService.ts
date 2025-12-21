@@ -38,6 +38,8 @@ import { connection, tokenMint, NETWORK } from '../config/solana';
 import { RAYDIUM_CONFIG, WSOL_MINT, getRaydiumPoolId, RAYDIUM_AMM_PROGRAM_ID } from '../config/raydium';
 import { logger } from '../utils/logger';
 import { loadKeypairFromEnv } from '../utils/loadKeypairFromEnv';
+// Note: @raydium-io/raydium-sdk is installed but not yet integrated
+// To use SDK: import { Liquidity, ApiV3PoolInfoStandard, jsonInfo2PoolKeys } from '@raydium-io/raydium-sdk';
 
 // Official Raydium AMM v4 Program ID (for Standard pools)
 const RAYDIUM_AMM_V4_PROGRAM_ID = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
