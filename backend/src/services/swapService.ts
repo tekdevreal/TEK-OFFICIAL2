@@ -915,7 +915,21 @@ export async function swapNukeToSOL(
 
     // Step 2: Get reward wallet
     const rewardWallet = getRewardWallet();
+    
+    // CRITICAL: Validate wallet is defined and has publicKey
+    if (!rewardWallet) {
+      throw new Error('Reward wallet is undefined');
+    }
+    
+    if (!rewardWallet.publicKey) {
+      throw new Error('Reward wallet missing publicKey');
+    }
+    
     const rewardWalletAddress = rewardWallet.publicKey;
+    
+    logger.debug('Reward wallet validated', {
+      publicKey: rewardWalletAddress.toBase58(),
+    });
 
     // Step 3: Fetch pool info from API to validate pool type and get reserves
     logger.info('Fetching pool info from Raydium API', { poolId: poolId.toBase58() });
@@ -1091,12 +1105,24 @@ export async function swapNukeToSOL(
     });
 
     // Step 7: Get user token accounts
+    // CRITICAL: Validate all token account addresses are defined
     const rewardNukeAccount = getAssociatedTokenAddressSync(
       tokenMint,
       rewardWalletAddress,
       false,
       TOKEN_2022_PROGRAM_ID
     );
+
+    // Validate NUKE account address
+    if (!rewardNukeAccount) {
+      throw new Error('Failed to generate rewardNukeAccount address');
+    }
+    
+    try {
+      rewardNukeAccount.toString(); // Verify it's a valid PublicKey
+    } catch (error) {
+      throw new Error(`Invalid rewardNukeAccount address: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     // Check balance
     let rewardNukeBalance = 0n;
@@ -1119,6 +1145,23 @@ export async function swapNukeToSOL(
       false,
       TOKEN_PROGRAM_ID
     );
+    
+    // Validate SOL account address
+    if (!userSolAccount) {
+      throw new Error('Failed to generate userSolAccount address');
+    }
+    
+    try {
+      userSolAccount.toString(); // Verify it's a valid PublicKey
+    } catch (error) {
+      throw new Error(`Invalid userSolAccount address: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    
+    logger.debug('Token accounts validated', {
+      rewardNukeAccount: rewardNukeAccount.toBase58(),
+      userSolAccount: userSolAccount.toBase58(),
+      rewardNukeBalance: rewardNukeBalance.toString(),
+    });
 
     // Step 8: Build transaction
     const transaction = new Transaction();
@@ -1377,7 +1420,7 @@ export async function swapNukeToSOL(
 
     // Use SDK's makeSwapInstruction - handles ALL pool types (Standard, CPMM, CLMM)
     // SDK automatically handles vault accounts, program IDs, and instruction building
-    const swapTx = await Liquidity.makeSwapInstruction({
+    const swapResult = await Liquidity.makeSwapInstruction({
       poolKeys: poolKeys as any, // Type assertion needed due to SDK type definitions
       userKeys: {
         tokenAccountIn: rewardNukeAccount,
@@ -1389,28 +1432,152 @@ export async function swapNukeToSOL(
       fixedSide: 'in', // 'in' for exact input swap
     });
 
-    // Extract the swap instruction from the SDK transaction
-    // The SDK returns an object with innerTransaction containing instructions
-    const innerTx = (swapTx as any).innerTransaction;
-    if (!innerTx || !innerTx.instructions || innerTx.instructions.length === 0) {
-      throw new Error('SDK failed to generate swap instruction');
+    // CRITICAL: Raydium SDK returns innerTransactions (array) or innerTransaction (single)
+    // Handle both cases to ensure we extract all instructions correctly
+    let instructionsToAdd: TransactionInstruction[] = [];
+    
+    // Check for innerTransactions (plural - array of transactions)
+    if ((swapResult as any).innerTransactions && Array.isArray((swapResult as any).innerTransactions)) {
+      const innerTxs = (swapResult as any).innerTransactions;
+      logger.info('SDK returned innerTransactions array', { count: innerTxs.length });
+      
+      for (const innerTx of innerTxs) {
+        if (innerTx && innerTx.instructions && Array.isArray(innerTx.instructions)) {
+          for (const instruction of innerTx.instructions) {
+            if (instruction) {
+              instructionsToAdd.push(instruction);
+            }
+          }
+        }
+      }
+    }
+    // Check for innerTransaction (singular - single transaction)
+    else if ((swapResult as any).innerTransaction) {
+      const innerTx = (swapResult as any).innerTransaction;
+      logger.info('SDK returned innerTransaction (singular)');
+      
+      if (innerTx.instructions && Array.isArray(innerTx.instructions)) {
+        for (const instruction of innerTx.instructions) {
+          if (instruction) {
+            instructionsToAdd.push(instruction);
+          }
+        }
+      }
+    }
+    // Check for instructions directly on the result
+    else if ((swapResult as any).instructions && Array.isArray((swapResult as any).instructions)) {
+      logger.info('SDK returned instructions directly');
+      instructionsToAdd = (swapResult as any).instructions.filter((ix: any) => ix !== null && ix !== undefined);
+    }
+    // Fallback: check if swapResult itself is an instruction
+    else if (swapResult && typeof (swapResult as any).programId !== 'undefined' && (swapResult as any).keys) {
+      logger.info('SDK returned single instruction');
+      instructionsToAdd = [swapResult as unknown as TransactionInstruction];
     }
 
-    // Add all instructions from SDK (may include multiple instructions for account setup)
-    for (const instruction of innerTx.instructions) {
+    if (instructionsToAdd.length === 0) {
+      logger.error('SDK failed to generate swap instructions', {
+        swapResultKeys: Object.keys(swapResult || {}),
+        swapResultType: typeof swapResult,
+      });
+      throw new Error('SDK failed to generate swap instruction - no instructions found in result');
+    }
+
+    // Validate all instructions before adding
+    for (let i = 0; i < instructionsToAdd.length; i++) {
+      const instruction = instructionsToAdd[i];
+      
+      // Validate instruction structure
+      if (!instruction.programId) {
+        throw new Error(`Instruction ${i} missing programId`);
+      }
+      
+      // Validate all account keys are defined
+      if (!instruction.keys || !Array.isArray(instruction.keys)) {
+        throw new Error(`Instruction ${i} missing or invalid keys array`);
+      }
+      
+      for (let j = 0; j < instruction.keys.length; j++) {
+        const accountMeta = instruction.keys[j];
+        if (!accountMeta || !accountMeta.pubkey) {
+          throw new Error(`Instruction ${i}, account ${j} has undefined pubkey`);
+        }
+        
+        // Verify pubkey is a valid PublicKey (has toString method)
+        try {
+          const pubkeyStr = accountMeta.pubkey.toString();
+          if (!pubkeyStr || pubkeyStr.length === 0) {
+            throw new Error(`Instruction ${i}, account ${j} has invalid pubkey (empty string)`);
+          }
+        } catch (error) {
+          throw new Error(`Instruction ${i}, account ${j} has invalid pubkey: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    }
+
+    // Add all validated instructions to transaction
+    for (const instruction of instructionsToAdd) {
       transaction.add(instruction);
     }
 
-    logger.info('Swap instruction created using SDK', {
-      instructionCount: innerTx.instructions.length,
+    logger.info('Swap instructions created using SDK', {
+      instructionCount: instructionsToAdd.length,
       poolType: poolInfo.poolType,
       note: 'SDK handles all pool types (Standard/CPMM/CLMM), account fetching, vault addresses, and instruction building automatically',
     });
 
-    // Step 9: Set transaction properties
+    // Step 9: Set transaction properties BEFORE simulation
+    // CRITICAL: recentBlockhash and feePayer MUST be set before compileMessage/sign
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    
+    // Validate feePayer is defined
+    if (!rewardWalletAddress) {
+      throw new Error('rewardWalletAddress is undefined - cannot set feePayer');
+    }
+    
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = rewardWalletAddress;
+
+    // CRITICAL: Validate transaction before simulation
+    // This prevents "Cannot read properties of undefined (reading 'toString')" errors
+    if (!transaction.recentBlockhash) {
+      throw new Error('Transaction missing recentBlockhash');
+    }
+    
+    if (!transaction.feePayer) {
+      throw new Error('Transaction missing feePayer');
+    }
+    
+    // Validate all instruction keys are defined
+    const allInstructionKeys: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[] = [];
+    for (const instruction of transaction.instructions) {
+      if (!instruction.keys || !Array.isArray(instruction.keys)) {
+        throw new Error(`Instruction missing keys array: ${instruction.programId?.toBase58() || 'unknown'}`);
+      }
+      
+      for (const key of instruction.keys) {
+        if (!key || !key.pubkey) {
+          throw new Error(`Instruction has undefined account key`);
+        }
+        
+        // Verify pubkey can be converted to string (has toString method)
+        try {
+          key.pubkey.toString();
+        } catch (error) {
+          throw new Error(`Instruction has invalid pubkey: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        
+        allInstructionKeys.push(key);
+      }
+    }
+
+    logger.info('Transaction validation before simulation', {
+      recentBlockhash: transaction.recentBlockhash,
+      feePayer: transaction.feePayer.toBase58(),
+      instructionCount: transaction.instructions.length,
+      totalAccountKeys: allInstructionKeys.length,
+      lastValidBlockHeight,
+    });
 
     // Step 10: Simulate transaction before sending
     logger.info('Simulating Raydium swap transaction');
@@ -1451,6 +1618,34 @@ export async function swapNukeToSOL(
     }
 
     // Step 11: Sign and send transaction
+    // CRITICAL: Validate transaction state before signing
+    if (!transaction.recentBlockhash) {
+      throw new Error('Cannot sign transaction: missing recentBlockhash');
+    }
+    
+    if (!transaction.feePayer) {
+      throw new Error('Cannot sign transaction: missing feePayer');
+    }
+    
+    if (!rewardWallet || !rewardWallet.publicKey) {
+      throw new Error('Cannot sign transaction: rewardWallet is invalid');
+    }
+    
+    // Verify feePayer matches signer
+    if (!transaction.feePayer.equals(rewardWallet.publicKey)) {
+      logger.warn('feePayer does not match signer publicKey - this may cause issues', {
+        feePayer: transaction.feePayer.toBase58(),
+        signer: rewardWallet.publicKey.toBase58(),
+      });
+    }
+    
+    logger.info('Signing transaction', {
+      feePayer: transaction.feePayer.toBase58(),
+      signer: rewardWallet.publicKey.toBase58(),
+      instructionCount: transaction.instructions.length,
+      recentBlockhash: transaction.recentBlockhash,
+    });
+    
     transaction.sign(rewardWallet);
 
     logger.info('Sending Raydium swap transaction', {
