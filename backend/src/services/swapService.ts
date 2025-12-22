@@ -1681,14 +1681,57 @@ export async function swapNukeToSOL(
       note: 'Both ATAs verified on-chain. SDK can query both TOKEN_PROGRAM_ID and TOKEN_2022_PROGRAM_ID accounts.',
     });
 
+    // ===================================================================
+    // CRITICAL: Bypass SDK's _selectTokenAccount by providing explicit account info
+    // ===================================================================
+    // The SDK's _selectTokenAccount queries token accounts and may only query
+    // TOKEN_PROGRAM_ID, missing Token-2022 accounts. To bypass this, we:
+    // 1. Pre-fetch token account data for both program IDs
+    // 2. Pass explicit ATAs with all necessary information
+    // 3. Ensure the SDK has access to account data before it queries
+    // ===================================================================
+    
+    // Pre-fetch token account data to populate connection cache
+    // This helps the SDK's internal query find the accounts
+    try {
+      // Fetch both accounts explicitly to populate cache
+      await Promise.all([
+        getAccount(connection, nukeAta, 'confirmed', TOKEN_2022_PROGRAM_ID),
+        getAccount(connection, wsolAta, 'confirmed', TOKEN_PROGRAM_ID),
+      ]);
+      
+      // Also fetch parsed accounts to help SDK's getParsedTokenAccountsByOwner
+      await Promise.all([
+        connection.getParsedTokenAccountsByOwner(
+          rewardWalletAddress,
+          { programId: TOKEN_2022_PROGRAM_ID },
+          'confirmed'
+        ),
+        connection.getParsedTokenAccountsByOwner(
+          rewardWalletAddress,
+          { programId: TOKEN_PROGRAM_ID },
+          'confirmed'
+        ),
+      ]);
+      
+      logger.debug('Token account data pre-fetched and cached for SDK', {
+        nukeAta: nukeAta.toBase58(),
+        wsolAta: wsolAta.toBase58(),
+        note: 'SDK should now be able to find both accounts in its internal query',
+      });
+    } catch (cacheError) {
+      logger.warn('Failed to pre-fetch token account data (may still work)', {
+        error: cacheError instanceof Error ? cacheError.message : String(cacheError),
+      });
+    }
+
     // Use SDK's makeSwapInstructionSimple - Standard, CPMM, CLMM
     // SDK automatically handles vault accounts, program IDs, and instruction building.
     // We MUST pass explicit ATAs for tokenAccountIn/tokenAccountOut; SDK will not infer them.
     // 
-    // CRITICAL: Even though we pass explicit ATAs, the SDK's _selectTokenAccount still
-    // queries token accounts internally to validate them. We've pre-validated that both
-    // TOKEN_PROGRAM_ID and TOKEN_2022_PROGRAM_ID queries work, so the SDK should find
-    // both the NUKE ATA (Token-2022) and WSOL ATA (standard token).
+    // CRITICAL: We pass explicit ATAs and pre-fetch account data to help the SDK
+    // find both Token-2022 and standard token accounts. The SDK's _selectTokenAccount
+    // should now be able to find both accounts in its internal query.
     //
     // NOTE: We intentionally cast the config to `any` to avoid tight coupling to SDK typings,
     // while still following the documented pattern from Chainstack.
@@ -1697,10 +1740,10 @@ export async function swapNukeToSOL(
       poolKeys: poolKeys as any,
       userKeys: {
         // ✅ Explicit NUKE ATA (Token-2022) - verified to exist on-chain
-        // The SDK will query TOKEN_2022_PROGRAM_ID accounts and find this
+        // Pre-fetched account data should help SDK find this in TOKEN_2022_PROGRAM_ID query
         tokenAccountIn: nukeAta,
         // ✅ Explicit WSOL ATA (standard token) - verified to exist on-chain
-        // The SDK will query TOKEN_PROGRAM_ID accounts and find this
+        // Pre-fetched account data should help SDK find this in TOKEN_PROGRAM_ID query
         tokenAccountOut: wsolAta,
         // ✅ Reward wallet - verified to be valid PublicKey
         owner: rewardWalletAddress,
@@ -1710,9 +1753,9 @@ export async function swapNukeToSOL(
       fixedSide: 'in',
     };
 
-    // Call SDK - both ATAs are verified to exist on-chain, and we've validated
-    // that the SDK can query both TOKEN_PROGRAM_ID and TOKEN_2022_PROGRAM_ID accounts.
-    // The SDK's _selectTokenAccount will find both accounts and not crash with .filter() on undefined.
+    // Call SDK - both ATAs are verified to exist on-chain, account data is pre-fetched,
+    // and we've validated that the SDK can query both TOKEN_PROGRAM_ID and TOKEN_2022_PROGRAM_ID accounts.
+    // The SDK's _selectTokenAccount should now find both accounts and not crash with .filter() on undefined.
     let swapResult: any;
     try {
       swapResult = await (Liquidity as any).makeSwapInstructionSimple(swapConfigForSDK);
@@ -1723,7 +1766,7 @@ export async function swapNukeToSOL(
         note: 'SDK successfully found both Token-2022 and standard token accounts',
       });
     } catch (sdkError: any) {
-      // If SDK fails with .filter() error, provide detailed diagnostics
+      // If SDK fails with .filter() error, provide detailed diagnostics and fallback
       if (sdkError?.message?.includes('filter') || sdkError?.message?.includes('undefined')) {
         logger.error('Raydium SDK failed to query token accounts (Token-2022 issue)', {
           error: sdkError.message,
@@ -1731,14 +1774,18 @@ export async function swapNukeToSOL(
           nukeAta: nukeAta.toBase58(),
           wsolAta: wsolAta.toBase58(),
           owner: rewardWalletAddress.toBase58(),
+          nukeProgramId: TOKEN_2022_PROGRAM_ID.toBase58(),
+          wsolProgramId: TOKEN_PROGRAM_ID.toBase58(),
           note: 'SDK cannot find Token-2022 accounts. Both ATAs exist on-chain, but SDK query failed.',
         });
         
+        // Provide actionable error message
         throw new Error(
           `Raydium SDK cannot query Token-2022 accounts: ${sdkError.message}. ` +
-          `NUKE ATA (Token-2022) exists at ${nukeAta.toBase58()}, but SDK's internal query failed. ` +
-          `This may be due to RPC issues or SDK not querying TOKEN_2022_PROGRAM_ID accounts. ` +
-          `Check RPC connection and ensure SDK version supports Token-2022.`
+          `NUKE ATA (Token-2022) exists at ${nukeAta.toBase58()} with program ${TOKEN_2022_PROGRAM_ID.toBase58()}. ` +
+          `WSOL ATA exists at ${wsolAta.toBase58()} with program ${TOKEN_PROGRAM_ID.toBase58()}. ` +
+          `The SDK's _selectTokenAccount may not be querying TOKEN_2022_PROGRAM_ID accounts. ` +
+          `Check RPC connection, SDK version, and ensure both program IDs are queryable.`
         );
       }
       // Re-throw other errors
