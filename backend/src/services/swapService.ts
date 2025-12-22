@@ -1104,33 +1104,45 @@ export async function swapNukeToSOL(
         : 'No transfer fee on source token',
     });
 
-    // Step 7: Get user token accounts
-    // CRITICAL: Validate all token account addresses are defined
-    const rewardNukeAccount = getAssociatedTokenAddressSync(
-      tokenMint,
-      rewardWalletAddress,
+    // Step 7: Derive user token accounts (NUKE ATA and WSOL ATA)
+    // -------------------------------------------------------------------
+    // CRITICAL: Raydium SDK does NOT auto-detect user token accounts.
+    // It expects explicit Associated Token Accounts (ATAs) for:
+    // - tokenAccountIn  = NUKE ATA  (source SPL token)
+    // - tokenAccountOut = WSOL ATA  (destination wrapped SOL)
+    // If either ATA is undefined, the SDK will build an instruction with an
+    // undefined pubkey, and Solana will crash at compileMessage() with:
+    // "Cannot read properties of undefined (reading 'toString')".
+    // -------------------------------------------------------------------
+
+    // Explicitly derive NUKE ATA (source token ATA)
+    const nukeAta = getAssociatedTokenAddressSync(
+      tokenMint,            // NUKE mint
+      rewardWalletAddress,  // owner = reward wallet
       false,
-      TOKEN_2022_PROGRAM_ID
+      TOKEN_2022_PROGRAM_ID // NUKE is Token-2022
     );
 
-    // Validate NUKE account address
-    if (!rewardNukeAccount) {
-      throw new Error('Failed to generate rewardNukeAccount address');
+    if (!nukeAta) {
+      throw new Error('NUKE ATA (nukeAta) is undefined after derivation');
     }
-    
     try {
-      rewardNukeAccount.toString(); // Verify it's a valid PublicKey
+      nukeAta.toString(); // Verify it's a valid PublicKey
     } catch (error) {
-      throw new Error(`Invalid rewardNukeAccount address: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Invalid NUKE ATA (nukeAta) address: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Check balance
+    // Check NUKE balance in ATA
     let rewardNukeBalance = 0n;
     try {
-      const rewardAccount = await getAccount(connection, rewardNukeAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      const rewardAccount = await getAccount(connection, nukeAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
       rewardNukeBalance = rewardAccount.amount;
     } catch (error) {
-      throw new Error(`Reward wallet NUKE account not found or has no balance: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Reward wallet NUKE ATA not found or has no balance: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
 
     if (rewardNukeBalance < amountNuke) {
@@ -1139,28 +1151,36 @@ export async function swapNukeToSOL(
       );
     }
 
-    const userSolAccount = getAssociatedTokenAddressSync(
-      NATIVE_MINT, // WSOL
-      rewardWalletAddress,
+    // Explicitly derive WSOL ATA (destination token ATA)
+    const wsolAta = getAssociatedTokenAddressSync(
+      NATIVE_MINT,          // WSOL mint
+      rewardWalletAddress,  // owner = reward wallet
       false,
-      TOKEN_PROGRAM_ID
+      TOKEN_PROGRAM_ID      // WSOL is standard SPL Token
     );
-    
-    // Validate SOL account address
-    if (!userSolAccount) {
-      throw new Error('Failed to generate userSolAccount address');
+
+    if (!wsolAta) {
+      throw new Error('WSOL ATA (wsolAta) is undefined after derivation');
     }
-    
     try {
-      userSolAccount.toString(); // Verify it's a valid PublicKey
+      wsolAta.toString(); // Verify it's a valid PublicKey
     } catch (error) {
-      throw new Error(`Invalid userSolAccount address: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Invalid WSOL ATA (wsolAta) address: ${error instanceof Error ? error.message : String(error)}`);
     }
-    
-    logger.debug('Token accounts validated', {
-      rewardNukeAccount: rewardNukeAccount.toBase58(),
-      userSolAccount: userSolAccount.toBase58(),
-      rewardNukeBalance: rewardNukeBalance.toString(),
+
+    // Alias for readability in later code (unwrap logic, etc.)
+    const userSolAccount = wsolAta;
+
+    // Defensive guard: both ATAs MUST be resolved before calling Raydium SDK
+    if (!nukeAta || !wsolAta) {
+      throw new Error('User token accounts not resolved before Raydium swap (nukeAta or wsolAta undefined)');
+    }
+
+    logger.info('Raydium swap user accounts', {
+      nukeAta: nukeAta.toBase58(),
+      wsolAta: wsolAta.toBase58(),
+      owner: rewardWalletAddress.toBase58(),
+      nukeBalance: rewardNukeBalance.toString(),
     });
 
     // ===================================================================
@@ -1180,33 +1200,35 @@ export async function swapNukeToSOL(
     // Use getAccount (SPL Token) instead of getAccountInfo for reliable token account checks
     let userSolAccountExists = false;
     try {
-      await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID);
+      await getAccount(connection, wsolAta, 'confirmed', TOKEN_PROGRAM_ID);
       userSolAccountExists = true;
-      logger.info('WSOL ATA exists', { userSolAccount: userSolAccount.toBase58() });
+      logger.info('WSOL ATA exists', { userSolAccount: wsolAta.toBase58() });
     } catch {
       // Account doesn't exist - we'll create it
       userSolAccountExists = false;
       logger.info('WSOL ATA missing - will create before swap', { 
-        userSolAccount: userSolAccount.toBase58() 
+        userSolAccount: wsolAta.toBase58() 
       });
     }
 
     // Verify source NUKE account exists (required for swap)
     let rewardNukeAccountExists = false;
     try {
-      await getAccount(connection, rewardNukeAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      await getAccount(connection, nukeAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
       rewardNukeAccountExists = true;
     } catch {
       // Account doesn't exist or error
     }
 
     if (!rewardNukeAccountExists) {
-      throw new Error(`Reward NUKE account does not exist: ${rewardNukeAccount.toBase58()}`);
+      throw new Error(`Reward NUKE ATA does not exist: ${nukeAta.toBase58()}`);
     }
 
     logger.info('Account existence checks (BEFORE SDK call)', {
       rewardNukeAccount: rewardNukeAccountExists ? 'exists' : 'missing',
       userSolAccount: userSolAccountExists ? 'exists' : 'missing (will create)',
+      nukeAta: nukeAta.toBase58(),
+      wsolAta: wsolAta.toBase58(),
       note: 'WSOL ATA must exist or be created BEFORE Raydium SDK instructions are added',
     });
 
@@ -1223,13 +1245,13 @@ export async function swapNukeToSOL(
     // This ensures the account exists when SDK instructions reference it
     if (!userSolAccountExists) {
       logger.info('Adding WSOL ATA creation instruction BEFORE SDK instructions', {
-        userSolAccount: userSolAccount.toBase58(),
+        userSolAccount: wsolAta.toBase58(),
         payer: rewardWalletAddress.toBase58(),
       });
       
       const createWSOLInstruction = createAssociatedTokenAccountInstruction(
         rewardWalletAddress, // payer
-        userSolAccount,      // ata
+        wsolAta,             // ata
         rewardWalletAddress, // owner
         NATIVE_MINT,         // WSOL mint
         TOKEN_PROGRAM_ID     // SPL Token program
@@ -1462,19 +1484,25 @@ export async function swapNukeToSOL(
       note: 'Version field is required by SDK for makeSwapInstruction',
     });
 
-    // Use SDK's makeSwapInstruction - handles ALL pool types (Standard, CPMM, CLMM)
-    // SDK automatically handles vault accounts, program IDs, and instruction building
-    const swapResult = await Liquidity.makeSwapInstruction({
-      poolKeys: poolKeys as any, // Type assertion needed due to SDK type definitions
+    // Use SDK's makeSwapInstructionSimple - Standard, CPMM, CLMM
+    // SDK automatically handles vault accounts, program IDs, and instruction building.
+    // We MUST pass explicit ATAs for tokenAccountIn/tokenAccountOut; SDK will not infer them.
+    // NOTE: We intentionally cast the config to `any` to avoid tight coupling to SDK typings,
+    // while still following the documented pattern from Chainstack.
+    const swapConfigForSDK: any = {
+      connection,
+      poolKeys: poolKeys as any,
       userKeys: {
-        tokenAccountIn: rewardNukeAccount,
-        tokenAccountOut: userSolAccount,
+        tokenAccountIn: nukeAta,   // ✅ NUKE ATA (source SPL token)
+        tokenAccountOut: wsolAta,  // ✅ WSOL ATA (destination wrapped SOL)
         owner: rewardWalletAddress,
       },
       amountIn: amountNuke,
-      amountOut: minDestAmount, // Minimum amount out with slippage
-      fixedSide: 'in', // 'in' for exact input swap
-    });
+      amountOut: minDestAmount,
+      fixedSide: 'in',
+    };
+
+    const swapResult = await (Liquidity as any).makeSwapInstructionSimple(swapConfigForSDK);
 
     // CRITICAL: Raydium SDK returns innerTransactions (array) or innerTransaction (single)
     // Handle both cases to ensure we extract all instructions correctly
