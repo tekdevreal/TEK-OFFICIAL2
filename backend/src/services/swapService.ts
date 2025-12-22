@@ -33,7 +33,7 @@ import {
   createSyncNativeInstruction,
   NATIVE_MINT,
 } from '@solana/spl-token';
-import BN from 'bn.js';
+import Decimal from 'decimal.js';
 import { createHash } from 'crypto';
 import { connection, tokenMint, NETWORK } from '../config/solana';
 import { RAYDIUM_CONFIG, WSOL_MINT, getRaydiumPoolId, RAYDIUM_AMM_PROGRAM_ID } from '../config/raydium';
@@ -1490,12 +1490,12 @@ export async function swapNukeToSOL(
     // We MUST pass explicit ATAs for tokenAccountIn/tokenAccountOut; SDK will not infer them.
     // NOTE: We intentionally cast the config to `any` to avoid tight coupling to SDK typings,
     // while still following the documented pattern from Chainstack.
-    // Convert swap amounts to BN (SDK requires BN, not bigint/number/string)
-    const amountInBN = new BN(amountNuke.toString());
-    const minAmountOutBN = new BN(minDestAmount.toString());
+    // Convert swap amounts to Decimal (SDK math expects Decimal/Number, not BN/bigint/string)
+    const amountInDecimal = new Decimal(amountNuke.toString());
+    const minAmountOutDecimal = new Decimal(minDestAmount.toString());
 
-    if (!(amountInBN instanceof BN) || !(minAmountOutBN instanceof BN)) {
-      throw new Error('Raydium swap amounts must be BN instances');
+    if (!Decimal.isDecimal(amountInDecimal) || !Decimal.isDecimal(minAmountOutDecimal)) {
+      throw new Error('Raydium swap amounts must be Decimal instances');
     }
 
     const swapConfigForSDK: any = {
@@ -1506,8 +1506,8 @@ export async function swapNukeToSOL(
         tokenAccountOut: wsolAta,  // ✅ WSOL ATA (destination wrapped SOL)
         owner: rewardWalletAddress,
       },
-      amountIn: amountInBN,
-      amountOut: minAmountOutBN,
+      amountIn: amountInDecimal,
+      amountOut: minAmountOutDecimal,
       fixedSide: 'in',
     };
 
