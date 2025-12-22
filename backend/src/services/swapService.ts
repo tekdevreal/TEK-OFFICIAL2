@@ -1163,7 +1163,54 @@ export async function swapNukeToSOL(
       rewardNukeBalance: rewardNukeBalance.toString(),
     });
 
-    // Step 8: Build transaction
+    // ===================================================================
+    // CRITICAL: WSOL ATA MUST EXIST BEFORE CALLING RAYDIUM SDK
+    // ===================================================================
+    // When swapping SPL token → SOL, Raydium requires a WSOL (Wrapped SOL)
+    // Associated Token Account (ATA) as the destination. If this account doesn't
+    // exist, the SDK will create instructions referencing an undefined account,
+    // causing "Cannot read properties of undefined (reading 'toString')" when
+    // Solana tries to compile the transaction.
+    //
+    // SOLUTION: Check if WSOL ATA exists BEFORE calling SDK, and if missing,
+    // add createAssociatedTokenAccountInstruction BEFORE SDK instructions.
+    // ===================================================================
+    
+    // Step 8: Check WSOL ATA existence BEFORE building transaction
+    // Use getAccount (SPL Token) instead of getAccountInfo for reliable token account checks
+    let userSolAccountExists = false;
+    try {
+      await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID);
+      userSolAccountExists = true;
+      logger.info('WSOL ATA exists', { userSolAccount: userSolAccount.toBase58() });
+    } catch {
+      // Account doesn't exist - we'll create it
+      userSolAccountExists = false;
+      logger.info('WSOL ATA missing - will create before swap', { 
+        userSolAccount: userSolAccount.toBase58() 
+      });
+    }
+
+    // Verify source NUKE account exists (required for swap)
+    let rewardNukeAccountExists = false;
+    try {
+      await getAccount(connection, rewardNukeAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      rewardNukeAccountExists = true;
+    } catch {
+      // Account doesn't exist or error
+    }
+
+    if (!rewardNukeAccountExists) {
+      throw new Error(`Reward NUKE account does not exist: ${rewardNukeAccount.toBase58()}`);
+    }
+
+    logger.info('Account existence checks (BEFORE SDK call)', {
+      rewardNukeAccount: rewardNukeAccountExists ? 'exists' : 'missing',
+      userSolAccount: userSolAccountExists ? 'exists' : 'missing (will create)',
+      note: 'WSOL ATA must exist or be created BEFORE Raydium SDK instructions are added',
+    });
+
+    // Step 9: Build transaction
     const transaction = new Transaction();
     
     // Add compute budget instructions first (required for reliable execution)
@@ -1172,49 +1219,46 @@ export async function swapNukeToSOL(
       transaction.add(instruction);
     }
     
-    // Create WSOL account if needed
-    const userSolAccountInfo = await connection.getAccountInfo(userSolAccount).catch(() => null);
-    if (!userSolAccountInfo) {
-      transaction.add(
-        createAssociatedTokenAccountInstruction(
-          rewardWalletAddress,
-          userSolAccount,
-          rewardWalletAddress,
-          NATIVE_MINT,
-          TOKEN_PROGRAM_ID
-        )
+    // CRITICAL: Create WSOL ATA if missing - MUST be added BEFORE SDK instructions
+    // This ensures the account exists when SDK instructions reference it
+    if (!userSolAccountExists) {
+      logger.info('Adding WSOL ATA creation instruction BEFORE SDK instructions', {
+        userSolAccount: userSolAccount.toBase58(),
+        payer: rewardWalletAddress.toBase58(),
+      });
+      
+      const createWSOLInstruction = createAssociatedTokenAccountInstruction(
+        rewardWalletAddress, // payer
+        userSolAccount,      // ata
+        rewardWalletAddress, // owner
+        NATIVE_MINT,         // WSOL mint
+        TOKEN_PROGRAM_ID     // SPL Token program
       );
-    }
-
-
-    // Verify user accounts exist (pool accounts are validated by SDK for Standard pools)
-    let rewardNukeAccountExists = false;
-    let userSolAccountExists = false;
-
-    try {
-      await getAccount(connection, rewardNukeAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
-      rewardNukeAccountExists = true;
-    } catch {
-      // Account doesn't exist or error
-    }
-
-    try {
-      await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID);
-      userSolAccountExists = true;
-    } catch {
-      // Account doesn't exist yet (will be created if needed)
-    }
-
-    logger.info('Account existence checks', {
-      rewardNukeAccount: rewardNukeAccountExists ? 'exists' : 'missing',
-      userSolAccount: userSolAccountExists ? 'exists' : 'missing (will create if needed)',
-      note: poolInfo.poolType === 'Standard' 
-        ? 'Pool accounts validated by SDK' 
-        : 'Pool accounts validated manually',
-    });
-
-    if (!rewardNukeAccountExists) {
-      throw new Error(`Reward NUKE account does not exist: ${rewardNukeAccount.toBase58()}`);
+      
+      // Validate the instruction before adding
+      if (!createWSOLInstruction.programId) {
+        throw new Error('WSOL ATA creation instruction missing programId');
+      }
+      if (!createWSOLInstruction.keys || createWSOLInstruction.keys.length === 0) {
+        throw new Error('WSOL ATA creation instruction missing keys');
+      }
+      
+      // Validate all keys have valid pubkeys
+      for (const key of createWSOLInstruction.keys) {
+        if (!key || !key.pubkey) {
+          throw new Error('WSOL ATA creation instruction has undefined account key');
+        }
+        try {
+          key.pubkey.toString(); // Verify it's a valid PublicKey
+        } catch (error) {
+          throw new Error(`WSOL ATA creation instruction has invalid pubkey: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      
+      transaction.add(createWSOLInstruction);
+      logger.info('WSOL ATA creation instruction added to transaction', {
+        instructionIndex: transaction.instructions.length - 1,
+      });
     }
 
     // For non-Standard pools, verify pool vaults exist (Standard pools use SDK which handles this)
@@ -1526,7 +1570,15 @@ export async function swapNukeToSOL(
       note: 'SDK handles all pool types (Standard/CPMM/CLMM), account fetching, vault addresses, and instruction building automatically',
     });
 
-    // Step 9: Set transaction properties BEFORE simulation
+    // ===================================================================
+    // CRITICAL: Set transaction properties BEFORE simulation/signing
+    // ===================================================================
+    // Solana transactions REQUIRE recentBlockhash and feePayer to be set
+    // before compileMessage() is called (which happens during sign() or
+    // simulateTransaction()). If these are missing, compilation will fail.
+    // ===================================================================
+    
+    // Step 10: Set transaction properties BEFORE simulation
     // CRITICAL: recentBlockhash and feePayer MUST be set before compileMessage/sign
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
     
@@ -1538,45 +1590,74 @@ export async function swapNukeToSOL(
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = rewardWalletAddress;
 
-    // CRITICAL: Validate transaction before simulation
-    // This prevents "Cannot read properties of undefined (reading 'toString')" errors
+    // ===================================================================
+    // CRITICAL: Validate ALL transaction fields before simulation
+    // ===================================================================
+    // This validation prevents "Cannot read properties of undefined (reading 'toString')"
+    // errors by ensuring:
+    // 1. recentBlockhash is set (required for transaction compilation)
+    // 2. feePayer is set (required for transaction compilation)
+    // 3. ALL instruction keys have valid pubkeys (prevents undefined.toString() errors)
+    // ===================================================================
+    
     if (!transaction.recentBlockhash) {
-      throw new Error('Transaction missing recentBlockhash');
+      throw new Error('Transaction missing recentBlockhash - cannot compile transaction');
     }
     
     if (!transaction.feePayer) {
-      throw new Error('Transaction missing feePayer');
+      throw new Error('Transaction missing feePayer - cannot compile transaction');
     }
     
-    // Validate all instruction keys are defined
+    // CRITICAL: Validate ALL instruction keys are defined and valid
+    // This is the PRIMARY fix for "Cannot read properties of undefined (reading 'toString')"
+    // Solana's compileMessage() iterates through all instruction keys and calls
+    // pubkey.toString() on each. If any pubkey is undefined, this error occurs.
     const allInstructionKeys: { pubkey: PublicKey; isSigner: boolean; isWritable: boolean }[] = [];
-    for (const instruction of transaction.instructions) {
+    for (let instIdx = 0; instIdx < transaction.instructions.length; instIdx++) {
+      const instruction = transaction.instructions[instIdx];
+      
       if (!instruction.keys || !Array.isArray(instruction.keys)) {
-        throw new Error(`Instruction missing keys array: ${instruction.programId?.toBase58() || 'unknown'}`);
+        throw new Error(`Instruction ${instIdx} missing keys array: ${instruction.programId?.toBase58() || 'unknown'}`);
       }
       
-      for (const key of instruction.keys) {
+      for (let keyIdx = 0; keyIdx < instruction.keys.length; keyIdx++) {
+        const key = instruction.keys[keyIdx];
+        
+        // CRITICAL: Check for undefined pubkey - this is what causes the error
         if (!key || !key.pubkey) {
-          throw new Error(`Instruction has undefined account key`);
+          throw new Error(
+            `Instruction ${instIdx}, account ${keyIdx} has undefined pubkey. ` +
+            `This will cause "Cannot read properties of undefined (reading 'toString')" error. ` +
+            `Program: ${instruction.programId?.toBase58() || 'unknown'}`
+          );
         }
         
-        // Verify pubkey can be converted to string (has toString method)
+        // CRITICAL: Verify pubkey can be converted to string (has toString method)
+        // This is what Solana does during compileMessage(), so we catch it here first
         try {
-          key.pubkey.toString();
+          const pubkeyStr = key.pubkey.toString();
+          if (!pubkeyStr || pubkeyStr.length === 0) {
+            throw new Error(`Instruction ${instIdx}, account ${keyIdx} has invalid pubkey (empty string)`);
+          }
         } catch (error) {
-          throw new Error(`Instruction has invalid pubkey: ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(
+            `Instruction ${instIdx}, account ${keyIdx} has invalid pubkey that cannot be converted to string. ` +
+            `This will cause "Cannot read properties of undefined (reading 'toString')" error. ` +
+            `Error: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
         
         allInstructionKeys.push(key);
       }
     }
 
-    logger.info('Transaction validation before simulation', {
+    logger.info('Transaction validation before simulation - ALL CHECKS PASSED', {
       recentBlockhash: transaction.recentBlockhash,
       feePayer: transaction.feePayer.toBase58(),
       instructionCount: transaction.instructions.length,
       totalAccountKeys: allInstructionKeys.length,
       lastValidBlockHeight,
+      note: 'All instruction keys validated - no undefined pubkeys found',
     });
 
     // Step 10: Simulate transaction before sending
