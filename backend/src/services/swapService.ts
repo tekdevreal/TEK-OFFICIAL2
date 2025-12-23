@@ -846,11 +846,11 @@ function createRaydiumCpmmSwapInstruction(
   const discriminatorLabels = [
     'raydium_cp_swap:swap_base_input', // Option 1 (preferred)
     'swap_base_input',                 // Option 2
-    'global:swap_base_input',          // Option 3 (current attempt)
-    'swap',                            // Option 4 (fallback)
+    'global:swap_base_input',          // Option 3
+    'swap',                            // Option 4 (fallback, current attempt)
   ];
 
-  const discriminatorIndex = 2; // use Option 3 now
+  const discriminatorIndex = 3; // use Option 4 now
 
   const swapDiscriminator = createHash('sha256')
     .update(discriminatorLabels[discriminatorIndex])
