@@ -22,10 +22,12 @@ import {
   LAMPORTS_PER_SOL,
   SendTransactionError,
   ComputeBudgetProgram,
+  SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 import {
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
   getAccount,
   getMint,
@@ -842,27 +844,16 @@ function createRaydiumCpmmSwapInstruction(
   userWallet: PublicKey,
   sourceTokenProgram: PublicKey // TOKEN_2022_PROGRAM_ID or TOKEN_PROGRAM_ID
 ): TransactionInstruction {
-  // Anchor discriminator candidates for Raydium CPMM swap (try in this order)
-  const discriminatorLabels = [
-    'raydium_cp_swap:swap_base_input', // Option 1 (preferred)
-    'swap_base_input',                 // Option 2
-    'global:swap_base_input',          // Option 3
-    'swap',                            // Option 4 (fallback, current attempt)
-  ];
+  // Raydium CPMM Anchor discriminator (observed from devnet tx): 40c6cde8260871e2
+  const swapDiscriminator = Buffer.from('40c6cde8260871e2', 'hex');
 
-  const discriminatorIndex = 3; // use Option 4 now
-
-  const swapDiscriminator = createHash('sha256')
-    .update(discriminatorLabels[discriminatorIndex])
-    .digest()
-    .subarray(0, 8);
-
-  // Instruction data layout (Anchor, little-endian):
-  //   discriminator[8] | amount_in: u64 | minimum_amount_out: u64
-  const instructionData = Buffer.alloc(24);
+  // Instruction data layout (Anchor/Borsh, little-endian):
+  // discriminator[8] | amount_in: u64 | minimum_amount_out: u64 | flags: u8 (reserved)
+  const instructionData = Buffer.alloc(8 + 8 + 8 + 1);
   swapDiscriminator.copy(instructionData, 0);
   instructionData.writeBigUInt64LE(amountIn, 8);
   instructionData.writeBigUInt64LE(minimumAmountOut, 16);
+  instructionData.writeUInt8(0, 24); // flags/reserved
 
   logger.info('Creating CPMM swap instruction (Raydium CPMM Anchor)', {
     poolProgramId: poolProgramId.toBase58(),
@@ -871,24 +862,37 @@ function createRaydiumCpmmSwapInstruction(
     minimumAmountOut: minimumAmountOut.toString(),
     tokenProgramId: sourceTokenProgram.toBase58(),
     discriminator: swapDiscriminator.toString('hex'),
-    discriminatorLabel: discriminatorLabels[discriminatorIndex],
-    accountCount: 10,
-    note: 'CPMM pools never use Serum; using exact Anchor swap discriminator',
+    accountCount: 12,
+    note: 'CPMM pools never use Serum; using observed Anchor discriminator',
   });
 
   return new TransactionInstruction({
     programId: poolProgramId,
     keys: [
+      // 0. Pool account (writable)
       { pubkey: poolId, isSigner: false, isWritable: true },
+      // 1. User source token ATA (writable)
       { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
+      // 2. User destination token ATA (writable)
       { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true },
+      // 3. Pool coin vault (writable)
       { pubkey: poolState.poolCoinTokenAccount, isSigner: false, isWritable: true },
+      // 4. Pool pc vault (writable)
       { pubkey: poolState.poolPcTokenAccount, isSigner: false, isWritable: true },
+      // 5. Coin mint (readonly)
       { pubkey: poolState.poolCoinMint, isSigner: false, isWritable: false },
+      // 6. Pc mint (readonly)
       { pubkey: poolState.poolPcMint, isSigner: false, isWritable: false },
+      // 7. User authority (signer, writable)
       { pubkey: userWallet, isSigner: true, isWritable: true },
+      // 8. Token program (SPL or Token-2022 depending on source mint)
       { pubkey: sourceTokenProgram, isSigner: false, isWritable: false },
+      // 9. System program (readonly)
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      // 10. Associated token program (readonly)
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      // 11. Rent sysvar (readonly, optional but included for Anchor compatibility)
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
     data: instructionData,
   });
