@@ -22,10 +22,13 @@ import {
   LAMPORTS_PER_SOL,
   SendTransactionError,
   ComputeBudgetProgram,
+  SYSVAR_CLOCK_PUBKEY,
+  SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 import {
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
   getAccount,
   getMint,
@@ -842,52 +845,122 @@ function createRaydiumCpmmSwapInstruction(
   userWallet: PublicKey,
   sourceTokenProgram: PublicKey // TOKEN_2022_PROGRAM_ID or TOKEN_PROGRAM_ID
 ): TransactionInstruction {
-  // Raydium CPMM Anchor discriminator (SwapBaseInput observed on devnet): 40c6cde8260871e2
+  throw new Error('createRaydiumCpmmSwapInstruction (legacy) is deprecated. Use createRaydiumCpmmSwapInstructionV2 with explicit account order from reference transaction.');
+}
+
+/**
+ * Create Raydium CPMM swap instruction (SwapBaseInput) matching the reference devnet tx account order.
+ * Accounts order (all required):
+ * 0. Payer (signer, writable)
+ * 1. Authority (signer, writable)
+ * 2. Amm Config (readonly)
+ * 3. Pool State (writable) - poolId
+ * 4. Input Token Account (writable) - user NUKE ATA
+ * 5. Output Token Account (writable) - user WSOL ATA
+ * 6. Input Vault (writable) - pool NUKE vault
+ * 7. Output Vault (writable) - pool WSOL vault
+ * 8. Input Token Program (readonly) - TOKEN_2022_PROGRAM_ID
+ * 9. Output Token Program (readonly) - TOKEN_PROGRAM_ID
+ * 10. Input Token Mint (readonly) - NUKE mint
+ * 11. Output Token Mint (readonly) - WSOL mint
+ * 12. Observation State (readonly) - from pool state
+ * Optional (Anchor sysvars / programs if required by IDL): SysvarClock, SysvarRent, AssociatedTokenProgram
+ */
+export function createRaydiumCpmmSwapInstructionV2(params: {
+  poolProgramId: PublicKey;
+  payer: PublicKey;
+  authority: PublicKey;
+  ammConfig: PublicKey;
+  poolState: PublicKey;
+  inputTokenAccount: PublicKey;
+  outputTokenAccount: PublicKey;
+  inputVault: PublicKey;
+  outputVault: PublicKey;
+  inputTokenProgram: PublicKey;  // likely TOKEN_2022_PROGRAM_ID for NUKE
+  outputTokenProgram: PublicKey; // likely TOKEN_PROGRAM_ID for WSOL
+  inputMint: PublicKey;          // NUKE mint
+  outputMint: PublicKey;         // WSOL mint
+  observationState: PublicKey;
+  amountIn: bigint;
+  minimumAmountOut: bigint;
+  tradeFeeFlag?: number;   // u8
+  creatorFeeFlag?: number; // u8
+  includeSysvars?: boolean;
+}): TransactionInstruction {
+  const {
+    poolProgramId,
+    payer,
+    authority,
+    ammConfig,
+    poolState,
+    inputTokenAccount,
+    outputTokenAccount,
+    inputVault,
+    outputVault,
+    inputTokenProgram,
+    outputTokenProgram,
+    inputMint,
+    outputMint,
+    observationState,
+    amountIn,
+    minimumAmountOut,
+    tradeFeeFlag = 0,
+    creatorFeeFlag = 0,
+    includeSysvars = false,
+  } = params;
+
+  // Discriminator for SwapBaseInput (observed on devnet)
   const swapDiscriminator = Buffer.from('40c6cde8260871e2', 'hex');
 
-  // Instruction data layout (Anchor/Borsh, little-endian):
-  // discriminator[8] | amount_in: u64 | minimum_amount_out: u64
-  const instructionData = Buffer.alloc(8 + 8 + 8);
+  // Data layout: discriminator[8] | amount_in u64 LE | minimum_amount_out u64 LE | trade_fee_flag u8 | creator_fee_flag u8
+  const instructionData = Buffer.alloc(8 + 8 + 8 + 1 + 1);
   swapDiscriminator.copy(instructionData, 0);
   instructionData.writeBigUInt64LE(amountIn, 8);
   instructionData.writeBigUInt64LE(minimumAmountOut, 16);
+  instructionData.writeUInt8(tradeFeeFlag, 24);
+  instructionData.writeUInt8(creatorFeeFlag, 25);
 
-  logger.info('Creating CPMM swap instruction (Raydium CPMM Anchor)', {
-    poolProgramId: poolProgramId.toBase58(),
-    poolId: poolId.toBase58(),
-    amountIn: amountIn.toString(),
-    minimumAmountOut: minimumAmountOut.toString(),
-    tokenProgramId: sourceTokenProgram.toBase58(),
-    discriminator: swapDiscriminator.toString('hex'),
-    accountCount: 10,
-    note: 'CPMM pools never use Serum; using observed Anchor discriminator',
-  });
+  const keys = [
+    // 0. Payer (signer, writable)
+    { pubkey: payer, isSigner: true, isWritable: true },
+    // 1. Authority (signer, writable)
+    { pubkey: authority, isSigner: true, isWritable: true },
+    // 2. Amm Config (readonly)
+    { pubkey: ammConfig, isSigner: false, isWritable: false },
+    // 3. Pool State (writable)
+    { pubkey: poolState, isSigner: false, isWritable: true },
+    // 4. Input Token Account (writable)
+    { pubkey: inputTokenAccount, isSigner: false, isWritable: true },
+    // 5. Output Token Account (writable)
+    { pubkey: outputTokenAccount, isSigner: false, isWritable: true },
+    // 6. Input Vault (writable)
+    { pubkey: inputVault, isSigner: false, isWritable: true },
+    // 7. Output Vault (writable)
+    { pubkey: outputVault, isSigner: false, isWritable: true },
+    // 8. Input Token Program (readonly)
+    { pubkey: inputTokenProgram, isSigner: false, isWritable: false },
+    // 9. Output Token Program (readonly)
+    { pubkey: outputTokenProgram, isSigner: false, isWritable: false },
+    // 10. Input Token Mint (readonly)
+    { pubkey: inputMint, isSigner: false, isWritable: false },
+    // 11. Output Token Mint (readonly)
+    { pubkey: outputMint, isSigner: false, isWritable: false },
+    // 12. Observation State (readonly)
+    { pubkey: observationState, isSigner: false, isWritable: false },
+  ];
+
+  if (includeSysvars) {
+    keys.push(
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    );
+  }
 
   return new TransactionInstruction({
     programId: poolProgramId,
-    keys: [
-      // Order per CPMM expectation — exactly 10 accounts
-      // 0. Pool program ID (readonly)
-      { pubkey: poolProgramId, isSigner: false, isWritable: false },
-      // 1. Pool account (writable)
-      { pubkey: poolId, isSigner: false, isWritable: true },
-      // 2. Pool coin vault (writable, NUKE in pool)
-      { pubkey: poolState.poolCoinTokenAccount, isSigner: false, isWritable: true },
-      // 3. Pool pc vault (writable, WSOL in pool)
-      { pubkey: poolState.poolPcTokenAccount, isSigner: false, isWritable: true },
-      // 4. Pool coin mint (readonly)
-      { pubkey: poolState.poolCoinMint, isSigner: false, isWritable: false },
-      // 5. Pool pc mint (readonly)
-      { pubkey: poolState.poolPcMint, isSigner: false, isWritable: false },
-      // 6. User source ATA (writable, NUKE)
-      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
-      // 7. User destination ATA (writable, WSOL)
-      { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true },
-      // 8. User transfer authority (signer, writable)
-      { pubkey: userWallet, isSigner: true, isWritable: true },
-      // 9. Token program (SPL or Token-2022 depending on source mint)
-      { pubkey: sourceTokenProgram, isSigner: false, isWritable: false },
-    ],
+    keys,
     data: instructionData,
   });
 }
