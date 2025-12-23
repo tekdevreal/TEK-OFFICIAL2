@@ -227,38 +227,57 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
   }
   const poolProgramId = new PublicKey(poolInfo.programId);
 
-  // Handle pool type detection - check both 'type' and 'pooltype' fields
-  // CRITICAL: pooltype is an array (e.g., ["Cpmm"]), type is a string
-  let normalizedType: string;
-  
-  // First check pooltype array (e.g., ["Cpmm"])
+  // Handle pool type detection - CRITICAL: pooltype array takes precedence over type field
+  // API may return both: "type": "Standard" AND "pooltype": ["Cpmm"]
+  // pooltype array is the authoritative source - it correctly identifies CPMM pools
+  let normalizedType: 'cpmm' | 'clmm' | 'standard' | undefined;
+
+  // Treat poolInfo.pooltype as AUTHORITATIVE when present
   if (poolInfo.pooltype && Array.isArray(poolInfo.pooltype) && poolInfo.pooltype.length > 0) {
-    const pooltypeValue = poolInfo.pooltype[0];
-    normalizedType = pooltypeValue.toLowerCase();
-    logger.info('Pool type detected from pooltype array', {
-      poolId: poolId.toBase58(),
-      pooltype: poolInfo.pooltype,
-      normalizedType,
-    });
+    if (poolInfo.pooltype.some(pt => pt.toLowerCase() === 'cpmm')) {
+      normalizedType = 'cpmm';
+      logger.info('CPMM pool detected from pooltype array (authoritative)', {
+        poolId: poolId.toBase58(),
+        pooltype: poolInfo.pooltype,
+        type: poolInfo.type,
+        normalizedType,
+        note: 'CPMM pool detected - Serum not required (CPMM pools never use Serum)',
+      });
+    } else if (poolInfo.pooltype.some(pt => pt.toLowerCase() === 'clmm')) {
+      normalizedType = 'clmm';
+      logger.info('CLMM pool detected from pooltype array', {
+        poolId: poolId.toBase58(),
+        pooltype: poolInfo.pooltype,
+        normalizedType,
+      });
+    } else if (poolInfo.pooltype.some(pt => pt.toLowerCase() === 'standard')) {
+      normalizedType = 'standard';
+      logger.info('AMM v4 pool detected from pooltype array', {
+        poolId: poolId.toBase58(),
+        pooltype: poolInfo.pooltype,
+        normalizedType,
+      });
+    } else {
+      normalizedType = poolInfo.pooltype[0].toLowerCase() as any;
+      logger.info('Pool type detected from pooltype array (fallback)', {
+        poolId: poolId.toBase58(),
+        pooltype: poolInfo.pooltype,
+        type: poolInfo.type,
+        normalizedType,
+      });
+    }
   } else if (poolInfo.type) {
-    // Fallback to type field if pooltype is not available
-    normalizedType = poolInfo.type.toLowerCase();
-    logger.info('Pool type detected from type field', {
+    // Fallback to type field only if pooltype is not available
+    normalizedType = poolInfo.type.toLowerCase() as any;
+    logger.info('Pool type detected from type field (fallback)', {
       poolId: poolId.toBase58(),
       type: poolInfo.type,
       normalizedType,
     });
-  } else {
-    // Default to "standard" only if neither field is present
-    normalizedType = 'standard';
-    logger.info('Pool type not in API response, defaulting to "Standard"', {
-      poolId: poolId.toBase58(),
-      note: 'Assuming AMM v4 pool - will require Serum market',
-    });
   }
 
   // Support Standard AMM (v4), CPMM, and CLMM pools
-  if (!['standard', 'cpmm', 'clmm'].includes(normalizedType)) {
+  if (normalizedType && !['standard', 'cpmm', 'clmm'].includes(normalizedType)) {
     throw new Error(`Unsupported Raydium pool type: "${normalizedType}". Supported types: Standard (AMM v4), CPMM, CLMM.`);
   }
 
@@ -303,6 +322,12 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
   const tradeFeeRate = poolInfo.tradeFeeRate;
   const protocolFeeRate = poolInfo.protocolFeeRate;
   const lpMint = poolInfo.lpMint ? new PublicKey(poolInfo.lpMint) : undefined;
+
+  // After normalization, enforce behavior strictly
+  if (normalizedType === 'clmm') {
+    // CLMM pools are explicitly not supported
+    throw new Error('CLMM pools are not supported');
+  }
 
   // Normalize pool type for return
   // Map: 'standard' -> 'Standard', 'cpmm' -> 'Cpmm', 'clmm' -> 'Clmm'
