@@ -22,12 +22,10 @@ import {
   LAMPORTS_PER_SOL,
   SendTransactionError,
   ComputeBudgetProgram,
-  SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 import {
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
   getAccount,
   getMint,
@@ -844,11 +842,11 @@ function createRaydiumCpmmSwapInstruction(
   userWallet: PublicKey,
   sourceTokenProgram: PublicKey // TOKEN_2022_PROGRAM_ID or TOKEN_PROGRAM_ID
 ): TransactionInstruction {
-  // Raydium CPMM Anchor discriminator (observed from devnet tx): 40c6cde8260871e2
+  // Raydium CPMM Anchor discriminator (devnet): 40c6cde8260871e2
   const swapDiscriminator = Buffer.from('40c6cde8260871e2', 'hex');
 
   // Instruction data layout (Anchor/Borsh, little-endian):
-  // discriminator[8] | amount_in: u64 | minimum_amount_out: u64 | flags: u8 (reserved)
+  // discriminator[8] | amount_in: u64 | minimum_amount_out: u64 | flags: u8 (reserved=0)
   const instructionData = Buffer.alloc(8 + 8 + 8 + 1);
   swapDiscriminator.copy(instructionData, 0);
   instructionData.writeBigUInt64LE(amountIn, 8);
@@ -862,37 +860,34 @@ function createRaydiumCpmmSwapInstruction(
     minimumAmountOut: minimumAmountOut.toString(),
     tokenProgramId: sourceTokenProgram.toBase58(),
     discriminator: swapDiscriminator.toString('hex'),
-    accountCount: 12,
+    accountCount: 10,
     note: 'CPMM pools never use Serum; using observed Anchor discriminator',
   });
 
   return new TransactionInstruction({
     programId: poolProgramId,
     keys: [
-      // 0. Pool account (writable)
+      // Order per CPMM IDL expectation — exactly 10 accounts
+      // 0. Pool program ID (readonly) — included because IDL expects 10 keys
+      { pubkey: poolProgramId, isSigner: false, isWritable: false },
+      // 1. Pool account (writable)
       { pubkey: poolId, isSigner: false, isWritable: true },
-      // 1. User source token ATA (writable)
-      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
-      // 2. User destination token ATA (writable)
-      { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true },
-      // 3. Pool coin vault (writable)
+      // 2. Pool coin vault (writable, NUKE)
       { pubkey: poolState.poolCoinTokenAccount, isSigner: false, isWritable: true },
-      // 4. Pool pc vault (writable)
+      // 3. Pool pc vault (writable, WSOL)
       { pubkey: poolState.poolPcTokenAccount, isSigner: false, isWritable: true },
-      // 5. Coin mint (readonly)
+      // 4. Pool coin mint (readonly)
       { pubkey: poolState.poolCoinMint, isSigner: false, isWritable: false },
-      // 6. Pc mint (readonly)
+      // 5. Pool pc mint (readonly)
       { pubkey: poolState.poolPcMint, isSigner: false, isWritable: false },
-      // 7. User authority (signer, writable)
+      // 6. User source ATA (writable, NUKE)
+      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true },
+      // 7. User destination ATA (writable, WSOL)
+      { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true },
+      // 8. User transfer authority (signer, writable)
       { pubkey: userWallet, isSigner: true, isWritable: true },
-      // 8. Token program (SPL or Token-2022 depending on source mint)
+      // 9. Token program (SPL or Token-2022 depending on source mint)
       { pubkey: sourceTokenProgram, isSigner: false, isWritable: false },
-      // 9. System program (readonly)
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      // 10. Associated token program (readonly)
-      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      // 11. Rent sysvar (readonly, optional but included for Anchor compatibility)
-      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ],
     data: instructionData,
   });
