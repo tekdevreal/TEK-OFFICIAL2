@@ -1444,9 +1444,15 @@ export async function swapNukeToSOL(
       ? (amountNuke * BigInt(10000 - sourceTransferFeeBps)) / BigInt(10000)
       : amountNuke;
     
+    // ✅ CRITICAL: Calculate effective slippage for liquidity check (same as final calculation)
+    // This ensures the liquidity check uses the same slippage tolerance as the actual swap
+    const effectiveSlippageBpsForLiquidity = sourceTransferFeeBps > 0 
+      ? Math.max(slippageBps, sourceTransferFeeBps + 200) // Transfer fee + 2% buffer
+      : slippageBps;
+    
     // Estimate expected output for liquidity verification
     const estimatedDestAmount = (destReserve * nukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + nukeAfterTransferFee) / BigInt(10000);
-    const estimatedMinDestAmount = (estimatedDestAmount * BigInt(10000 - slippageBps)) / BigInt(10000);
+    const estimatedMinDestAmount = (estimatedDestAmount * BigInt(10000 - effectiveSlippageBpsForLiquidity)) / BigInt(10000);
 
     // Verify liquidity
     const liquidityCheck = verifyLiquidity(sourceReserve, destReserve, amountNuke, estimatedMinDestAmount);
@@ -1463,7 +1469,18 @@ export async function swapNukeToSOL(
 
     // Step 7: Calculate expected SOL output (final calculation)
     const expectedDestAmount = (destReserve * nukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + nukeAfterTransferFee) / BigInt(10000);
-    const minDestAmount = (expectedDestAmount * BigInt(10000 - slippageBps)) / BigInt(10000);
+    
+    // ✅ CRITICAL: Adjust slippage to account for transfer fee
+    // When NUKE has a 4% transfer fee, the pool receives less than the input amount,
+    // which effectively increases slippage. We need to use a higher slippage tolerance
+    // that accounts for both the transfer fee and the base slippage buffer.
+    // Formula: effectiveSlippage = max(baseSlippage, transferFee + buffer)
+    // This ensures we don't hit Error 6005 (ExceededSlippage) due to transfer fees.
+    const effectiveSlippageBps = sourceTransferFeeBps > 0 
+      ? Math.max(slippageBps, sourceTransferFeeBps + 200) // Transfer fee + 2% buffer
+      : slippageBps;
+    
+    const minDestAmount = (expectedDestAmount * BigInt(10000 - effectiveSlippageBps)) / BigInt(10000);
 
     if (minDestAmount < MIN_SOL_OUTPUT) {
       logger.warn('Expected SOL output below minimum threshold', {
@@ -1483,10 +1500,11 @@ export async function swapNukeToSOL(
       destReserve: destReserve.toString(),
       expectedSolLamports: expectedDestAmount.toString(),
       minSolLamports: minDestAmount.toString(),
-      slippageBps,
+      baseSlippageBps: slippageBps,
+      effectiveSlippageBps,
       transferFeeBps: sourceTransferFeeBps,
       note: sourceTransferFeeBps > 0 
-        ? `NUKE has ${sourceTransferFeeBps / 100}% transfer fee, so pool receives less than amountNuke`
+        ? `NUKE has ${sourceTransferFeeBps / 100}% transfer fee, using effective slippage ${effectiveSlippageBps / 100}% (${sourceTransferFeeBps / 100}% fee + 2% buffer) to prevent Error 6005`
         : 'No transfer fee on source token',
     });
 
