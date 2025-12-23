@@ -60,6 +60,75 @@ const DEFAULT_SLIPPAGE_BPS = 200; // 2% = 200 basis points
 const MIN_SOL_OUTPUT = 0.001 * LAMPORTS_PER_SOL;
 
 /**
+ * Compute dynamic slippage tolerance based on price impact.
+ * 
+ * For small swaps, uses minimal slippage (2%).
+ * For large swaps, increases slippage proportionally to price impact.
+ * Hard-capped at 5% to prevent excessive slippage.
+ * 
+ * Formula: dynamicSlippage = BASE_SLIPPAGE + (priceImpact * 1.2)
+ * 
+ * @param amountIn - Input amount (after transfer fee if applicable)
+ * @param sourceReserve - Source token reserve in the pool
+ * @returns Slippage tolerance in basis points (100 bps = 1%)
+ */
+function computeDynamicSlippageBps(
+  amountIn: bigint,
+  sourceReserve: bigint
+): number {
+  const BASE_SLIPPAGE_BPS = 200; // 2% base slippage
+  const MAX_SLIPPAGE_BPS = 500;  // 5% hard cap
+  const PRICE_IMPACT_MULTIPLIER = 1.2; // Multiplier for price impact adjustment
+
+  // Calculate price impact as basis points
+  // priceImpact = (amountIn / sourceReserve) * 10000
+  const priceImpactBps = Number(
+    (amountIn * 10_000n) / sourceReserve
+  );
+
+  // Dynamic slippage = base + (price impact * multiplier)
+  const dynamicSlippage =
+    BASE_SLIPPAGE_BPS + Math.ceil(priceImpactBps * PRICE_IMPACT_MULTIPLIER);
+
+  // Hard cap at maximum slippage
+  return Math.min(dynamicSlippage, MAX_SLIPPAGE_BPS);
+}
+
+/**
+ * Extract error code from Solana error message.
+ * Looks for patterns like "6005", "Custom:6005", or "ExceededSlippage".
+ * 
+ * @param errorMessage - Error message string
+ * @returns Error code number if found, null otherwise
+ */
+function extractErrorCode(errorMessage: string): number | null {
+  // Try to extract error code from various formats
+  const patterns = [
+    /"Custom":(\d+)/,           // {"Custom":6005}
+    /error code: (\d+)/i,       // error code: 6005
+    /error (\d+)/i,             // error 6005
+    /(\d{4})/,                  // Any 4-digit number (likely error code)
+  ];
+  
+  for (const pattern of patterns) {
+    const match = errorMessage.match(pattern);
+    if (match && match[1]) {
+      const code = parseInt(match[1], 10);
+      if (!isNaN(code)) {
+        return code;
+      }
+    }
+  }
+  
+  // Check for specific error names
+  if (errorMessage.includes('ExceededSlippage') || errorMessage.includes('6005')) {
+    return 6005;
+  }
+  
+  return null;
+}
+
+/**
  * Get reward wallet keypair
  */
 function getRewardWallet(): Keypair {
@@ -1444,15 +1513,36 @@ export async function swapNukeToSOL(
       ? (amountNuke * BigInt(10000 - sourceTransferFeeBps)) / BigInt(10000)
       : amountNuke;
     
-    // ✅ CRITICAL: Calculate effective slippage for liquidity check (same as final calculation)
-    // This ensures the liquidity check uses the same slippage tolerance as the actual swap
+    // ✅ CRITICAL: Calculate dynamic slippage based on price impact
+    // Small swaps use minimal slippage, large swaps use higher slippage to prevent Error 6005
+    const dynamicSlippageBps = computeDynamicSlippageBps(nukeAfterTransferFee, sourceReserve);
+    
+    // ✅ CRITICAL: Adjust slippage to account for transfer fee
+    // When NUKE has a 4% transfer fee, we need additional slippage buffer
+    // Formula: effectiveSlippage = max(dynamicSlippage, transferFee + buffer)
     const effectiveSlippageBpsForLiquidity = sourceTransferFeeBps > 0 
-      ? Math.max(slippageBps, sourceTransferFeeBps + 200) // Transfer fee + 2% buffer
-      : slippageBps;
+      ? Math.max(dynamicSlippageBps, sourceTransferFeeBps + 200) // Transfer fee + 2% buffer
+      : dynamicSlippageBps;
+    
+    // Calculate price impact for logging
+    const priceImpactBps = Number((nukeAfterTransferFee * 10_000n) / sourceReserve);
     
     // Estimate expected output for liquidity verification
     const estimatedDestAmount = (destReserve * nukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + nukeAfterTransferFee) / BigInt(10000);
     const estimatedMinDestAmount = (estimatedDestAmount * BigInt(10000 - effectiveSlippageBpsForLiquidity)) / BigInt(10000);
+    
+    logger.info('Dynamic slippage calculation (liquidity check)', {
+      amountIn: nukeAfterTransferFee.toString(),
+      sourceReserve: sourceReserve.toString(),
+      priceImpactBps,
+      priceImpactPercent: (priceImpactBps / 100).toFixed(2),
+      baseSlippageBps: 200,
+      dynamicSlippageBps,
+      transferFeeBps: sourceTransferFeeBps,
+      effectiveSlippageBps: effectiveSlippageBpsForLiquidity,
+      effectiveSlippagePercent: (effectiveSlippageBpsForLiquidity / 100).toFixed(2),
+      note: 'Dynamic slippage adjusts based on price impact to prevent Error 6005',
+    });
 
     // Verify liquidity
     const liquidityCheck = verifyLiquidity(sourceReserve, destReserve, amountNuke, estimatedMinDestAmount);
@@ -1470,17 +1560,22 @@ export async function swapNukeToSOL(
     // Step 7: Calculate expected SOL output (final calculation)
     const expectedDestAmount = (destReserve * nukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + nukeAfterTransferFee) / BigInt(10000);
     
-    // ✅ CRITICAL: Adjust slippage to account for transfer fee
-    // When NUKE has a 4% transfer fee, the pool receives less than the input amount,
-    // which effectively increases slippage. We need to use a higher slippage tolerance
-    // that accounts for both the transfer fee and the base slippage buffer.
-    // Formula: effectiveSlippage = max(baseSlippage, transferFee + buffer)
-    // This ensures we don't hit Error 6005 (ExceededSlippage) due to transfer fees.
-    const effectiveSlippageBps = sourceTransferFeeBps > 0 
-      ? Math.max(slippageBps, sourceTransferFeeBps + 200) // Transfer fee + 2% buffer
-      : slippageBps;
+    // ✅ CRITICAL: Use dynamic slippage (same calculation as liquidity check)
+    // Dynamic slippage adjusts based on price impact to prevent Error 6005
+    // For large swaps, slippage increases proportionally to price impact
+    const dynamicSlippageBpsFinal = computeDynamicSlippageBps(nukeAfterTransferFee, sourceReserve);
     
-    const minDestAmount = (expectedDestAmount * BigInt(10000 - effectiveSlippageBps)) / BigInt(10000);
+    // ✅ CRITICAL: Adjust slippage to account for transfer fee
+    // When NUKE has a 4% transfer fee, we need additional slippage buffer
+    // Formula: effectiveSlippage = max(dynamicSlippage, transferFee + buffer)
+    const effectiveSlippageBps = sourceTransferFeeBps > 0 
+      ? Math.max(dynamicSlippageBpsFinal, sourceTransferFeeBps + 200) // Transfer fee + 2% buffer
+      : dynamicSlippageBpsFinal;
+    
+    let minDestAmount = (expectedDestAmount * BigInt(10000 - effectiveSlippageBps)) / BigInt(10000);
+    
+    // Calculate price impact for final logging
+    const priceImpactBpsFinal = Number((nukeAfterTransferFee * 10_000n) / sourceReserve);
 
     if (minDestAmount < MIN_SOL_OUTPUT) {
       logger.warn('Expected SOL output below minimum threshold', {
@@ -1493,19 +1588,25 @@ export async function swapNukeToSOL(
       );
     }
 
-    logger.info('Swap calculation', {
+    logger.info('Swap calculation (final)', {
       amountNuke: amountNuke.toString(),
       amountNukeAfterTransferFee: nukeAfterTransferFee.toString(),
       sourceReserve: sourceReserve.toString(),
       destReserve: destReserve.toString(),
-      expectedSolLamports: expectedDestAmount.toString(),
-      minSolLamports: minDestAmount.toString(),
-      baseSlippageBps: slippageBps,
-      effectiveSlippageBps,
+      priceImpactBps: priceImpactBpsFinal,
+      priceImpactPercent: (priceImpactBpsFinal / 100).toFixed(2),
+      baseSlippageBps: 200,
+      dynamicSlippageBps: dynamicSlippageBpsFinal,
       transferFeeBps: sourceTransferFeeBps,
+      effectiveSlippageBps,
+      effectiveSlippagePercent: (effectiveSlippageBps / 100).toFixed(2),
+      expectedSolLamports: expectedDestAmount.toString(),
+      expectedSolAmount: (Number(expectedDestAmount) / LAMPORTS_PER_SOL).toFixed(6),
+      minSolLamports: minDestAmount.toString(),
+      minSolAmount: (Number(minDestAmount) / LAMPORTS_PER_SOL).toFixed(6),
       note: sourceTransferFeeBps > 0 
-        ? `NUKE has ${sourceTransferFeeBps / 100}% transfer fee, using effective slippage ${effectiveSlippageBps / 100}% (${sourceTransferFeeBps / 100}% fee + 2% buffer) to prevent Error 6005`
-        : 'No transfer fee on source token',
+        ? `Dynamic slippage: ${dynamicSlippageBpsFinal / 100}% (price impact ${(priceImpactBpsFinal / 100).toFixed(2)}%) + transfer fee adjustment = ${effectiveSlippageBps / 100}% effective slippage`
+        : `Dynamic slippage: ${dynamicSlippageBpsFinal / 100}% based on price impact ${(priceImpactBpsFinal / 100).toFixed(2)}%`,
     });
 
     // Step 7: Derive user token accounts (NUKE ATA and WSOL ATA)
@@ -1810,7 +1911,7 @@ export async function swapNukeToSOL(
     // ===================================================================
     
     // Step 10: Build transaction (ATAs already verified to exist)
-    const transaction = new Transaction();
+    let transaction = new Transaction();
     
     // Add compute budget instructions first (required for reliable execution)
     const computeBudgetInstructions = createComputeBudgetInstructions();
@@ -2225,42 +2326,187 @@ export async function swapNukeToSOL(
       note: 'All instruction keys validated - no undefined pubkeys found',
     });
 
-    // Step 10: Simulate transaction before sending
-    logger.info('Simulating Raydium swap transaction');
-    try {
-      const simulation = await connection.simulateTransaction(transaction, [rewardWallet]);
-      
-      if (simulation.value.err) {
-        const errorMessage = JSON.stringify(simulation.value.err);
-        logger.error('Transaction simulation failed', {
-          error: errorMessage,
-          logs: simulation.value.logs || [],
+    // Step 10: Simulate transaction before sending (with retry for Error 6005)
+    let simulationAttempt = 0;
+    const MAX_SIMULATION_RETRIES = 1; // One retry only
+    let currentMinDestAmount = minDestAmount;
+    let currentEffectiveSlippageBps = effectiveSlippageBps;
+    
+    while (simulationAttempt <= MAX_SIMULATION_RETRIES) {
+      // Rebuild transaction if this is a retry
+      if (simulationAttempt > 0) {
+        logger.info('Retrying transaction with increased slippage', {
+          attempt: simulationAttempt,
+          previousSlippageBps: currentEffectiveSlippageBps,
+          newSlippageBps: currentEffectiveSlippageBps + 100,
+          note: 'Error 6005 detected - increasing slippage by 100 bps',
         });
-        throw new Error(`Transaction simulation failed: ${errorMessage}`);
-      }
-
-      logger.info('Transaction simulation passed', {
-        unitsConsumed: simulation.value.unitsConsumed,
-        logMessages: simulation.value.logs?.slice(0, 10) || [], // First 10 log lines
-      });
-    } catch (simError) {
-      // If simulation fails with SendTransactionError, extract logs
-      if (simError instanceof Error && 'getLogs' in simError && typeof (simError as any).getLogs === 'function') {
-        const sendError = simError as SendTransactionError;
-        try {
-          const logs = await sendError.getLogs(connection);
-          logger.error('Transaction simulation failed with detailed logs', {
-            error: sendError.message,
-            logs: logs || [],
-          });
-        } catch (logError) {
-          logger.error('Transaction simulation failed (could not get logs)', {
-            error: sendError.message,
-            logError: logError instanceof Error ? logError.message : String(logError),
-          });
+        
+        // Increase slippage by 100 bps (1%) for retry
+        currentEffectiveSlippageBps = Math.min(currentEffectiveSlippageBps + 100, 500); // Hard cap at 500 bps (5%)
+        
+        // Recalculate minDestAmount with new slippage
+        currentMinDestAmount = (expectedDestAmount * BigInt(10000 - currentEffectiveSlippageBps)) / BigInt(10000);
+        
+        // Rebuild transaction with new minDestAmount
+        transaction = new Transaction();
+        
+        // Add compute budget instructions
+        const computeBudgetInstructions = createComputeBudgetInstructions();
+        for (const instruction of computeBudgetInstructions) {
+          transaction.add(instruction);
         }
+        
+        // Rebuild swap instruction with new minDestAmount
+        if (poolInfo.poolType === 'Cpmm') {
+          const cpmmPoolState = await fetchCpmmPoolState(
+            poolId,
+            poolInfo.poolProgramId,
+            poolSourceVault,
+            poolDestVault,
+            poolSourceMint,
+            poolDestMint
+          );
+          
+          const { ammConfig, observationState } = getRaydiumCpmmConfig();
+          
+          const inputTokenProgram = sourceTokenProgram;
+          const outputTokenProgram = TOKEN_PROGRAM_ID;
+          
+          swapInstruction = createRaydiumCpmmSwapInstructionV2({
+            poolProgramId: poolInfo.poolProgramId,
+            payer: rewardWalletAddress,
+            authority: cpmmPoolState.poolAuthority,
+            ammConfig,
+            poolState: poolId,
+            inputTokenAccount: nukeAta,
+            outputTokenAccount: wsolAta,
+            inputVault: cpmmPoolState.poolCoinTokenAccount,
+            outputVault: cpmmPoolState.poolPcTokenAccount,
+            inputTokenProgram: inputTokenProgram,
+            outputTokenProgram: outputTokenProgram,
+            inputMint: cpmmPoolState.poolCoinMint,
+            outputMint: cpmmPoolState.poolPcMint,
+            observationState,
+            amountIn: amountNuke,
+            minimumAmountOut: currentMinDestAmount, // Use updated minDestAmount
+            tradeFeeFlag: 0,
+            creatorFeeFlag: 0,
+            includeSysvars: false,
+          });
+        } else {
+          // For AMM v4, rebuild with new minDestAmount
+          const poolState = await fetchStandardPoolState(poolId, poolInfo.poolProgramId);
+          swapInstruction = await createRaydiumStandardSwapInstruction(
+            poolId,
+            poolInfo.poolProgramId,
+            poolState,
+            nukeAta,
+            wsolAta,
+            amountNuke,
+            currentMinDestAmount, // Use updated minDestAmount
+            rewardWalletAddress,
+            sourceTokenProgram
+          );
+        }
+        
+        transaction.add(swapInstruction);
+        
+        // Update transaction properties
+        const { blockhash: retryBlockhash } = await connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = retryBlockhash;
+        transaction.feePayer = rewardWalletAddress;
       }
-      throw simError;
+      
+      logger.info('Simulating Raydium swap transaction', {
+        attempt: simulationAttempt + 1,
+        maxRetries: MAX_SIMULATION_RETRIES + 1,
+        slippageBps: currentEffectiveSlippageBps,
+        minDestAmount: currentMinDestAmount.toString(),
+      });
+      
+      try {
+        const simulation = await connection.simulateTransaction(transaction, [rewardWallet]);
+        
+        if (simulation.value.err) {
+          const errorMessage = JSON.stringify(simulation.value.err);
+          const errorCode = extractErrorCode(errorMessage);
+          
+          // Check if this is Error 6005 (ExceededSlippage)
+          if (errorCode === 6005 && simulationAttempt < MAX_SIMULATION_RETRIES) {
+            logger.warn('Transaction simulation failed with Error 6005 (ExceededSlippage)', {
+              attempt: simulationAttempt + 1,
+              error: errorMessage,
+              logs: simulation.value.logs || [],
+              currentSlippageBps: currentEffectiveSlippageBps,
+              note: 'Retrying with increased slippage...',
+            });
+            
+            simulationAttempt++;
+            continue; // Retry with increased slippage
+          }
+          
+          // If not Error 6005, or we've exhausted retries, throw error
+          logger.error('Transaction simulation failed', {
+            error: errorMessage,
+            errorCode,
+            logs: simulation.value.logs || [],
+            attempt: simulationAttempt + 1,
+          });
+          throw new Error(`Transaction simulation failed: ${errorMessage}`);
+        }
+
+        logger.info('Transaction simulation passed', {
+          attempt: simulationAttempt + 1,
+          unitsConsumed: simulation.value.unitsConsumed,
+          slippageBps: currentEffectiveSlippageBps,
+          logMessages: simulation.value.logs?.slice(0, 10) || [],
+        });
+        
+        // Update minDestAmount for final transaction
+        minDestAmount = currentMinDestAmount;
+        break; // Success - exit retry loop
+        
+      } catch (simError) {
+        // If simulation fails with SendTransactionError, extract logs
+        if (simError instanceof Error && 'getLogs' in simError && typeof (simError as any).getLogs === 'function') {
+          const sendError = simError as SendTransactionError;
+          try {
+            const logs = await sendError.getLogs(connection);
+            const errorCode = extractErrorCode(sendError.message);
+            
+            // Check if this is Error 6005 and we can retry
+            if (errorCode === 6005 && simulationAttempt < MAX_SIMULATION_RETRIES) {
+              logger.warn('Transaction simulation failed with Error 6005 (ExceededSlippage)', {
+                attempt: simulationAttempt + 1,
+                error: sendError.message,
+                logs: logs || [],
+                currentSlippageBps: currentEffectiveSlippageBps,
+                note: 'Retrying with increased slippage...',
+              });
+              
+              simulationAttempt++;
+              continue; // Retry with increased slippage
+            }
+            
+            logger.error('Transaction simulation failed with detailed logs', {
+              error: sendError.message,
+              errorCode,
+              logs: logs || [],
+              attempt: simulationAttempt + 1,
+            });
+          } catch (logError) {
+            logger.error('Transaction simulation failed (could not get logs)', {
+              error: sendError.message,
+              logError: logError instanceof Error ? logError.message : String(logError),
+              attempt: simulationAttempt + 1,
+            });
+          }
+        }
+        
+        // If we've exhausted retries or it's not Error 6005, throw
+        throw simError;
+      }
     }
 
     // Step 11: Sign and send transaction
