@@ -116,6 +116,33 @@ interface RaydiumApiResponse {
 }
 
 /**
+ * Authoritative Raydium pool type detection.
+ * - programId map is authoritative for CPMM/CLMM
+ * - serumMarket implies Standard AMM v4
+ * - type/pooltype are NOT required and should not cause failures
+ */
+function detectRaydiumPoolType(poolInfo: any): 'cpmm' | 'clmm' | 'standard' {
+  const programId = poolInfo?.programId;
+
+  if (programId === 'DRaycpLY18LhpbydsBWbVJtxpNv9oXPgjRSfpF2bWpYb') {
+    logger.info('Raydium CPMM pool detected via programId', { programId });
+    return 'cpmm';
+  }
+
+  if (programId === 'DRayAUgENGQBKVaX8owNhgzkEDyoHTGVEGHVJT1E9pfH') {
+    logger.info('Raydium CLMM pool detected via programId', { programId });
+    return 'clmm';
+  }
+
+  if (poolInfo?.serumMarket) {
+    logger.info('Raydium standard AMM v4 pool detected via serumMarket', { programId, serumMarket: poolInfo.serumMarket });
+    return 'standard';
+  }
+
+  throw new Error('Unknown Raydium pool type (unsupported programId)');
+}
+
+/**
  * Fetch pool info from Raydium API in SDK-compatible format
  * Uses /pools/info/ids endpoint for SDK compatibility
  */
@@ -238,69 +265,8 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
   }
   const poolProgramId = new PublicKey(poolInfo.programId);
 
-  // Pool type detection - pooltype array is authoritative when present
-  // Raydium API responses are inconsistent across endpoints; support pooltype/type/poolType and nested config.*
-  const pooltypeCandidates = [
-    poolInfo.pooltype,
-    poolInfo.poolType as unknown,
-    (poolInfo as any).pool_type as unknown,
-    poolInfo.config?.pooltype as unknown,
-    poolInfo.config?.poolType as unknown,
-  ].filter(Boolean) as unknown[];
-
-  const typeCandidates = [
-    poolInfo.type,
-    poolInfo.poolType,
-    (poolInfo as any).pool_type,
-    poolInfo.config?.type,
-    poolInfo.config?.poolType,
-  ].filter(Boolean) as string[];
-
-  let normalizedType: 'cpmm' | 'clmm' | 'standard';
-
-  const pickArrayType = (arr: unknown): 'cpmm' | 'clmm' | 'standard' | null => {
-    if (Array.isArray(arr) && arr.length > 0) {
-      if (arr.some(p => typeof p === 'string' && p.toLowerCase() === 'cpmm')) return 'cpmm';
-      if (arr.some(p => typeof p === 'string' && p.toLowerCase() === 'clmm')) return 'clmm';
-      if (arr.some(p => typeof p === 'string' && p.toLowerCase() === 'standard')) return 'standard';
-      throw new Error(`Unknown pooltype: ${JSON.stringify(arr)}`);
-    }
-    return null;
-  };
-
-  // 1) pooltype arrays first (authoritative)
-  let arrayDerived: 'cpmm' | 'clmm' | 'standard' | null = null;
-  for (const candidate of pooltypeCandidates) {
-    arrayDerived = pickArrayType(candidate);
-    if (arrayDerived) break;
-  }
-
-  if (arrayDerived) {
-    normalizedType = arrayDerived;
-    logger.info('Pool type detected from pooltype array', {
-      poolId: poolId.toBase58(),
-      pooltype: pooltypeCandidates,
-      type: typeCandidates,
-      normalizedType,
-    });
-  } else if (typeCandidates.length > 0) {
-    const t = (typeCandidates[0] || '').toLowerCase();
-    if (!['standard', 'cpmm', 'clmm'].includes(t)) {
-      throw new Error(`Unsupported Raydium pool type: "${t}". Supported types: Standard (AMM v4), CPMM, CLMM.`);
-    }
-    normalizedType = t as 'cpmm' | 'clmm' | 'standard';
-    logger.info('Pool type detected from type field (fallback)', {
-      poolId: poolId.toBase58(),
-      type: typeCandidates,
-      normalizedType,
-    });
-  } else {
-    logger.error('Pool type missing from Raydium API pool object', {
-      poolId: poolId.toBase58(),
-      poolInfo,
-    });
-    throw new Error('Pool type missing from Raydium API pool object');
-  }
+  // Authoritative pool type detection using programId first, serumMarket second
+  const normalizedType = detectRaydiumPoolType(poolInfo);
 
   // Extract mint addresses (required - no fallbacks)
   if (!poolInfo.mintA || !poolInfo.mintB) {
