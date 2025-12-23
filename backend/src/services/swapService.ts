@@ -66,6 +66,29 @@ function getRewardWallet(): Keypair {
   return loadKeypairFromEnv('REWARD_WALLET_PRIVATE_KEY_JSON');
 }
 
+/**
+ * Get Raydium CPMM config accounts (ammConfig, observationState) from environment.
+ * These must be set from a known-good devnet CPMM pool transaction.
+ */
+function getRaydiumCpmmConfig(): {
+  ammConfig: PublicKey;
+  observationState: PublicKey;
+} {
+  const ammConfigStr = process.env.RAYDIUM_CPMM_AMM_CONFIG;
+  const observationStr = process.env.RAYDIUM_CPMM_OBSERVATION_STATE;
+
+  if (!ammConfigStr || !observationStr) {
+    throw new Error(
+      'Raydium CPMM config not set. Please set RAYDIUM_CPMM_AMM_CONFIG and RAYDIUM_CPMM_OBSERVATION_STATE from the reference devnet transaction.'
+    );
+  }
+
+  return {
+    ammConfig: new PublicKey(ammConfigStr),
+    observationState: new PublicKey(observationStr),
+  };
+}
+
 // Types for Raydium API response
 interface RaydiumApiPoolInfo {
   programId?: string; // Pool's program ID from API
@@ -1880,7 +1903,7 @@ export async function swapNukeToSOL(
         note: 'CPMM pool detected - Serum not required (CPMM pools never use Serum)',
       });
 
-      // Fetch CPMM pool state (simpler, no Serum)
+      // Fetch CPMM pool state (to get vaults/mints)
       const cpmmPoolState = await fetchCpmmPoolState(
         poolId,
         poolInfo.poolProgramId,
@@ -1890,18 +1913,31 @@ export async function swapNukeToSOL(
         poolDestMint
       );
 
-      // Create CPMM swap instruction (no Serum accounts)
-      swapInstruction = createRaydiumCpmmSwapInstruction(
-        poolId,
-        poolInfo.poolProgramId,
-        cpmmPoolState,
-        nukeAta,
-        wsolAta,
-        amountNuke,
-        minDestAmount,
-        rewardWalletAddress,
-        sourceTokenProgram
-      );
+      // Load CPMM config (ammConfig + observationState) from env / config, matching reference tx
+      const { ammConfig, observationState } = getRaydiumCpmmConfig();
+
+      // Create CPMM swap instruction using V2 builder (explicit account order)
+      swapInstruction = createRaydiumCpmmSwapInstructionV2({
+        poolProgramId: poolInfo.poolProgramId,
+        payer: rewardWalletAddress,           // payer = reward wallet
+        authority: rewardWalletAddress,       // authority = reward wallet (same keypair)
+        ammConfig,
+        poolState: poolId,
+        inputTokenAccount: nukeAta,
+        outputTokenAccount: wsolAta,
+        inputVault: cpmmPoolState.poolCoinTokenAccount,
+        outputVault: cpmmPoolState.poolPcTokenAccount,
+        inputTokenProgram: sourceTokenProgram, // Token-2022 for NUKE
+        outputTokenProgram: TOKEN_PROGRAM_ID,  // WSOL uses standard token program
+        inputMint: cpmmPoolState.poolCoinMint,
+        outputMint: cpmmPoolState.poolPcMint,
+        observationState,
+        amountIn: amountNuke,
+        minimumAmountOut: minDestAmount,
+        tradeFeeFlag: 0,
+        creatorFeeFlag: 0,
+        includeSysvars: false,
+      });
 
       // Validate CPMM swap instruction
       if (!swapInstruction.programId) {
@@ -1910,13 +1946,14 @@ export async function swapNukeToSOL(
       if (!swapInstruction.keys || !Array.isArray(swapInstruction.keys)) {
         throw new Error('CPMM swap instruction missing or invalid keys array');
       }
-      if (swapInstruction.keys.length !== 10) {
-        throw new Error(`CPMM swap instruction has ${swapInstruction.keys.length} accounts, expected 10 for CPMM pools`);
-      }
-
-      logger.info('CPMM swap instruction created successfully', {
+      logger.info('CPMM swap instruction created successfully (V2)', {
         accountCount: swapInstruction.keys.length,
-        note: 'CPMM pools use simpler account structure without Serum market',
+        keys: swapInstruction.keys.map((k, i) => ({
+          index: i,
+          pubkey: k.pubkey.toBase58(),
+          isSigner: k.isSigner,
+          isWritable: k.isWritable,
+        })),
       });
     } else if (poolInfo.poolType === 'Standard') {
       // ===================================================================
