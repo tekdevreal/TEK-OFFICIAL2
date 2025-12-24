@@ -168,7 +168,22 @@ interface RaydiumApiPoolInfo {
     programId?: string;
     symbol?: string;
     extensions?: {
-      transferFeeBasisPoints?: number;
+      transferFeeBasisPoints?: number; // Direct (old format)
+      feeConfig?: {                    // Nested (new format)
+        transferFeeConfigAuthority?: string;
+        withdrawWithheldAuthority?: string;
+        withheldAmount?: string;
+        olderTransferFee?: {
+          epoch?: string;
+          maximumFee?: string;
+          transferFeeBasisPoints?: number;
+        };
+        newerTransferFee?: {
+          epoch?: string;
+          maximumFee?: string;
+          transferFeeBasisPoints?: number;
+        };
+      };
     };
   };
   mintB?: { 
@@ -177,7 +192,22 @@ interface RaydiumApiPoolInfo {
     programId?: string;
     symbol?: string;
     extensions?: {
-      transferFeeBasisPoints?: number;
+      transferFeeBasisPoints?: number; // Direct (old format)
+      feeConfig?: {                    // Nested (new format)
+        transferFeeConfigAuthority?: string;
+        withdrawWithheldAuthority?: string;
+        withheldAmount?: string;
+        olderTransferFee?: {
+          epoch?: string;
+          maximumFee?: string;
+          transferFeeBasisPoints?: number;
+        };
+        newerTransferFee?: {
+          epoch?: string;
+          maximumFee?: string;
+          transferFeeBasisPoints?: number;
+        };
+      };
     };
   };
   baseMint?: string;
@@ -397,8 +427,30 @@ async function fetchPoolInfoFromAPI(poolId: PublicKey): Promise<{
   const vaultB = new PublicKey(poolInfo.vault.B);
 
   // Extract transfer fee information (Token-2022 extensions)
-  const transferFeeBasisPointsA = poolInfo.mintA?.extensions?.transferFeeBasisPoints;
-  const transferFeeBasisPointsB = poolInfo.mintB?.extensions?.transferFeeBasisPoints;
+  // CRITICAL: API structure is extensions.feeConfig.newerTransferFee.transferFeeBasisPoints
+  // NOT extensions.transferFeeBasisPoints directly
+  // Check multiple possible locations for compatibility
+  const transferFeeBasisPointsA = 
+    poolInfo.mintA?.extensions?.transferFeeBasisPoints ?? 
+    poolInfo.mintA?.extensions?.feeConfig?.newerTransferFee?.transferFeeBasisPoints ?? 
+    poolInfo.mintA?.extensions?.feeConfig?.olderTransferFee?.transferFeeBasisPoints ?? 
+    0;
+
+  const transferFeeBasisPointsB = 
+    poolInfo.mintB?.extensions?.transferFeeBasisPoints ?? 
+    poolInfo.mintB?.extensions?.feeConfig?.newerTransferFee?.transferFeeBasisPoints ?? 
+    poolInfo.mintB?.extensions?.feeConfig?.olderTransferFee?.transferFeeBasisPoints ?? 
+    0;
+
+  logger.info('Transfer fee extraction from API', {
+    mintA: poolInfo.mintA?.address,
+    mintB: poolInfo.mintB?.address,
+    transferFeeBasisPointsA,
+    transferFeeBasisPointsB,
+    mintAExtensions: poolInfo.mintA?.extensions,
+    mintBExtensions: poolInfo.mintB?.extensions,
+    note: 'Checking multiple possible API response structures for transfer fee',
+  });
 
   // Extract fee rates and LP mint if available
   const feeRate = poolInfo.feeRate;
