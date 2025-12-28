@@ -80,6 +80,7 @@ export function DistributionPage() {
   useEffect(() => {
     if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
       setSelectedYear(availableYears[0]);
+      setSelectedMonth(null); // Reset month when year changes
     }
   }, [availableYears, selectedYear]);
 
