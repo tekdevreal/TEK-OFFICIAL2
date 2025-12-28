@@ -31,9 +31,18 @@ dotenv.config();
 // WSOL mint address (same for devnet and mainnet)
 const WSOL_MINT = NATIVE_MINT; // So11111111111111111111111111111111111111112
 
-// Your wallet public keys (from your logs)
-const REWARD_WALLET_PUBLIC_KEY = '6PpZCPj72mdzBfrSJCJab9y535v2greCBe6YVW7XeXpo';
-const TREASURY_WALLET_PUBLIC_KEY = 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
+// Get wallet addresses from environment variables (required)
+function getRewardWalletAddress(): string {
+  const rewardAddress = process.env.REWARD_WALLET_ADDRESS;
+  if (!rewardAddress) {
+    throw new Error('REWARD_WALLET_ADDRESS environment variable is required');
+  }
+  return rewardAddress;
+}
+
+function getTreasuryWalletAddress(): string | null {
+  return process.env.TREASURY_WALLET_ADDRESS || null;
+}
 
 async function createWSOLATA(walletPublicKey: string, walletName: string): Promise<void> {
   const walletPubkey = new PublicKey(walletPublicKey);
@@ -129,19 +138,30 @@ async function main() {
   console.log(`RPC: ${connection.rpcEndpoint}\n`);
 
   try {
+    // Get wallet addresses from environment
+    const rewardWalletAddress = getRewardWalletAddress();
+    const treasuryWalletAddress = getTreasuryWalletAddress();
+
+    console.log(`Reward Wallet Address: ${rewardWalletAddress}`);
+    if (treasuryWalletAddress) {
+      console.log(`Treasury Wallet Address: ${treasuryWalletAddress}`);
+    }
+    console.log('');
+
     // Create WSOL ATA for Reward Wallet (REQUIRED)
-    await createWSOLATA(REWARD_WALLET_PUBLIC_KEY, 'Reward Wallet');
+    await createWSOLATA(rewardWalletAddress, 'Reward Wallet');
 
     // Create WSOL ATA for Treasury Wallet (OPTIONAL - only if it performs swaps)
-    // Uncomment the line below if treasury wallet needs to perform swaps
-    // await createWSOLATA(TREASURY_WALLET_PUBLIC_KEY, 'Treasury Wallet');
+    if (treasuryWalletAddress) {
+      await createWSOLATA(treasuryWalletAddress, 'Treasury Wallet');
+    }
 
     console.log('\n=== Verification ===\n');
     
     // Verify Reward Wallet
     const rewardWsolAta = getAssociatedTokenAddressSync(
       WSOL_MINT,
-      new PublicKey(REWARD_WALLET_PUBLIC_KEY),
+      new PublicKey(rewardWalletAddress),
       false,
       TOKEN_PROGRAM_ID
     );
@@ -153,20 +173,22 @@ async function main() {
       console.log(`❌ Reward Wallet WSOL ATA not found: ${rewardWsolAta.toBase58()}`);
     }
 
-    // Verify Treasury Wallet (if needed)
-    // const treasuryWsolAta = getAssociatedTokenAddressSync(
-    //   WSOL_MINT,
-    //   new PublicKey(TREASURY_WALLET_PUBLIC_KEY),
-    //   false,
-    //   TOKEN_PROGRAM_ID
-    // );
-    // try {
-    //   const account = await getAccount(connection, treasuryWsolAta, 'confirmed', TOKEN_PROGRAM_ID);
-    //   console.log(`✅ Treasury Wallet WSOL ATA exists: ${treasuryWsolAta.toBase58()}`);
-    //   console.log(`   Balance: ${account.amount.toString()}`);
-    // } catch (error) {
-    //   console.log(`❌ Treasury Wallet WSOL ATA not found: ${treasuryWsolAta.toBase58()}`);
-    // }
+    // Verify Treasury Wallet (if configured)
+    if (treasuryWalletAddress) {
+      const treasuryWsolAta = getAssociatedTokenAddressSync(
+        WSOL_MINT,
+        new PublicKey(treasuryWalletAddress),
+        false,
+        TOKEN_PROGRAM_ID
+      );
+      try {
+        const account = await getAccount(connection, treasuryWsolAta, 'confirmed', TOKEN_PROGRAM_ID);
+        console.log(`✅ Treasury Wallet WSOL ATA exists: ${treasuryWsolAta.toBase58()}`);
+        console.log(`   Balance: ${account.amount.toString()}`);
+      } catch (error) {
+        console.log(`❌ Treasury Wallet WSOL ATA not found: ${treasuryWsolAta.toBase58()}`);
+      }
+    }
 
     console.log('\n=== Complete ===');
     console.log('WSOL ATAs have been created. Swaps should now work correctly.');

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import type { PublicKey } from '@solana/web3.js';
 import {
   getAllHoldersWithStatus,
   getLastReward,
@@ -735,7 +736,7 @@ router.get('/liquidity/summary', async (req: Request, res: Response): Promise<vo
 
 /**
  * GET /dashboard/treasury/balance
- * Returns treasury wallet balance in SOL
+ * Returns treasury wallet balance in SOL using Helius RPC
  * Query params:
  *   - address: string (optional) - treasury wallet address (defaults to TREASURY_WALLET_ADDRESS env var)
  */
@@ -744,8 +745,9 @@ router.get('/treasury/balance', async (req: Request, res: Response): Promise<voi
     const startTime = Date.now();
     const treasuryAddress = (req.query.address as string) || process.env.TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
     
-    logger.debug('Dashboard API: GET /dashboard/treasury/balance', {
+    logger.info('Dashboard API: GET /dashboard/treasury/balance', {
       treasuryAddress,
+      rpcUrl: process.env.SOLANA_RPC_URL ? 'configured' : 'not configured',
     });
 
     const { connection } = await import('../config/solana');
@@ -754,6 +756,9 @@ router.get('/treasury/balance', async (req: Request, res: Response): Promise<voi
     let treasuryPubkey: PublicKey;
     try {
       treasuryPubkey = new PublicKey(treasuryAddress);
+      logger.debug('Treasury wallet address validated', {
+        address: treasuryPubkey.toBase58(),
+      });
     } catch (error) {
       logger.error('Invalid treasury wallet address', {
         address: treasuryAddress,
@@ -761,14 +766,26 @@ router.get('/treasury/balance', async (req: Request, res: Response): Promise<voi
       });
       res.status(400).json({
         error: 'Invalid treasury wallet address',
-        balance: null,
+        address: treasuryAddress,
+        balanceSOL: null,
+        balanceLamports: null,
       });
       return;
     }
 
-    // Get treasury wallet balance
+    // Get treasury wallet balance from Helius RPC
+    logger.debug('Fetching treasury balance from Solana RPC (Helius)', {
+      address: treasuryPubkey.toBase58(),
+    });
+    
     const balanceLamports = await connection.getBalance(treasuryPubkey, 'confirmed');
     const balanceSOL = balanceLamports / 1e9;
+
+    logger.info('Treasury balance fetched successfully', {
+      address: treasuryAddress,
+      balanceSOL: balanceSOL.toFixed(9),
+      balanceLamports: balanceLamports.toString(),
+    });
 
     const response = {
       address: treasuryAddress,
@@ -784,12 +801,21 @@ router.get('/treasury/balance', async (req: Request, res: Response): Promise<voi
 
     res.status(200).json(response);
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isRateLimit = errorMessage.includes('429') || errorMessage.includes('Too Many Requests') || errorMessage.includes('rate limit');
+    
     logger.error('Error fetching treasury balance', {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
+      errorStack: error instanceof Error ? error.stack : undefined,
+      isRateLimit,
+      treasuryAddress: (req.query.address as string) || process.env.TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo',
     });
+    
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
+      address: (req.query.address as string) || process.env.TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo',
       balanceSOL: null,
+      balanceLamports: null,
     });
   }
 });
