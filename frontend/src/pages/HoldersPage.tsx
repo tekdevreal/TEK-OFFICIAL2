@@ -24,6 +24,9 @@ export function HoldersPage() {
 
   // Year filter state
   const [selectedYear, setSelectedYear] = useState<number>(2025);
+  
+  // Month filter state - initialize to December
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(12);
 
   // Treasury wallet address
   const treasuryWalletAddress = import.meta.env.VITE_TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
@@ -33,48 +36,12 @@ export function HoldersPage() {
     return [
       {
         id: 'TREAS-001',
-        date: '2025-01-15',
+        date: '2025-12-28',
         time: '2:30 PM EST',
         action: 'Add Liquidity',
         amount: '$5,000',
         detail: 'Added liquidity to NUKE/SOL Pool',
         reference: '5KJp8vN2mQr9xYz3wE7tR4bC6dF1gH8jL0pM9nQ2sT5uV7xY',
-      },
-      {
-        id: 'TREAS-002',
-        date: '2025-01-14',
-        time: '1:15 PM EST',
-        action: 'Withdraw',
-        amount: '$2,000',
-        detail: 'Withdrew funds for protocol operations',
-        reference: '4HJp7vM1mQr8xYz2wE6tR3bC5dF0gH7jK9pL8nQ1sT4uV6xY',
-      },
-      {
-        id: 'TREAS-003',
-        date: '2025-01-13',
-        time: '11:45 AM EST',
-        action: 'Add Liquidity',
-        amount: '$3,500',
-        detail: 'Added liquidity to NUKE/USDC Pool',
-        reference: '3GJp6vL1mQr7xYz1wE5tR2bC4dF9gH6jJ8pK7nQ0sT3uV5xY',
-      },
-      {
-        id: 'TREAS-004',
-        date: '2025-01-12',
-        time: '10:20 AM EST',
-        action: 'Transfer',
-        amount: '$1,500',
-        detail: 'Transferred to reward pool',
-        reference: '2FJp5vK1mQr6xYz0wE4tR1bC3dF8gH5jI7pJ6nQ9sT2uV4xY',
-      },
-      {
-        id: 'TREAS-005',
-        date: '2025-01-11',
-        time: '9:00 AM EST',
-        action: 'Add Liquidity',
-        amount: '$4,200',
-        detail: 'Added liquidity to NUKE/SOL Pool',
-        reference: '1EJp4vJ1mQr5xYz9wE3tR0bC2dF7gH4jH6pI5nQ8sT1uV3xY',
       },
     ];
   }, []);
@@ -95,13 +62,16 @@ export function HoldersPage() {
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
     'July', 'August', 'September', 'October', 'November', 'December'];
 
-  // Initialize selected month to the latest available month
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-
-  // Update selected month when available months change
+  // Update selected month when available months change (initialize to December if available)
   useEffect(() => {
-    if (availableMonths.length > 0 && (selectedMonth === null || !availableMonths.includes(selectedMonth))) {
-      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    if (availableMonths.length > 0) {
+      if (selectedMonth === null || !availableMonths.includes(selectedMonth)) {
+        // Prefer December if available, otherwise use the latest available month
+        const decemberIndex = availableMonths.indexOf(12);
+        setSelectedMonth(decemberIndex >= 0 ? 12 : availableMonths[availableMonths.length - 1]);
+      }
+    } else {
+      setSelectedMonth(null);
     }
   }, [availableMonths, selectedMonth]);
 
@@ -138,10 +108,8 @@ export function HoldersPage() {
   }, [treasuryBalanceData, isLoadingTreasuryBalance]);
 
   const pendingAllocation = '$0';
-  const activeDeployments = '2';
-  const lastTreasuryAction = allTreasuryActivity.length > 0 
-    ? allTreasuryActivity[0].date
-    : 'N/A';
+  const activeDeployments = '1';
+  const lastTreasuryAction = '2025-12-28';
 
   // Table columns
   const columns: TableColumn<TreasuryActivityData>[] = useMemo(() => [
