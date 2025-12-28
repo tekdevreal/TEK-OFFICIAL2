@@ -78,9 +78,10 @@ export function Dashboard() {
           ? (totalNukeSold * distributedSOL / totalSolDistributedAllTime) / 1e6 // Convert to human-readable (divide by 1e6 for 6 decimals)
           : 0;
         
-        // Epoch number: use index + 1 (most recent = highest number)
-        // When backend provides epoch numbers, use cycle.epochNumber instead
-        const epochNumber = cycles.length - index; // Most recent gets highest number
+        // Epoch number: cycles are already sorted newest first from API
+        // So index 0 = newest, index (length-1) = oldest
+        // Most recent gets highest epoch number
+        const epochNumber = cycles.length - index; // Index 0 (newest) gets highest number
         
         return {
           date: d.toLocaleDateString(),
@@ -95,8 +96,8 @@ export function Dashboard() {
         // Filter out cycles with zero harvest and zero distribution
         // Only show cycles that actually had some activity
         return item.harvestedNUKE > 0 || item.distributedSOL > 0;
-      })
-      .reverse(); // Show most recent first (highest epoch number first)
+      });
+    // Note: cycles are already sorted newest first from the API, so no need to reverse
   }, [historicalData, rewardsData]);
 
   // Pagination state
@@ -201,7 +202,14 @@ export function Dashboard() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
-    return new Date(dateString).toLocaleDateString();
+    const date = new Date(dateString);
+    const dateStr = date.toLocaleDateString();
+    const timeStr = date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    return `${dateStr} ${timeStr}`;
   };
 
   const getTimeUntilNext = (nextRun: string | null) => {
@@ -291,14 +299,14 @@ export function Dashboard() {
                   // totalNukeHarvested is in raw token units (with 6 decimals)
                   // Divide by 1e6 to get human-readable format
                   const nuke = parseFloat(tax.totalNukeHarvested || '0') / 1e6;
-                  return nuke > 0 ? nuke.toLocaleString(undefined, { maximumFractionDigits: 6 }) : '0.000000';
+                  return nuke > 0 ? nuke.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : '0.00';
                 })()}
               />
               <StatCard
                 label="Estimated SOL"
                 value={(() => {
                   const sol = parseFloat(tax.totalSolDistributed || '0') / 1e9;
-                  return sol > 0 ? `${sol.toFixed(6)} SOL` : '0.000000 SOL';
+                  return sol > 0 ? `${sol.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })} SOL` : '0.00 SOL';
                 })()}
               />
               <StatCard

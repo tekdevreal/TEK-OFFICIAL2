@@ -43,11 +43,11 @@ export function DistributionCard({ item, rewardWalletAddress }: DistributionCard
       <div className="distribution-card-details">
         <div className="distribution-detail">
           <span className="detail-label">Harvested:</span>
-          <span className="detail-value">{item.harvestedNUKE.toLocaleString(undefined, { maximumFractionDigits: 2 })} NUKE</span>
+          <span className="detail-value">{item.harvestedNUKE.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })} NUKE</span>
         </div>
         <div className="distribution-detail">
           <span className="detail-label">Distributed:</span>
-          <span className="detail-value">{item.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL</span>
+          <span className="detail-value">{item.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })} SOL</span>
         </div>
       </div>
 
