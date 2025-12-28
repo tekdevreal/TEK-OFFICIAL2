@@ -49,6 +49,15 @@ export function Dashboard() {
       return [];
     }
 
+    // Get tax statistics to calculate NUKE amounts
+    const tax = rewardsData?.tax || {
+      totalNukeHarvested: '0',
+      totalNukeSold: '0',
+      totalSolDistributed: '0',
+    };
+    const totalNukeSold = parseFloat(tax.totalNukeSold || '0');
+    const totalSolDistributedAllTime = parseFloat(tax.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
+
     // Get up to 108 items (12 pages * 9 cards per page)
     const cycles = historicalData.cycles.slice(0, 108);
     
@@ -61,10 +70,13 @@ export function Dashboard() {
         const displayHours = hours % 12 || 12;
         const displayMinutes = minutes.toString().padStart(2, '0');
         
-        // Get harvested NUKE - for now use 0, but this could come from cycle data if available
-        // In the future, this could be added to the RewardCycle interface
-        const harvestedNUKE = 0; // TODO: Get from cycle data when available
         const distributedSOL = cycle.totalSOLDistributed || 0;
+        
+        // Calculate NUKE sold proportionally based on SOL distributed
+        // If this cycle represents X% of total SOL distributed, it represents X% of total NUKE sold
+        const harvestedNUKE = totalSolDistributedAllTime > 0 && distributedSOL > 0
+          ? (totalNukeSold * distributedSOL / totalSolDistributedAllTime) / 1e6 // Convert to human-readable (divide by 1e6 for 6 decimals)
+          : 0;
         
         // Epoch number: use index + 1 (most recent = highest number)
         // When backend provides epoch numbers, use cycle.epochNumber instead
@@ -85,7 +97,7 @@ export function Dashboard() {
         return item.harvestedNUKE > 0 || item.distributedSOL > 0;
       })
       .reverse(); // Show most recent first (highest epoch number first)
-  }, [historicalData]);
+  }, [historicalData, rewardsData]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);

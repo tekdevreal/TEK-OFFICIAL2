@@ -279,32 +279,24 @@ export function DistributionPage() {
           <div className="distribution-filters-row">
             <div className="filter-group">
               <label className="filter-label">Year:</label>
-              {availableYears.map((year) => (
               <button
-                  key={year}
-                  className={`filter-button ${year === selectedYear ? 'active' : ''}`}
+                className="filter-button active"
                 onClick={() => {
-                    setSelectedYear(year);
-                    setSelectedMonth(null); // Reset month when year changes
+                  setSelectedYear(selectedYear);
                 }}
               >
-                  {year}
+                {selectedYear}
               </button>
-              ))}
             </div>
             
-            {availableMonths.length > 0 && (
+            {availableMonths.length > 0 && selectedMonth !== null && (
               <div className="filter-group">
                 <label className="filter-label">Month:</label>
-                {availableMonths.map((month) => (
                 <button
-                    key={month}
-                    className={`filter-button ${month === selectedMonth ? 'active' : ''}`}
-                    onClick={() => setSelectedMonth(month)}
+                  className="filter-button active"
                 >
-                    {monthNames[month - 1]}
+                  {monthNames[selectedMonth - 1]}
                 </button>
-                ))}
               </div>
             )}
 

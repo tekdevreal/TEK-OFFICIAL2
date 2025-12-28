@@ -48,10 +48,20 @@ export function HarvestingPage() {
         const displayHours = hours % 12 || 12;
         const displayMinutes = minutes.toString().padStart(2, '0');
 
-        // Calculate NUKE sold from SOL distributed (rough estimate: 1 SOL ≈ 13,333 NUKE)
-        // This is a reverse calculation - in production, this would come from actual harvest records
+        // Calculate NUKE sold proportionally based on tax statistics
+        // Use the total NUKE sold and total SOL distributed to calculate proportion per cycle
         const distributedSOL = cycle.totalSOLDistributed;
-        const nukeSold = distributedSOL > 0 ? distributedSOL * 13333 : 0;
+        const tax = rewardsData?.tax || {
+          totalNukeSold: '0',
+          totalSolDistributed: '0',
+        };
+        const totalNukeSold = parseFloat(tax.totalNukeSold || '0');
+        const totalSolDistributedAllTime = parseFloat(tax.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
+        
+        // Calculate NUKE sold for this cycle proportionally
+        const nukeSold = totalSolDistributedAllTime > 0 && distributedSOL > 0
+          ? (totalNukeSold * distributedSOL / totalSolDistributedAllTime) / 1e6 // Convert to human-readable (divide by 1e6 for 6 decimals)
+          : 0;
 
         // Reward pool = SOL to holders (75%) + SOL to treasury (25%) = distributedSOL / 0.75
         const rewardPoolSOL = distributedSOL / 0.75;
@@ -69,13 +79,13 @@ export function HarvestingPage() {
           id: cycle.id,
           date: dateStr,
           time: `${displayHours}:${displayMinutes} ${period} EST`,
-          nukeSold: nukeSold / 1e6, // Convert to human-readable (divide by 1e6 for 6 decimals)
+          nukeSold, // Already converted to human-readable format above
           rewardPoolSOL,
           allocatedSOL,
           status: 'Complete' as const,
         };
       });
-  }, [historicalData]);
+  }, [historicalData, rewardsData]);
 
   // Get available years and months from actual data
   const availableYears = useMemo(() => {
@@ -292,32 +302,24 @@ export function HarvestingPage() {
           <div className="harvesting-filters-row">
             <div className="filter-group">
               <label className="filter-label">Year:</label>
-              {availableYears.map((year) => (
-                <button
-                  key={year}
-                  className={`filter-button ${year === selectedYear ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedYear(year);
-                    setSelectedMonth(null); // Reset month when year changes
-                  }}
-                >
-                  {year}
-                </button>
-              ))}
+              <button
+                className="filter-button active"
+                onClick={() => {
+                  setSelectedYear(selectedYear);
+                }}
+              >
+                {selectedYear}
+              </button>
             </div>
             
-            {availableMonths.length > 0 && (
+            {availableMonths.length > 0 && selectedMonth !== null && (
               <div className="filter-group">
                 <label className="filter-label">Month:</label>
-                {availableMonths.map((month) => (
-                  <button
-                    key={month}
-                    className={`filter-button ${month === selectedMonth ? 'active' : ''}`}
-                    onClick={() => setSelectedMonth(month)}
-                  >
-                    {monthNames[month - 1]}
-                  </button>
-                ))}
+                <button
+                  className="filter-button active"
+                >
+                  {monthNames[selectedMonth - 1]}
+                </button>
               </div>
             )}
 
