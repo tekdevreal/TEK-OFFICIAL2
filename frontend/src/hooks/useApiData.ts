@@ -12,6 +12,7 @@ import {
   fetchDexVolume24h,
   fetchLiquidityPools,
   fetchLiquiditySummary,
+  fetchTreasuryBalance,
 } from '../services/api';
 import type {
   RewardsResponse,
@@ -21,6 +22,7 @@ import type {
   HistoricalPayoutsResponse,
   LiquidityPoolsResponse,
   LiquiditySummaryResponse,
+  TreasuryBalanceResponse,
 } from '../types/api';
 
 /**
@@ -166,6 +168,23 @@ export function useLiquiditySummary(options?: { enabled?: boolean; refetchInterv
       ttl: 5 * 60 * 1000, // 5 minutes
       staleTime: 2.5 * 60 * 1000, // 2.5 minutes
       refetchInterval: options?.refetchInterval ?? 5 * 60 * 1000, // 5 minutes
+      enabled: options?.enabled !== false,
+    }
+  );
+}
+
+/**
+ * Hook for fetching treasury balance
+ */
+export function useTreasuryBalance(address?: string, options?: { enabled?: boolean; refetchInterval?: number }) {
+  const key = ['treasury-balance', address].filter(Boolean).join(':');
+  return useQuery<TreasuryBalanceResponse>(
+    key,
+    () => fetchTreasuryBalance(address),
+    {
+      ttl: 2 * 60 * 1000, // 2 minutes (balance changes more frequently)
+      staleTime: 1 * 60 * 1000, // 1 minute
+      refetchInterval: options?.refetchInterval ?? 2 * 60 * 1000, // 2 minutes
       enabled: options?.enabled !== false,
     }
   );

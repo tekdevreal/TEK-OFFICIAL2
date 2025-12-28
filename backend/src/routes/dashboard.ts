@@ -734,6 +734,67 @@ router.get('/liquidity/summary', async (req: Request, res: Response): Promise<vo
 });
 
 /**
+ * GET /dashboard/treasury/balance
+ * Returns treasury wallet balance in SOL
+ * Query params:
+ *   - address: string (optional) - treasury wallet address (defaults to TREASURY_WALLET_ADDRESS env var)
+ */
+router.get('/treasury/balance', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    const treasuryAddress = (req.query.address as string) || process.env.TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
+    
+    logger.debug('Dashboard API: GET /dashboard/treasury/balance', {
+      treasuryAddress,
+    });
+
+    const { connection } = await import('../config/solana');
+    const { PublicKey } = await import('@solana/web3.js');
+
+    let treasuryPubkey: PublicKey;
+    try {
+      treasuryPubkey = new PublicKey(treasuryAddress);
+    } catch (error) {
+      logger.error('Invalid treasury wallet address', {
+        address: treasuryAddress,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(400).json({
+        error: 'Invalid treasury wallet address',
+        balance: null,
+      });
+      return;
+    }
+
+    // Get treasury wallet balance
+    const balanceLamports = await connection.getBalance(treasuryPubkey, 'confirmed');
+    const balanceSOL = balanceLamports / 1e9;
+
+    const response = {
+      address: treasuryAddress,
+      balanceSOL: parseFloat(balanceSOL.toFixed(9)),
+      balanceLamports: balanceLamports.toString(),
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/treasury/balance completed', {
+      duration: `${duration}ms`,
+      balanceSOL: response.balanceSOL,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching treasury balance', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      balanceSOL: null,
+    });
+  }
+});
+
+/**
  * GET /dashboard/liquidity/pools
  * Returns individual liquidity pool data for the main page
  */

@@ -173,3 +173,9 @@ export interface LiquiditySummaryResponse {
   treasuryPools: number;
 }
 
+export interface TreasuryBalanceResponse {
+  address: string;
+  balanceSOL: number;
+  balanceLamports: string;
+}
+

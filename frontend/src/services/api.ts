@@ -9,6 +9,7 @@ import type {
   ExportResponse,
   LiquidityPoolsResponse,
   LiquiditySummaryResponse,
+  TreasuryBalanceResponse,
 } from '../types/api';
 
 // Production check
@@ -639,6 +640,52 @@ export async function fetchLiquiditySummary(): Promise<LiquiditySummaryResponse>
       volume24hUSD: 0,
       activePools: 0,
       treasuryPools: 0,
+    };
+  }
+}
+
+/**
+ * Fetch treasury wallet balance
+ */
+export async function fetchTreasuryBalance(address?: string): Promise<TreasuryBalanceResponse> {
+  try {
+    const response = await retryRequest(() =>
+      apiClient.get<TreasuryBalanceResponse>('/dashboard/treasury/balance', {
+        params: address ? { address } : undefined,
+      })
+    );
+    // Validate and provide fallback
+    if (!response || !response.data) {
+      if (isDevelopment) {
+        console.warn('[API] Invalid treasury balance response structure, using fallback');
+      }
+      return {
+        address: address || '',
+        balanceSOL: 0,
+        balanceLamports: '0',
+      };
+    }
+    return {
+      address: response.data.address || address || '',
+      balanceSOL: response.data.balanceSOL || 0,
+      balanceLamports: response.data.balanceLamports || '0',
+    };
+  } catch (error: any) {
+    if (isDevelopment) {
+      console.error('[API] Error fetching treasury balance:', {
+        response: error.response?.data || null,
+        request: error.request ? 'Request made' : 'No request',
+        message: error.message || 'Unknown error',
+        status: error.response?.status || null,
+      });
+    } else {
+      console.error('[API] Error fetching treasury balance');
+    }
+    // Return fallback data instead of throwing
+    return {
+      address: address || '',
+      balanceSOL: 0,
+      balanceLamports: '0',
     };
   }
 }

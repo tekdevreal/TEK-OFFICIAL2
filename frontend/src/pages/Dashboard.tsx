@@ -61,12 +61,10 @@ export function Dashboard() {
         const displayHours = hours % 12 || 12;
         const displayMinutes = minutes.toString().padStart(2, '0');
         
-        // Determine status - assume Completed for now (could be enhanced with actual status from API)
-        const status: 'Completed' | 'Failed' = cycle.totalSOLDistributed > 0 ? 'Completed' : 'Failed';
-        
         // Get harvested NUKE - for now use 0, but this could come from cycle data if available
         // In the future, this could be added to the RewardCycle interface
         const harvestedNUKE = 0; // TODO: Get from cycle data when available
+        const distributedSOL = cycle.totalSOLDistributed || 0;
         
         // Epoch number: use index + 1 (most recent = highest number)
         // When backend provides epoch numbers, use cycle.epochNumber instead
@@ -75,11 +73,16 @@ export function Dashboard() {
         return {
           date: d.toLocaleDateString(),
           time: `${displayHours}:${displayMinutes} ${period} EST`,
-          status,
+          status: 'Completed' as const, // Always Completed - zero amounts are filtered out below
           harvestedNUKE,
-          distributedSOL: cycle.totalSOLDistributed || 0,
-          epochNumber, // Placeholder for now, will come from backend
+          distributedSOL,
+          epochNumber,
         };
+      })
+      .filter((item) => {
+        // Filter out cycles with zero harvest and zero distribution
+        // Only show cycles that actually had some activity
+        return item.harvestedNUKE > 0 || item.distributedSOL > 0;
       })
       .reverse(); // Show most recent first (highest epoch number first)
   }, [historicalData]);
@@ -273,8 +276,10 @@ export function Dashboard() {
               <StatCard
                 label="NUKE Collected"
                 value={(() => {
-                  const nuke = parseFloat(tax.totalNukeHarvested || '0');
-                  return nuke > 0 ? nuke.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0';
+                  // totalNukeHarvested is in raw token units (with 6 decimals)
+                  // Divide by 1e6 to get human-readable format
+                  const nuke = parseFloat(tax.totalNukeHarvested || '0') / 1e6;
+                  return nuke > 0 ? nuke.toLocaleString(undefined, { maximumFractionDigits: 6 }) : '0.000000';
                 })()}
               />
               <StatCard
@@ -285,8 +290,15 @@ export function Dashboard() {
                 })()}
               />
               <StatCard
-                label="Status"
-                value="Harvesting"
+                label="Epoch"
+                value={(() => {
+                  // Calculate epoch number from historical cycles (most recent = highest number)
+                  if (!historicalData?.cycles || historicalData.cycles.length === 0) {
+                    return 'N/A';
+                  }
+                  const epochNumber = historicalData.cycles.length;
+                  return epochNumber.toString();
+                })()}
               />
             </div>
           </GlassCard>

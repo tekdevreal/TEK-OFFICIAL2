@@ -95,31 +95,40 @@ async function fetchSwapDistributionNotification(
   }
 
   // Format notification message for successful swap + distribution
-  const nukeSold = BigInt(rewards.tax.totalNukeSold || '0');
   const solToHolders = BigInt(rewards.tax.totalSolDistributed || '0');
   const solToTreasury = BigInt(rewards.tax.totalSolToTreasury || '0');
   
-  // Convert from raw units to human-readable
-  const decimals = 6; // NUKE decimals
-  const nukeSoldFormatted = (Number(nukeSold) / Math.pow(10, decimals)).toFixed(2);
-  const solToHoldersFormatted = (Number(solToHolders) / 1e9).toFixed(6); // lamports to SOL
+  // Convert from lamports to SOL
+  const solToHoldersFormatted = (Number(solToHolders) / 1e9).toFixed(6);
   const solToTreasuryFormatted = (Number(solToTreasury) / 1e9).toFixed(6);
   
-  // Get distribution count from last cycle
-  const distributionCount = rewards.tax.distributionCount || 0;
+  // Calculate total (holders + treasury)
+  const totalSOL = Number(solToHolders) + Number(solToTreasury);
+  const totalSOLFormatted = (totalSOL / 1e9).toFixed(6);
+  
+  // Get distribution count (holders paid)
+  const holdersPaid = rewards.tax.distributionCount || 0;
+  
+  // Get epoch timestamp (use lastTaxDistribution or lastRun)
+  const epochTimestamp = rewards.tax.lastTaxDistribution || rewards.lastRun;
+  let epochFormatted = 'N/A';
+  if (epochTimestamp) {
+    try {
+      const epochDate = new Date(epochTimestamp);
+      epochFormatted = epochDate.toISOString().replace('T', ' ').substring(0, 19);
+    } catch {
+      epochFormatted = epochTimestamp;
+    }
+  }
   
   const messageLines = [
-    '🎁 NUKE Rewards Distributed',
+    '💰 NUKE Rewards Distributed',
     '',
-    `• NUKE Sold: ${nukeSoldFormatted}`,
-    `• SOL to Holders: ${solToHoldersFormatted}`,
-    `• SOL to Treasury: ${solToTreasuryFormatted}`,
-    `• Holders Paid: ${distributionCount}`,
+    `• Total: ${totalSOLFormatted} SOL`,
+    `• Holders: ${solToHoldersFormatted} SOL`,
+    `• Treasury: ${solToTreasuryFormatted} SOL`,
+    `• Epoch: ${epochFormatted}`,
   ];
-
-  if (currentSwapTx) {
-    messageLines.push(`• Tx: ${currentSwapTx.substring(0, 16)}...`);
-  }
 
   const message = messageLines.join('\n');
 

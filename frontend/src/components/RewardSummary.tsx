@@ -82,8 +82,10 @@ export function RewardSummary({ refreshInterval = 300000 }: RewardSummaryProps) 
             <div className="tax-label">NUKE Harvested</div>
             <div className="tax-value">
               {(() => {
-                const nuke = parseFloat(tax.totalNukeHarvested || '0');
-                return nuke > 0 ? nuke.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0';
+                // totalNukeHarvested is in raw token units (with 6 decimals)
+                // Divide by 1e6 to get human-readable format
+                const nuke = parseFloat(tax.totalNukeHarvested || '0') / 1e6;
+                return nuke > 0 ? nuke.toLocaleString(undefined, { maximumFractionDigits: 6 }) : '0.000000';
               })()}
             </div>
             <div className="tax-subtext">Total Collected</div>

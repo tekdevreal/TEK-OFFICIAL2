@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
-import { useRewards } from '../hooks/useApiData';
+import { useRewards, useTreasuryBalance } from '../hooks/useApiData';
 import './HoldersPage.css';
 
 export interface TreasuryActivityData {
@@ -26,7 +26,7 @@ export function HoldersPage() {
   const [selectedYear, setSelectedYear] = useState<number>(2025);
 
   // Treasury wallet address
-  const treasuryWalletAddress = import.meta.env.VITE_TREASURY_WALLET_ADDRESS || '6PpZCPj72mdzBfrSJCJab9y535v2greCBe6YVW7XeXpo';
+  const treasuryWalletAddress = import.meta.env.VITE_TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
 
   // Placeholder treasury activity data for demonstration
   const allTreasuryActivity: TreasuryActivityData[] = useMemo(() => {
@@ -118,8 +118,25 @@ export function HoldersPage() {
     });
   }, [allTreasuryActivity, selectedYear, selectedMonth]);
 
+  // Fetch treasury balance from backend
+  const {
+    data: treasuryBalanceData,
+    isLoading: isLoadingTreasuryBalance,
+  } = useTreasuryBalance(treasuryWalletAddress, {
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+  });
+
   // Calculate stats from data
-  const treasuryBalance = '$2,000';
+  const treasuryBalance = useMemo(() => {
+    if (isLoadingTreasuryBalance) {
+      return 'Loading...';
+    }
+    if (treasuryBalanceData?.balanceSOL !== undefined && treasuryBalanceData.balanceSOL > 0) {
+      return `${treasuryBalanceData.balanceSOL.toFixed(6)} SOL`;
+    }
+    return '0.000000 SOL';
+  }, [treasuryBalanceData, isLoadingTreasuryBalance]);
+
   const pendingAllocation = '$0';
   const activeDeployments = '2';
   const lastTreasuryAction = allTreasuryActivity.length > 0 

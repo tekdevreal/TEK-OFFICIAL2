@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
-import { useRewards } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards } from '../hooks/useApiData';
+import type { RewardCycle } from '../types/api';
 import './DistributionPage.css';
 
 export interface DistributionData {
@@ -12,6 +13,7 @@ export interface DistributionData {
   recipients: number;
   transactions: number;
   distributedSOL: number;
+  status: 'Complete' | 'Failed';
 }
 
 export function DistributionPage() {
@@ -22,54 +24,64 @@ export function DistributionPage() {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Year filter state
-  const [selectedYear, setSelectedYear] = useState<number>(2025);
+  const {
+    data: historicalData,
+    isLoading: isLoadingHistorical,
+  } = useHistoricalRewards({ limit: 1000 }); // Get enough data for filtering
 
-  // Placeholder distribution data for demonstration
+  // Year filter state
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Transform historical reward cycles to distribution data
   const allDistributionData: DistributionData[] = useMemo(() => {
-    return [
-      {
-        id: 'DIST-001',
-        date: '2025-01-15',
-        time: '10:30 AM EST',
-        recipients: 1250,
-        transactions: 1250,
-        distributedSOL: 7.031,
-      },
-      {
-        id: 'DIST-002',
-        date: '2025-01-14',
-        time: '10:30 AM EST',
-        recipients: 1180,
-        transactions: 1180,
-        distributedSOL: 6.666,
-      },
-      {
-        id: 'DIST-003',
-        date: '2025-01-13',
-        time: '10:30 AM EST',
-        recipients: 1320,
-        transactions: 1320,
-        distributedSOL: 7.425,
-      },
-      {
-        id: 'DIST-004',
-        date: '2025-01-12',
-        time: '10:30 AM EST',
-        recipients: 1100,
-        transactions: 1100,
-        distributedSOL: 6.188,
-      },
-      {
-        id: 'DIST-005',
-        date: '2025-01-11',
-        time: '10:30 AM EST',
-        recipients: 1400,
-        transactions: 1400,
-        distributedSOL: 7.875,
-      },
-    ];
-  }, []);
+    if (!historicalData?.cycles) {
+      return [];
+    }
+
+    return historicalData.cycles
+      .filter((cycle: RewardCycle) => cycle.totalSOLDistributed > 0) // Only show cycles with distributions
+      .map((cycle: RewardCycle) => {
+        const d = new Date(cycle.timestamp);
+        const hours = d.getHours();
+        const minutes = d.getMinutes();
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        const displayMinutes = minutes.toString().padStart(2, '0');
+
+        // Format date as YYYY-MM-DD for consistency
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        return {
+          id: cycle.id,
+          date: dateStr,
+          time: `${displayHours}:${displayMinutes} ${period} EST`,
+          recipients: cycle.eligibleHoldersCount || 0,
+          transactions: cycle.eligibleHoldersCount || 0, // Assume 1 transaction per recipient
+          distributedSOL: cycle.totalSOLDistributed || 0,
+          status: 'Complete' as const,
+        };
+      });
+  }, [historicalData]);
+
+  // Get available years and months from actual data
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    allDistributionData.forEach((item) => {
+      const itemDate = new Date(item.date);
+      years.add(itemDate.getFullYear());
+    });
+    return Array.from(years).sort((a, b) => b - a); // Most recent first
+  }, [allDistributionData]);
+
+  // Initialize selected year to most recent year
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears, selectedYear]);
 
   // Get available months for selected year
   const availableMonths = useMemo(() => {
@@ -80,7 +92,7 @@ export function DistributionPage() {
         months.add(itemDate.getMonth() + 1);
       }
     });
-    return Array.from(months).sort((a, b) => a - b);
+    return Array.from(months).sort((a, b) => b - a); // Most recent first
   }, [allDistributionData, selectedYear]);
 
   // Month names
@@ -93,7 +105,7 @@ export function DistributionPage() {
   // Update selected month when available months change
   useEffect(() => {
     if (availableMonths.length > 0 && (selectedMonth === null || !availableMonths.includes(selectedMonth))) {
-      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+      setSelectedMonth(availableMonths[0]); // Most recent month
     }
   }, [availableMonths, selectedMonth]);
 
@@ -112,11 +124,22 @@ export function DistributionPage() {
 
   // Calculate stats from data
   const totalNukeSold = useMemo(() => {
-    // Placeholder calculation - in real implementation, this would come from backend
-    return distributionData.reduce((sum, item) => sum + item.distributedSOL * 13333, 0); // Rough estimate
+    // Estimate NUKE sold from SOL distributed (rough estimate: 1 SOL ≈ 13,333 NUKE)
+    // In production, this would come from actual harvest records
+    return distributionData.reduce((sum, item) => sum + item.distributedSOL * 13333, 0);
   }, [distributionData]);
 
-  const lastDistribution = distributionData.length > 0 ? distributionData[0].date : 'N/A';
+  const lastDistribution = useMemo(() => {
+    if (allDistributionData.length > 0) {
+      // Sort by date descending to get most recent
+      const sorted = [...allDistributionData].sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      return sorted[0].date;
+    }
+    return 'N/A';
+  }, [allDistributionData]);
+
   const nextDistribution = rewardsData?.nextRun 
     ? new Date(rewardsData.nextRun).toLocaleDateString()
     : 'N/A';
@@ -128,24 +151,6 @@ export function DistributionPage() {
 
   // Table columns
   const columns: TableColumn<DistributionData>[] = useMemo(() => [
-    {
-      key: 'id',
-      header: 'ID',
-      accessor: (row) => (
-        <a 
-          href="#" 
-          className="distribution-id-link"
-          onClick={(e) => {
-            e.preventDefault();
-            // TODO: Link to detailed spreadsheet
-          }}
-        >
-          {row.id}
-        </a>
-      ),
-      sortable: true,
-      sortFn: (a, b) => a.id.localeCompare(b.id),
-    },
     {
       key: 'date',
       header: 'DATE',
@@ -181,18 +186,41 @@ export function DistributionPage() {
       sortable: true,
       sortFn: (a, b) => a.distributedSOL - b.distributedSOL,
     },
+    {
+      key: 'status',
+      header: 'STATUS',
+      accessor: (row) => (
+        <a 
+          href="#" 
+          className="distribution-status-link"
+          onClick={(e) => {
+            e.preventDefault();
+            // TODO: Open detailed table/view
+          }}
+          style={{ 
+            color: row.status === 'Complete' ? 'var(--accent-success)' : 'var(--accent-danger)',
+            fontWeight: 600,
+            textDecoration: 'none'
+          }}
+        >
+          {row.status}
+        </a>
+      ),
+      sortable: true,
+      sortFn: (a, b) => a.status.localeCompare(b.status),
+    },
   ], []);
 
   // Export CSV handler
   const handleExportCSV = () => {
-    const headers = ['ID', 'DATE', 'TIME', 'RECIPIENTS', 'TRANSACTIONS', 'DISTRIBUTED (SOL)'];
+    const headers = ['DATE', 'TIME', 'RECIPIENTS', 'TRANSACTIONS', 'DISTRIBUTED (SOL)', 'STATUS'];
     const rows = distributionData.map((row) => [
-      row.id,
       row.date,
       row.time,
       row.recipients.toString(),
       row.transactions.toString(),
       row.distributedSOL.toString(),
+      row.status,
     ]);
 
     const csvContent = [
@@ -211,7 +239,7 @@ export function DistributionPage() {
     document.body.removeChild(link);
   };
 
-  if (isLoadingRewards) {
+  if (isLoadingRewards || isLoadingHistorical) {
     return (
       <div className="distribution-page">
         <div className="loading">Loading distribution data...</div>
@@ -251,24 +279,32 @@ export function DistributionPage() {
           <div className="distribution-filters-row">
             <div className="filter-group">
               <label className="filter-label">Year:</label>
+              {availableYears.map((year) => (
               <button
-                className="filter-button active"
+                  key={year}
+                  className={`filter-button ${year === selectedYear ? 'active' : ''}`}
                 onClick={() => {
-                  setSelectedYear(2025);
+                    setSelectedYear(year);
+                    setSelectedMonth(null); // Reset month when year changes
                 }}
               >
-                2025
+                  {year}
               </button>
+              ))}
             </div>
             
-            {availableMonths.length > 0 && selectedMonth !== null && (
+            {availableMonths.length > 0 && (
               <div className="filter-group">
                 <label className="filter-label">Month:</label>
+                {availableMonths.map((month) => (
                 <button
-                  className="filter-button active"
+                    key={month}
+                    className={`filter-button ${month === selectedMonth ? 'active' : ''}`}
+                    onClick={() => setSelectedMonth(month)}
                 >
-                  {monthNames[selectedMonth - 1]}
+                    {monthNames[month - 1]}
                 </button>
+                ))}
               </div>
             )}
 
