@@ -126,8 +126,12 @@ export function HarvestingPage() {
 
   // Update selected month when available months change
   useEffect(() => {
-    if (availableMonths.length > 0 && (selectedMonth === null || !availableMonths.includes(selectedMonth))) {
-      setSelectedMonth(availableMonths[0]); // Most recent month
+    if (availableMonths.length > 0) {
+      if (selectedMonth === null || !availableMonths.includes(selectedMonth)) {
+        setSelectedMonth(availableMonths[0]); // Most recent month (first in descending sorted array)
+      }
+    } else {
+      setSelectedMonth(null); // Reset if no months available
     }
   }, [availableMonths, selectedMonth]);
 
