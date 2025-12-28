@@ -1,0 +1,110 @@
+/* Liquidity Pools page uses similar styles to Dashboard */
+.liquidity-pools-page {
+  padding: var(--page-padding-top) var(--page-padding-horizontal) var(--page-padding-bottom);
+  max-width: var(--page-max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap);
+}
+
+.liquidity-pools-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.liquidity-pools-section-card {
+  padding: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1.75rem;
+  margin-top: 0;
+}
+
+@media (min-width: 768px) {
+  .section-title {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+  }
+}
+
+/* Liquidity Pools Section */
+.lp-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+/* LP Summary Stat Values - Match Liquidity Pool Card Label Style */
+.lp-summary-stats .stat-card-wrapper .text-stat-value,
+.lp-summary-stats .stat-card-wrapper > .text-stat-value,
+.lp-summary-stats .glass-card.stat-card-wrapper .text-stat-value {
+  font-size: 0.875rem !important; /* Same as Liquidity Pool card labels */
+  font-weight: var(--font-weight-semibold) !important; /* Same as Liquidity Pool card labels (600) */
+  color: var(--text-secondary) !important; /* Same as Liquidity Pool card labels */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif !important;
+  line-height: normal !important;
+  letter-spacing: normal !important;
+}
+
+@media (max-width: 1024px) {
+  .lp-summary-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .liquidity-pools-page {
+    padding: var(--page-padding-top) var(--page-padding-horizontal-mobile) var(--page-padding-bottom-mobile);
+    gap: var(--page-section-gap-mobile);
+  }
+
+  .liquidity-pools-section-card {
+    padding: 1.5rem;
+  }
+
+  .section-title {
+    margin-bottom: 1.5rem;
+  }
+
+  .lp-summary-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.liquidity-pools-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.liquidity-pools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .liquidity-pools-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .liquidity-pools-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Dashboard } from './pages/Dashboard';
 import { HarvestingPage } from './pages/HarvestingPage';
 import { DistributionPage } from './pages/DistributionPage';
+import { LiquidityPoolsPage } from './pages/LiquidityPoolsPage';
 import { HoldersPage } from './pages/HoldersPage';
 import { PayoutsPage } from './pages/PayoutsPage';
 import { SystemStatusPage } from './pages/SystemStatusPage';
@@ -30,6 +31,7 @@ function App() {
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/harvesting" element={<HarvestingPage />} />
                 <Route path="/distribution" element={<DistributionPage />} />
+                <Route path="/liquidity-pools" element={<LiquidityPoolsPage />} />
                 <Route path="/holders" element={<HoldersPage />} />
                 <Route path="/payouts" element={<PayoutsPage />} />
                 <Route path="/system-status" element={<SystemStatusPage />} />

@@ -10,6 +10,7 @@ const navItems: NavItem[] = [
   { path: '/', label: 'Main' },
   { path: '/harvesting', label: 'Harvesting' },
   { path: '/distribution', label: 'Distribution' },
+  { path: '/liquidity-pools', label: 'Liquidity Pools' },
   { path: '/holders', label: 'Treasury' },
   { path: '/system-status', label: 'System Status' },
   { path: '/analytics', label: 'Analytics' },
@@ -31,6 +32,8 @@ export function SecondaryNav() {
             isActive = location.pathname === '/harvesting';
           } else if (item.path === '/distribution') {
             isActive = location.pathname === '/distribution';
+          } else if (item.path === '/liquidity-pools') {
+            isActive = location.pathname === '/liquidity-pools';
           } else {
             isActive = location.pathname === item.path || 
               (item.path !== '/' && location.pathname.startsWith(item.path));
