@@ -294,13 +294,13 @@ export function DistributionPage() {
               </button>
             </div>
             
-            {availableMonths.length > 0 && selectedMonth !== null && (
+            {availableMonths.length > 0 && (
               <div className="filter-group">
                 <label className="filter-label">Month:</label>
                 <button
                   className="filter-button active"
                 >
-                  {monthNames[selectedMonth - 1]}
+                  {selectedMonth !== null ? monthNames[selectedMonth - 1] : monthNames[availableMonths[0] - 1]}
                 </button>
               </div>
             )}
