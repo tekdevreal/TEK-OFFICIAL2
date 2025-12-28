@@ -84,6 +84,7 @@ export function LiquidityPoolsPage() {
       <section className="liquidity-pools-section">
         <GlassCard className="liquidity-pools-section-card">
           <h2 className="section-title">Liquidity Pools</h2>
+          <p className="section-subtitle">DEX liquidity pools powering swaps and rewards.</p>
           
           {/* Global LP Summary */}
           <div className="lp-summary-stats">

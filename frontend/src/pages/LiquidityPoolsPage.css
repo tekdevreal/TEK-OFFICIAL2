@@ -22,19 +22,29 @@
   flex-direction: column;
 }
 
-.section-title {
+/* Liquidity Pools Page specific section title and subtitle - override global styles */
+.liquidity-pools-page .liquidity-pools-section-card .section-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 1.75rem;
-  margin-top: 0;
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
 }
 
 @media (min-width: 768px) {
-  .section-title {
+  .liquidity-pools-page .liquidity-pools-section-card .section-title {
     font-size: 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 0 !important;
   }
+}
+
+.liquidity-pools-page .liquidity-pools-section-card .section-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 2rem;
+  margin-top: 0.0625rem !important; /* 1px - minimal spacing */
+  padding-top: 0 !important;
+  line-height: 1.2;
 }
 
 /* Liquidity Pools Section */
@@ -73,8 +83,8 @@
     padding: 1.5rem;
   }
 
-  .section-title {
-    margin-bottom: 1.5rem;
+  .liquidity-pools-page .liquidity-pools-section-card .section-title {
+    margin-bottom: 0 !important;
   }
 
   .lp-summary-stats {
