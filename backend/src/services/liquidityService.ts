@@ -31,6 +31,17 @@ interface RaydiumMintInfo {
   decimals: number;
 }
 
+interface RaydiumDayStats {
+  volume?: number;
+  volumeQuote?: number;
+  volumeFee?: number;
+  apr?: number;
+  feeApr?: number;
+  priceMin?: number;
+  priceMax?: number;
+  rewardApr?: number[];
+}
+
 interface RaydiumCpmmPoolStandard {
   id: string;
   programId: string;
@@ -45,6 +56,7 @@ interface RaydiumCpmmPoolStandard {
   volume24hUSD?: number;
   volume7d?: number;
   volume7dUSD?: number;
+  day?: RaydiumDayStats; // 24h volume stats
 }
 
 interface RaydiumLegacyPoolInfo {
@@ -61,6 +73,7 @@ interface RaydiumLegacyPoolInfo {
   tvl?: number;
   volume24h?: number;
   volume24hUSD?: number;
+  day?: RaydiumDayStats; // 24h volume stats
 }
 
 type RaydiumPoolInfo = RaydiumCpmmPoolStandard & RaydiumLegacyPoolInfo;
@@ -207,7 +220,16 @@ export async function fetchLiquidityPoolsData(): Promise<{
     if (solPool) {
       const pairName = getPairName(solPool);
       const liquidityUSD = solPool.tvl || 0;
-      const volume24hUSD = solPool.volume24hUSD || 0;
+      
+      // Extract 24h volume: prefer volume24hUSD, fallback to day.volumeQuote (USD equivalent)
+      // day.volumeQuote is typically in USD if quote token is USDC/SOL
+      let volume24hUSD = solPool.volume24hUSD || 0;
+      if (volume24hUSD === 0 && solPool.day?.volumeQuote) {
+        volume24hUSD = solPool.day.volumeQuote;
+      } else if (volume24hUSD === 0 && solPool.day?.volume) {
+        // If only base volume is available, use it as fallback (less accurate)
+        volume24hUSD = solPool.day.volume;
+      }
 
       pools.push({
         pair: pairName,
@@ -223,6 +245,7 @@ export async function fetchLiquidityPoolsData(): Promise<{
         pair: pairName,
         liquidityUSD,
         volume24hUSD,
+        volumeSource: solPool.volume24hUSD ? 'volume24hUSD' : (solPool.day?.volumeQuote ? 'day.volumeQuote' : 'day.volume'),
       });
     }
   }
@@ -233,7 +256,16 @@ export async function fetchLiquidityPoolsData(): Promise<{
     if (usdcPool) {
       const pairName = getPairName(usdcPool);
       const liquidityUSD = usdcPool.tvl || 0;
-      const volume24hUSD = usdcPool.volume24hUSD || 0;
+      
+      // Extract 24h volume: prefer volume24hUSD, fallback to day.volumeQuote (USD equivalent)
+      // For USDC pools, day.volumeQuote should be in USD
+      let volume24hUSD = usdcPool.volume24hUSD || 0;
+      if (volume24hUSD === 0 && usdcPool.day?.volumeQuote) {
+        volume24hUSD = usdcPool.day.volumeQuote;
+      } else if (volume24hUSD === 0 && usdcPool.day?.volume) {
+        // If only base volume is available, use it as fallback (less accurate)
+        volume24hUSD = usdcPool.day.volume;
+      }
 
       pools.push({
         pair: pairName,
@@ -249,6 +281,7 @@ export async function fetchLiquidityPoolsData(): Promise<{
         pair: pairName,
         liquidityUSD,
         volume24hUSD,
+        volumeSource: usdcPool.volume24hUSD ? 'volume24hUSD' : (usdcPool.day?.volumeQuote ? 'day.volumeQuote' : 'day.volume'),
       });
     }
   }
