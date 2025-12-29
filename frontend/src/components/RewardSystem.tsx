@@ -240,7 +240,7 @@ export function RewardSystem() {
       cycle,
       cycleNumber,
       x: rect.left + rect.width / 2,
-      y: rect.top - 10,
+      y: rect.top - 4, // Closer to the block
     });
   };
 

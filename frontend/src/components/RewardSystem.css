@@ -234,7 +234,7 @@
   pointer-events: none;
   z-index: 1000;
   transform: translateX(-50%) translateY(-100%);
-  margin-top: -8px;
+  margin-top: -4px; /* Closer to the block */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   white-space: normal;
   max-width: 300px;

@@ -5,7 +5,7 @@ import { DistributionCard, type DistributionCardItem } from '../components/Distr
 import { LiquidityPoolCard, type LiquidityPoolCardItem } from '../components/LiquidityPoolCard';
 import { GlassCard } from '../components/GlassCard';
 import { RewardSystem } from '../components/RewardSystem';
-import { useRewards, useHistoricalRewards, useLiquidityPools, useLiquiditySummary } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useLiquidityPools, useLiquiditySummary, useCurrentCycleInfo } from '../hooks/useApiData';
 import './Dashboard.css';
 
 export function Dashboard() {
@@ -42,6 +42,12 @@ export function Dashboard() {
     isLoading: isLoadingLiquiditySummary,
   } = useLiquiditySummary({
     refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const {
+    data: currentCycleInfo,
+  } = useCurrentCycleInfo({
+    refetchInterval: 1 * 60 * 1000, // 1 minute
   });
 
   // Transform historical data to DistributionCard format
@@ -304,21 +310,27 @@ export function Dashboard() {
                 })()}
               />
               <StatCard
-                label="Estimated SOL"
+                label="Epoch"
                 value={(() => {
-                  const sol = parseFloat(tax.totalSolDistributed || '0') / 1e9;
-                  return sol > 0 ? `${sol.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })} SOL` : '0.00 SOL';
+                  if (currentCycleInfo?.epoch) {
+                    // Format epoch date (YYYY-MM-DD) to readable format
+                    const date = new Date(currentCycleInfo.epoch + 'T00:00:00Z');
+                    return date.toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    });
+                  }
+                  return 'N/A';
                 })()}
               />
               <StatCard
-                label="Epoch"
+                label="Cycle"
                 value={(() => {
-                  // Calculate epoch number from historical cycles (most recent = highest number)
-                  if (!historicalData?.cycles || historicalData.cycles.length === 0) {
-                    return 'N/A';
+                  if (currentCycleInfo?.cycleNumber) {
+                    return `${currentCycleInfo.cycleNumber} / 288`;
                   }
-                  const epochNumber = historicalData.cycles.length;
-                  return epochNumber.toString();
+                  return 'N/A';
                 })()}
               />
             </div>
