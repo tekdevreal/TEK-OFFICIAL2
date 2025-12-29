@@ -13,6 +13,9 @@ import {
   fetchLiquidityPools,
   fetchLiquiditySummary,
   fetchTreasuryBalance,
+  fetchCurrentCycleInfo,
+  fetchEpochCycles,
+  fetchEpochs,
 } from '../services/api';
 import type {
   RewardsResponse,
@@ -23,6 +26,9 @@ import type {
   LiquidityPoolsResponse,
   LiquiditySummaryResponse,
   TreasuryBalanceResponse,
+  CurrentCycleInfo,
+  EpochCycleResponse,
+  EpochsResponse,
 } from '../types/api';
 
 /**
@@ -185,6 +191,61 @@ export function useTreasuryBalance(address?: string, options?: { enabled?: boole
       ttl: 2 * 60 * 1000, // 2 minutes (balance changes more frequently)
       staleTime: 1 * 60 * 1000, // 1 minute
       refetchInterval: options?.refetchInterval ?? 2 * 60 * 1000, // 2 minutes
+      enabled: options?.enabled !== false,
+    }
+  );
+}
+
+/**
+ * Hook for fetching current cycle information
+ */
+export function useCurrentCycleInfo(options?: { enabled?: boolean; refetchInterval?: number }) {
+  return useQuery<CurrentCycleInfo>(
+    'current-cycle-info',
+    () => fetchCurrentCycleInfo(),
+    {
+      ttl: 1 * 60 * 1000, // 1 minute
+      staleTime: 30 * 1000, // 30 seconds
+      refetchInterval: options?.refetchInterval ?? 1 * 60 * 1000, // 1 minute
+      enabled: options?.enabled !== false,
+    }
+  );
+}
+
+/**
+ * Hook for fetching cycle data for a specific epoch
+ */
+export function useEpochCycles(
+  epoch?: string,
+  options?: { enabled?: boolean; refetchInterval?: number }
+) {
+  const key = ['epoch-cycles', epoch || 'current'].join(':');
+  return useQuery<EpochCycleResponse>(
+    key,
+    () => fetchEpochCycles(epoch),
+    {
+      ttl: 5 * 60 * 1000, // 5 minutes
+      staleTime: 2.5 * 60 * 1000, // 2.5 minutes
+      refetchInterval: options?.refetchInterval ?? 5 * 60 * 1000, // 5 minutes
+      enabled: options?.enabled !== false,
+    }
+  );
+}
+
+/**
+ * Hook for fetching all epochs with summary statistics
+ */
+export function useEpochs(
+  limit?: number,
+  options?: { enabled?: boolean }
+) {
+  const key = ['epochs', limit || 30].join(':');
+  return useQuery<EpochsResponse>(
+    key,
+    () => fetchEpochs(limit),
+    {
+      ttl: 10 * 60 * 1000, // 10 minutes
+      staleTime: 5 * 60 * 1000, // 5 minutes
       enabled: options?.enabled !== false,
     }
   );

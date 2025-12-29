@@ -15,6 +15,12 @@ import {
   getAllWalletsWithAccumulatedRewards,
   getTotalUnpaidRewards,
 } from '../services/unpaidRewardsService';
+import {
+  getCurrentEpochInfo,
+  recordCycleResult,
+  CycleState,
+  type CycleResult,
+} from '../services/cycleService';
 
 // Update eligible wallets list every hour (not every distribution cycle)
 const ELIGIBLE_WALLETS_UPDATE_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -25,6 +31,7 @@ let isRunning = false;
 
 /**
  * Process reward distribution for pending holders
+ * Wrapped inside cycle/epoch system
  */
 async function processRewards(): Promise<void> {
   if (isRunning) {
@@ -46,10 +53,24 @@ async function processRewards(): Promise<void> {
     return;
   }
 
+  // Get current epoch and cycle information
+  const epochInfo = getCurrentEpochInfo();
+  const { epoch, cycleNumber } = epochInfo;
+
   isRunning = true;
-  logger.info('Starting reward distribution run', {
+  logger.info('🔄 Starting cycle execution', {
+    epoch,
+    cycleNumber,
     startTime: new Date(startTime).toISOString(),
   });
+
+  // Initialize cycle result
+  let cycleResult: CycleResult = {
+    epoch,
+    cycleNumber,
+    state: CycleState.FAILED, // Default to FAILED, will be updated based on outcome
+    timestamp: startTime,
+  };
 
   try {
     // Update eligible wallets list periodically (not every distribution cycle)
@@ -83,12 +104,26 @@ async function processRewards(): Promise<void> {
 
     // Process withheld tax from Token-2022 transfers
     // This: 1) Harvests NUKE taxes, 2) Swaps NUKE to SOL, 3) Distributes SOL to holders (75%) and treasury (25%)
+    // Wrapped inside cycle system - determines cycle state
     let taxResult: Awaited<ReturnType<typeof TaxService.processWithheldTax>> | null = null;
     try {
       logger.info('Processing withheld tax from Token-2022 transfers');
       taxResult = await TaxService.processWithheldTax();
+      
       if (taxResult) {
-        logger.info('Tax distribution completed', {
+        // DISTRIBUTED: Successful harvest + distribution
+        cycleResult.state = CycleState.DISTRIBUTED;
+        cycleResult.taxResult = {
+          nukeHarvested: taxResult.totalTax.toString(),
+          solToHolders: (Number(taxResult.rewardAmount) / 1e9).toFixed(6),
+          solToTreasury: (Number(taxResult.treasuryAmount) / 1e9).toFixed(6),
+          distributedCount: taxResult.distributionResult?.distributedCount || 0,
+          swapSignature: taxResult.swapSignature,
+        };
+        
+        logger.info('✅ Cycle completed: DISTRIBUTED', {
+          epoch,
+          cycleNumber,
           nukeHarvested: taxResult.totalTax.toString(),
           nukeSold: taxResult.totalTax.toString(),
           solReceived: (taxResult.rewardAmount + taxResult.treasuryAmount).toString(),
@@ -98,14 +133,26 @@ async function processRewards(): Promise<void> {
           swapSignature: taxResult.swapSignature,
         });
       } else {
-        logger.info('No withheld tax to process - this is normal if no trades have occurred or no tax was collected');
+        // ROLLED_OVER: Minimum tax not met, carry tax forward
+        cycleResult.state = CycleState.ROLLED_OVER;
+        logger.info('⏸️ Cycle completed: ROLLED_OVER', {
+          epoch,
+          cycleNumber,
+          reason: 'Tax below minimum threshold, will accumulate for next cycle',
+        });
       }
     } catch (taxError) {
-      logger.error('Error processing withheld tax', {
+      // FAILED: Unexpected error, safe to retry next cycle
+      cycleResult.state = CycleState.FAILED;
+      cycleResult.error = taxError instanceof Error ? taxError.message : String(taxError);
+      
+      logger.error('❌ Cycle completed: FAILED', {
+        epoch,
+        cycleNumber,
         error: taxError instanceof Error ? taxError.message : String(taxError),
         stack: taxError instanceof Error ? taxError.stack : undefined,
       });
-      // Don't throw - allow scheduler to continue
+      // Don't throw - allow scheduler to continue and record cycle state
     }
 
     const endTime = Date.now();
@@ -268,10 +315,36 @@ async function processRewards(): Promise<void> {
 
     // Update last run timestamp
     setLastRewardRun(now);
+
+    // Record cycle result (after all processing is complete)
+    try {
+      recordCycleResult(cycleResult);
+    } catch (cycleError) {
+      logger.error('Failed to record cycle result', {
+        error: cycleError instanceof Error ? cycleError.message : String(cycleError),
+        cycleResult,
+      });
+      // Don't throw - cycle execution was successful, just failed to record
+    }
   } catch (error) {
-    logger.error('Error in reward distribution run', {
+    // Outer catch for unexpected errors - mark cycle as FAILED
+    cycleResult.state = CycleState.FAILED;
+    cycleResult.error = error instanceof Error ? error.message : String(error);
+    
+    logger.error('❌ Cycle execution failed with unexpected error', {
+      epoch,
+      cycleNumber,
       error: error instanceof Error ? error.message : String(error),
     });
+
+    // Try to record the failed cycle
+    try {
+      recordCycleResult(cycleResult);
+    } catch (cycleError) {
+      logger.error('Failed to record failed cycle result', {
+        error: cycleError instanceof Error ? cycleError.message : String(cycleError),
+      });
+    }
   } finally {
     isRunning = false;
   }
@@ -286,9 +359,11 @@ export function startRewardScheduler(): void {
     return;
   }
 
-  logger.info('Starting reward scheduler', {
+  logger.info('Starting reward scheduler with cycle/epoch system', {
     interval: `${REWARD_CONFIG.SCHEDULER_INTERVAL / 1000}s`,
     minRewardInterval: `${REWARD_CONFIG.MIN_REWARD_INTERVAL / 1000}s`,
+    cyclesPerEpoch: 288,
+    epochDuration: '1 UTC day',
   });
 
   // Don't run immediately on startup - wait for first scheduled interval

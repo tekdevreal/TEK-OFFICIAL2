@@ -4,6 +4,7 @@ import { StatCard } from '../components/StatCard';
 import { DistributionCard, type DistributionCardItem } from '../components/DistributionCard';
 import { LiquidityPoolCard, type LiquidityPoolCardItem } from '../components/LiquidityPoolCard';
 import { GlassCard } from '../components/GlassCard';
+import { RewardSystem } from '../components/RewardSystem';
 import { useRewards, useHistoricalRewards, useLiquidityPools, useLiquiditySummary } from '../hooks/useApiData';
 import './Dashboard.css';
 
@@ -325,7 +326,14 @@ export function Dashboard() {
         </div>
       </section>
 
-      {/* Section 2: Distributions with Pagination */}
+      {/* Section 2: Reward System Visualization */}
+      <section className="dashboard-section">
+        <GlassCard className="dashboard-section-card">
+          <RewardSystem />
+        </GlassCard>
+      </section>
+
+      {/* Section 3: Distributions with Pagination */}
       <section className="dashboard-section">
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">Distributions</h2>

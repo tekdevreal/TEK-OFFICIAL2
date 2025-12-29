@@ -10,6 +10,9 @@ import type {
   LiquidityPoolsResponse,
   LiquiditySummaryResponse,
   TreasuryBalanceResponse,
+  CurrentCycleInfo,
+  EpochCycleResponse,
+  EpochsResponse,
 } from '../types/api';
 
 // Production check
@@ -686,6 +689,89 @@ export async function fetchTreasuryBalance(address?: string): Promise<TreasuryBa
       address: address || '',
       balanceSOL: 0,
       balanceLamports: '0',
+    };
+  }
+}
+
+/**
+ * Fetch current cycle information
+ */
+export async function fetchCurrentCycleInfo(): Promise<CurrentCycleInfo> {
+  try {
+    const response = await retryRequest(() =>
+      apiClient.get<CurrentCycleInfo>('/dashboard/cycles/current')
+    );
+    return response.data;
+  } catch (error: any) {
+    if (isDevelopment) {
+      console.error('[API] Error fetching current cycle info:', error);
+    }
+    // Return fallback
+    const now = new Date();
+    const epoch = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+    return {
+      epoch,
+      cycleNumber: 1,
+      nextCycleIn: 5 * 60 * 1000,
+      nextCycleInSeconds: 300,
+      cyclesPerEpoch: 288,
+    };
+  }
+}
+
+/**
+ * Fetch cycle data for a specific epoch
+ */
+export async function fetchEpochCycles(epoch?: string): Promise<EpochCycleResponse> {
+  try {
+    const url = epoch ? `/dashboard/cycles/epoch/${epoch}` : '/dashboard/cycles/epoch';
+    const response = await retryRequest(() =>
+      apiClient.get<EpochCycleResponse>(url)
+    );
+    return response.data;
+  } catch (error: any) {
+    if (isDevelopment) {
+      console.error('[API] Error fetching epoch cycles:', error);
+    }
+    // Return fallback
+    const now = new Date();
+    const fallbackEpoch = epoch || `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
+    return {
+      epoch: fallbackEpoch,
+      statistics: {
+        epoch: fallbackEpoch,
+        totalCycles: 0,
+        distributed: 0,
+        rolledOver: 0,
+        failed: 0,
+        cycles: [],
+      },
+      cycles: [],
+      createdAt: null,
+      updatedAt: null,
+    };
+  }
+}
+
+/**
+ * Fetch all epochs with summary statistics
+ */
+export async function fetchEpochs(limit?: number): Promise<EpochsResponse> {
+  try {
+    const response = await retryRequest(() =>
+      apiClient.get<EpochsResponse>('/dashboard/cycles/epochs', {
+        params: limit ? { limit } : undefined,
+      })
+    );
+    return response.data;
+  } catch (error: any) {
+    if (isDevelopment) {
+      console.error('[API] Error fetching epochs:', error);
+    }
+    return {
+      epochs: [],
+      total: 0,
+      limit: limit || 30,
     };
   }
 }

@@ -13,6 +13,12 @@ import { logger } from '../utils/logger';
 import { rateLimitLogger } from '../utils/rateLimitLogger';
 import { TaxService } from '../services/taxService';
 import { getHistoricalRewardCycles } from '../services/rewardHistoryService';
+import {
+  getCurrentEpochInfo,
+  getEpochState,
+  getAllEpochStates,
+  getEpochStatistics,
+} from '../services/cycleService';
 
 const router = Router();
 
@@ -850,6 +856,134 @@ router.get('/liquidity/pools', async (req: Request, res: Response): Promise<void
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Unknown error',
       pools: [],
+    });
+  }
+});
+
+/**
+ * GET /dashboard/cycles/current
+ * Returns current epoch and cycle information
+ */
+router.get('/cycles/current', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    logger.debug('Dashboard API: GET /dashboard/cycles/current');
+
+    const epochInfo = getCurrentEpochInfo();
+
+    const response = {
+      epoch: epochInfo.epoch,
+      cycleNumber: epochInfo.cycleNumber,
+      nextCycleIn: epochInfo.nextCycleIn,
+      nextCycleInSeconds: Math.floor(epochInfo.nextCycleIn / 1000),
+      cyclesPerEpoch: 288,
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/cycles/current completed', {
+      duration: `${duration}ms`,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching current cycle info', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /dashboard/cycles/epoch/:epoch
+ * Returns cycle data for a specific epoch
+ * Query params:
+ *   - epoch: string (YYYY-MM-DD format, defaults to current epoch)
+ */
+router.get('/cycles/epoch/:epoch?', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    const epoch = req.params.epoch || getCurrentEpochInfo().epoch;
+    
+    logger.debug('Dashboard API: GET /dashboard/cycles/epoch/:epoch', {
+      epoch,
+    });
+
+    const epochState = getEpochState(epoch);
+    const statistics = getEpochStatistics(epoch);
+
+    const response = {
+      epoch,
+      statistics,
+      cycles: epochState?.cycles || [],
+      createdAt: epochState?.createdAt || null,
+      updatedAt: epochState?.updatedAt || null,
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/cycles/epoch/:epoch completed', {
+      duration: `${duration}ms`,
+      cyclesCount: response.cycles.length,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching epoch cycle data', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      epoch: req.params.epoch || null,
+    });
+  }
+});
+
+/**
+ * GET /dashboard/cycles/epochs
+ * Returns all available epochs with summary statistics
+ * Query params:
+ *   - limit: number (default: 30, max: 100)
+ */
+router.get('/cycles/epochs', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 30, 100);
+    
+    logger.debug('Dashboard API: GET /dashboard/cycles/epochs', {
+      limit,
+    });
+
+    const allEpochs = getAllEpochStates();
+    const epochsWithStats = allEpochs.slice(0, limit).map(epochState => {
+      const stats = getEpochStatistics(epochState.epoch);
+      return {
+        ...stats, // This already includes 'epoch'
+        createdAt: epochState.createdAt,
+        updatedAt: epochState.updatedAt,
+      };
+    });
+
+    const response = {
+      epochs: epochsWithStats,
+      total: allEpochs.length,
+      limit,
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/cycles/epochs completed', {
+      duration: `${duration}ms`,
+      count: epochsWithStats.length,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching epochs data', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      epochs: [],
     });
   }
 });

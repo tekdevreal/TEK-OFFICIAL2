@@ -179,3 +179,66 @@ export interface TreasuryBalanceResponse {
   balanceLamports: string;
 }
 
+// Cycle/Epoch Types
+export type CycleState = 'DISTRIBUTED' | 'ROLLED_OVER' | 'FAILED';
+
+export interface CycleResult {
+  epoch: string; // ISO date string (YYYY-MM-DD)
+  cycleNumber: number; // 1-288
+  state: CycleState;
+  timestamp: number; // Unix timestamp in milliseconds
+  error?: string;
+  taxResult?: {
+    nukeHarvested: string;
+    solToHolders: string;
+    solToTreasury: string;
+    distributedCount: number;
+    swapSignature?: string;
+  };
+}
+
+export interface EpochState {
+  epoch: string;
+  cycles: CycleResult[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CurrentCycleInfo {
+  epoch: string;
+  cycleNumber: number;
+  nextCycleIn: number; // Milliseconds until next cycle
+  nextCycleInSeconds: number;
+  cyclesPerEpoch: number;
+}
+
+export interface EpochCycleResponse {
+  epoch: string;
+  statistics: {
+    epoch: string;
+    totalCycles: number;
+    distributed: number;
+    rolledOver: number;
+    failed: number;
+    cycles: CycleResult[];
+  };
+  cycles: CycleResult[];
+  createdAt: number | null;
+  updatedAt: number | null;
+}
+
+export interface EpochsResponse {
+  epochs: Array<{
+    epoch: string;
+    totalCycles: number;
+    distributed: number;
+    rolledOver: number;
+    failed: number;
+    cycles: CycleResult[];
+    createdAt: number;
+    updatedAt: number;
+  }>;
+  total: number;
+  limit: number;
+}
+

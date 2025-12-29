@@ -40,6 +40,12 @@
   --accent-danger: #ef4444; /* Red */
   --accent-cyan: #06b6d4; /* Cyan */
   
+  /* Cycle Colors */
+  --cycle-distributed: #10b981; /* Green */
+  --cycle-rolled-over: #f59e0b; /* Amber/Orange */
+  --cycle-failed: #ef4444; /* Red */
+  --cycle-pending: rgba(255, 255, 255, 0.15); /* Gray */
+  
   /* Chart Colors */
   --chart-purple: #8b5cf6;
   --chart-blue: #3b82f6;
@@ -86,6 +92,12 @@
   --accent-warning: #d97706;
   --accent-danger: #dc2626;
   --accent-cyan: #0891b2;
+  
+  /* Cycle Colors */
+  --cycle-distributed: #059669; /* Green */
+  --cycle-rolled-over: #d97706; /* Amber/Orange */
+  --cycle-failed: #dc2626; /* Red */
+  --cycle-pending: rgba(0, 0, 0, 0.15); /* Gray */
   
   /* Chart Colors */
   --chart-purple: #7c3aed;
