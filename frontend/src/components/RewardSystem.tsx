@@ -4,6 +4,7 @@ import type { CycleResult, CycleState } from '../types/api';
 import './RewardSystem.css';
 
 const CYCLES_PER_EPOCH = 288;
+const CYCLES_PER_ROW = 24;
 
 function getCurrentEpoch(): string {
   const now = new Date();
@@ -31,7 +32,7 @@ function formatEpochDate(epoch: string): string {
   });
 }
 
-function getCycleStateColor(state: CycleState | 'PENDING'): string {
+function getCycleStateColor(state: CycleState | 'PENDING' | 'NOT_EXECUTED'): string {
   switch (state) {
     case 'DISTRIBUTED':
       return 'var(--cycle-distributed)';
@@ -39,13 +40,15 @@ function getCycleStateColor(state: CycleState | 'PENDING'): string {
       return 'var(--cycle-rolled-over)';
     case 'FAILED':
       return 'var(--cycle-failed)';
+    case 'NOT_EXECUTED':
+      return 'var(--cycle-not-executed)';
     case 'PENDING':
     default:
       return 'var(--cycle-pending)';
   }
 }
 
-function getCycleStateLabel(state: CycleState | 'PENDING', error?: string): string {
+function getCycleStateLabel(state: CycleState | 'PENDING' | 'NOT_EXECUTED', error?: string): string {
   switch (state) {
     case 'DISTRIBUTED':
       return 'Distributed';
@@ -53,6 +56,8 @@ function getCycleStateLabel(state: CycleState | 'PENDING', error?: string): stri
       return 'Rolled Over (Insufficient Tax)';
     case 'FAILED':
       return error ? `Failed (${error})` : 'Failed';
+    case 'NOT_EXECUTED':
+      return 'Not executed yet';
     case 'PENDING':
     default:
       return 'Not executed yet';
@@ -67,6 +72,8 @@ function formatCycleTime(timestamp: number): string {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
+    timeZone: 'UTC',
+    timeZoneName: 'short',
   });
 }
 
@@ -79,10 +86,12 @@ interface CycleBlockProps {
 
 function CycleBlock({ cycleNumber, cycle, currentCycle, onHover }: CycleBlockProps) {
   const isPending = cycle === null;
-  const state: CycleState | 'PENDING' = isPending ? 'PENDING' : cycle.state;
+  const state: CycleState | 'PENDING' | 'NOT_EXECUTED' = isPending ? 'NOT_EXECUTED' : cycle.state;
   const isFuture = cycleNumber > currentCycle;
   
-  const color = getCycleStateColor(isFuture ? 'PENDING' : state);
+  // NOT_EXECUTED only applies to future cycles in the active row
+  const finalState = isFuture ? 'NOT_EXECUTED' : state;
+  const color = getCycleStateColor(finalState);
   const label = isFuture 
     ? 'Not executed yet' 
     : getCycleStateLabel(state, cycle?.error);
@@ -167,17 +176,63 @@ export function RewardSystem() {
     return map;
   }, [epochData]);
 
-  // Generate all 288 cycles
-  const allCycles = useMemo(() => {
-    const cycles: Array<{ cycleNumber: number; cycle: CycleResult | null }> = [];
-    for (let i = 1; i <= CYCLES_PER_EPOCH; i++) {
-      cycles.push({
-        cycleNumber: i,
-        cycle: cyclesMap.get(i) || null,
-      });
+  // Calculate which rows are visible (progressive rendering)
+  // A row becomes visible when its first cycle starts
+  const visibleRows = useMemo(() => {
+    const maxCycle = selectedEpoch === currentEpoch 
+      ? currentCycle 
+      : CYCLES_PER_EPOCH;
+    
+    // Calculate the highest row index that has cycles
+    const maxRowIndex = Math.floor((maxCycle - 1) / CYCLES_PER_ROW);
+    
+    // Return array of visible row indices (0 to maxRowIndex)
+    const rows: number[] = [];
+    for (let i = 0; i <= maxRowIndex; i++) {
+      rows.push(i);
     }
-    return cycles;
-  }, [cyclesMap]);
+    
+    // Reverse so newest row (highest index) appears first
+    return rows.reverse();
+  }, [selectedEpoch, currentEpoch, currentCycle]);
+
+  // Generate cycles organized by rows (progressive rendering)
+  const cyclesByRow = useMemo(() => {
+    const rows: Array<Array<{ cycleNumber: number; cycle: CycleResult | null }>> = [];
+    
+    // Only process visible rows
+    visibleRows.forEach((rowIndex) => {
+      const rowCycles: Array<{ cycleNumber: number; cycle: CycleResult | null }> = [];
+      const startCycle = rowIndex * CYCLES_PER_ROW + 1;
+      const endCycle = Math.min(startCycle + CYCLES_PER_ROW - 1, CYCLES_PER_EPOCH);
+      
+      for (let cycleNumber = startCycle; cycleNumber <= endCycle; cycleNumber++) {
+        const cycle = cyclesMap.get(cycleNumber) || null;
+        const isFuture = selectedEpoch === currentEpoch && cycleNumber > currentCycle;
+        
+        rowCycles.push({
+          cycleNumber,
+          cycle: isFuture ? null : cycle,
+        });
+      }
+      
+      rows.push(rowCycles);
+    });
+    
+    return rows;
+  }, [visibleRows, cyclesMap, selectedEpoch, currentEpoch, currentCycle]);
+
+  // Expand/Collapse state
+  const [isExpanded, setIsExpanded] = useState(true);
+  
+  // Determine which rows to display based on expand/collapse
+  const displayRows = useMemo(() => {
+    if (isExpanded) {
+      return cyclesByRow;
+    }
+    // Collapsed: show only current row (first) and previous row (second) if available
+    return cyclesByRow.slice(0, 2);
+  }, [cyclesByRow, isExpanded]);
 
   const handleBlockHover = (cycle: CycleResult | null, cycleNumber: number, event: React.MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
@@ -240,35 +295,51 @@ export function RewardSystem() {
             max={currentEpoch}
           />
         </div>
-        {selectedEpoch && (
-          <div className="epoch-info">
-            {formatEpochDate(selectedEpoch)}
-            {selectedEpoch === currentEpoch && currentCycleInfo && (
-              <span className="current-cycle-info">
-                {' '}• Cycle {currentCycle} of {CYCLES_PER_EPOCH}
-              </span>
-            )}
-          </div>
-        )}
+        <div className="reward-system-controls-right">
+          {selectedEpoch && (
+            <div className="epoch-info">
+              {formatEpochDate(selectedEpoch)}
+              {selectedEpoch === currentEpoch && currentCycleInfo && (
+                <span className="current-cycle-info">
+                  {' '}• Cycle {currentCycle} of {CYCLES_PER_EPOCH}
+                </span>
+              )}
+            </div>
+          )}
+          <button
+            className="expand-toggle"
+            onClick={() => setIsExpanded(!isExpanded)}
+            title={isExpanded ? 'Collapse to show only active rows' : 'Expand to show all rows'}
+          >
+            {isExpanded ? '−' : '+'}
+          </button>
+        </div>
       </div>
 
       <div className="reward-system-grid-container">
         {isLoading ? (
           <div className="reward-system-loading">Loading cycle data...</div>
+        ) : displayRows.length === 0 ? (
+          <div className="reward-system-loading">No cycle data available</div>
         ) : (
-          <div className="reward-system-grid">
-            {allCycles.map(({ cycleNumber, cycle }: { cycleNumber: number; cycle: CycleResult | null }) => (
-              <div
-                key={cycleNumber}
-                onMouseEnter={(e) => handleBlockHover(cycle, cycleNumber, e)}
-                onMouseLeave={handleBlockLeave}
-              >
-                <CycleBlock
-                  cycleNumber={cycleNumber}
-                  cycle={cycle}
-                  currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
-                  onHover={() => {}}
-                />
+          <div className="reward-system-rows">
+            {displayRows.map((row, rowIndex) => (
+              <div key={`row-${rowIndex}`} className="reward-system-row">
+                {row.map(({ cycleNumber, cycle }: { cycleNumber: number; cycle: CycleResult | null }) => (
+                  <div
+                    key={cycleNumber}
+                    className="cycle-block-wrapper"
+                    onMouseEnter={(e) => handleBlockHover(cycle, cycleNumber, e)}
+                    onMouseLeave={handleBlockLeave}
+                  >
+                    <CycleBlock
+                      cycleNumber={cycleNumber}
+                      cycle={cycle}
+                      currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
+                      onHover={() => {}}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>

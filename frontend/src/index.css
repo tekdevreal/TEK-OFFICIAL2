@@ -45,6 +45,7 @@
   --cycle-rolled-over: #f59e0b; /* Amber/Orange */
   --cycle-failed: #ef4444; /* Red */
   --cycle-pending: rgba(255, 255, 255, 0.15); /* Gray */
+  --cycle-not-executed: rgba(255, 255, 255, 0.08); /* Muted Gray for future cycles */
   
   /* Chart Colors */
   --chart-purple: #8b5cf6;
@@ -98,6 +99,7 @@
   --cycle-rolled-over: #d97706; /* Amber/Orange */
   --cycle-failed: #dc2626; /* Red */
   --cycle-pending: rgba(0, 0, 0, 0.15); /* Gray */
+  --cycle-not-executed: rgba(0, 0, 0, 0.08); /* Muted Gray for future cycles */
   
   /* Chart Colors */
   --chart-purple: #7c3aed;

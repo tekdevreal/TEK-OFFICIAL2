@@ -43,6 +43,44 @@
   gap: 1rem;
 }
 
+.reward-system-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.expand-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.expand-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme='light'] .expand-toggle {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='light'] .expand-toggle:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
 .epoch-selector {
   display: flex;
   align-items: center;
@@ -119,13 +157,37 @@
   padding: 1rem 0;
 }
 
-.reward-system-grid {
+.reward-system-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.reward-system-row {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  grid-template-rows: repeat(24, 1fr);
+  grid-template-columns: repeat(24, 1fr);
   gap: 3px;
   width: 100%;
   min-width: 600px;
+  animation: fadeInRow 0.3s ease-in;
+}
+
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cycle-block-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cycle-block {
@@ -136,10 +198,20 @@
   transition: all 0.15s ease;
   min-width: 8px;
   min-height: 8px;
+  animation: fadeInBlock 0.2s ease-in;
+}
+
+@keyframes fadeInBlock {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .cycle-block:hover {
-  transform: scale(1.2);
+  transform: scale(1.15);
   z-index: 10;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
 }
@@ -237,9 +309,7 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .reward-system-grid {
-    grid-template-columns: repeat(12, 1fr);
-    grid-template-rows: repeat(24, 1fr);
+  .reward-system-row {
     gap: 2px;
   }
 }
@@ -255,7 +325,12 @@
     align-items: flex-start;
   }
 
-  .reward-system-grid {
+  .reward-system-controls-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .reward-system-row {
     min-width: 100%;
     gap: 2px;
   }
