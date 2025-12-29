@@ -312,14 +312,46 @@ export function Dashboard() {
               <StatCard
                 label="Epoch"
                 value={(() => {
+                  // Epoch = 1 calendar day (UTC-based), starts at 00:00 UTC
+                  // After Cycle #288, Epoch closes and next cycle starts Epoch +1, Cycle #1
+                  // Calculate epoch number: days since a reference start date + 1
                   if (currentCycleInfo?.epoch) {
-                    // Format epoch date (YYYY-MM-DD) to readable format
-                    const date = new Date(currentCycleInfo.epoch + 'T00:00:00Z');
-                    return date.toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric',
-                      year: 'numeric'
-                    });
+                    // Use a reference start date (e.g., when reward system started)
+                    // For now, we'll use the first epoch date from historical data if available,
+                    // otherwise calculate from a fixed start date
+                    const currentEpochDate = new Date(currentCycleInfo.epoch + 'T00:00:00Z');
+                    
+                    // Try to get the first epoch from historical data
+                    let firstEpochDate: Date | null = null;
+                    if (historicalData?.cycles && historicalData.cycles.length > 0) {
+                      // Get the oldest cycle timestamp
+                      const oldestCycle = historicalData.cycles[historicalData.cycles.length - 1];
+                      if (oldestCycle?.timestamp) {
+                        const oldestDate = new Date(oldestCycle.timestamp);
+                        // Get the epoch date (00:00 UTC of that day)
+                        firstEpochDate = new Date(Date.UTC(
+                          oldestDate.getUTCFullYear(),
+                          oldestDate.getUTCMonth(),
+                          oldestDate.getUTCDate(),
+                          0, 0, 0, 0
+                        ));
+                      }
+                    }
+                    
+                    // If no historical data, use a default start date (e.g., Dec 1, 2024)
+                    // You can adjust this to match when your reward system actually started
+                    if (!firstEpochDate) {
+                      firstEpochDate = new Date(Date.UTC(2024, 11, 1, 0, 0, 0, 0)); // Dec 1, 2024
+                    }
+                    
+                    // Calculate days difference
+                    const timeDiff = currentEpochDate.getTime() - firstEpochDate.getTime();
+                    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                    
+                    // Epoch number = days since start + 1
+                    const epochNumber = daysDiff + 1;
+                    
+                    return epochNumber.toString();
                   }
                   return 'N/A';
                 })()}
@@ -327,6 +359,8 @@ export function Dashboard() {
               <StatCard
                 label="Cycle"
                 value={(() => {
+                  // Cycle counter resets to #1 at epoch start (00:00 UTC)
+                  // Cycles increment every 5 minutes (288 cycles per epoch)
                   if (currentCycleInfo?.cycleNumber) {
                     return `${currentCycleInfo.cycleNumber} / 288`;
                   }
