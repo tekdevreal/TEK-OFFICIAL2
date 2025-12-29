@@ -2,10 +2,9 @@ import { useMemo, useState } from 'react';
 import type { RewardCycle } from '../types/api';
 import { StatCard } from '../components/StatCard';
 import { DistributionCard, type DistributionCardItem } from '../components/DistributionCard';
-import { LiquidityPoolCard, type LiquidityPoolCardItem } from '../components/LiquidityPoolCard';
 import { GlassCard } from '../components/GlassCard';
 import { RewardSystem } from '../components/RewardSystem';
-import { useRewards, useHistoricalRewards, useLiquidityPools, useLiquiditySummary, useCurrentCycleInfo } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useCurrentCycleInfo } from '../hooks/useApiData';
 import './Dashboard.css';
 
 export function Dashboard() {
@@ -25,24 +24,6 @@ export function Dashboard() {
     isLoading: isLoadingHistorical,
   } = useHistoricalRewards({ limit: 20 });
 
-  // DEX Volume is now fetched from liquidity summary (combined from both pools)
-  // Removed individual Birdeye API call as it's replaced by liquidity pool data
-
-  const {
-    data: liquidityPoolsData,
-    error: liquidityPoolsError,
-    isLoading: isLoadingLiquidityPools,
-  } = useLiquidityPools({
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
-  });
-
-  const {
-    data: liquiditySummaryData,
-    error: liquiditySummaryError,
-    isLoading: isLoadingLiquiditySummary,
-  } = useLiquiditySummary({
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
-  });
 
   const {
     data: currentCycleInfo,
@@ -129,44 +110,8 @@ export function Dashboard() {
   // Get reward wallet address from environment or rewards data
   const rewardWalletAddress = import.meta.env.VITE_REWARD_WALLET_ADDRESS || '';
 
-  // Map backend liquidity pools data to frontend format
-  const liquidityPools: LiquidityPoolCardItem[] = useMemo(() => {
-    // Image paths - these should be in public/Image/ folder for Vite to serve them
-    const nukeLogo = '/Image/nukelogo.png';
-    const solLogo = '/Image/sollogo.png';
-    const usdcLogo = '/Image/usdclogo.png';
-    const raydiumLogo = '/Image/raydiumlogo.png';
-
-    if (!liquidityPoolsData?.pools || liquidityPoolsData.pools.length === 0) {
-      // Return empty array if no data
-      return [];
-    }
-
-    return liquidityPoolsData.pools.map((pool) => {
-      // Determine token logos based on pair name
-      const pairUpper = pool.pair.toUpperCase();
-      let token1Logo = nukeLogo; // Default to NUKE
-      let token2Logo = solLogo; // Default to SOL
-
-      if (pairUpper.includes('USDC')) {
-        token2Logo = usdcLogo;
-      } else if (pairUpper.includes('SOL')) {
-        token2Logo = solLogo;
-      }
-
-      return {
-        pairName: pool.pair,
-        token1Logo,
-        token2Logo,
-        dexLogo: raydiumLogo,
-        totalLiquidityUSD: pool.liquidityUSD || 0,
-        volume24h: pool.volume24hUSD || 0,
-      };
-    });
-  }, [liquidityPoolsData]);
-
   // Loading state
-  if (isLoadingRewards || isLoadingHistorical || isLoadingLiquidityPools || isLoadingLiquiditySummary) {
+  if (isLoadingRewards || isLoadingHistorical) {
     return (
       <div className="dashboard-page">
         <div className="loading">Loading dashboard...</div>
@@ -175,7 +120,7 @@ export function Dashboard() {
   }
 
   // Error state (show error but still render if we have some data)
-  const error = rewardsError || historicalError || liquidityPoolsError || liquiditySummaryError;
+  const error = rewardsError || historicalError;
   if (error && !rewardsData) {
     return (
       <div className="dashboard-page">
@@ -278,14 +223,6 @@ export function Dashboard() {
                 value={stats.totalHolders !== undefined && stats.totalHolders !== null
                   ? stats.totalHolders.toLocaleString()
                   : isLoadingRewards 
-                    ? 'Loading...'
-                    : 'N/A'}
-              />
-              <StatCard
-                label="DEX Vol 24h"
-                value={liquiditySummaryData && liquiditySummaryData.volume24hUSD > 0
-                  ? `$${liquiditySummaryData.volume24hUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                  : isLoadingLiquiditySummary
                     ? 'Loading...'
                     : 'N/A'}
               />
@@ -423,62 +360,6 @@ export function Dashboard() {
         </GlassCard>
       </section>
 
-      {/* Section 3: Liquidity Pools */}
-      <section className="dashboard-section">
-        <GlassCard className="dashboard-section-card">
-          <h2 className="section-title">Liquidity Pools</h2>
-          
-          {/* Global LP Summary */}
-          <div className="lp-summary-stats">
-            <StatCard
-              label="Total Liquidity"
-              value={liquiditySummaryData && liquiditySummaryData.totalLiquidityUSD > 0
-                ? liquiditySummaryData.totalLiquidityUSD >= 1000000
-                  ? `$${(liquiditySummaryData.totalLiquidityUSD / 1000000).toFixed(1)}M`
-                  : `$${(liquiditySummaryData.totalLiquidityUSD / 1000).toFixed(1)}K`
-                : isLoadingLiquiditySummary ? 'Loading...' : 'N/A'}
-            />
-            <StatCard
-              label="24H Volume"
-              value={liquiditySummaryData && liquiditySummaryData.volume24hUSD > 0
-                ? liquiditySummaryData.volume24hUSD >= 1000000
-                  ? `$${(liquiditySummaryData.volume24hUSD / 1000000).toFixed(1)}M`
-                  : `$${(liquiditySummaryData.volume24hUSD / 1000).toFixed(1)}K`
-                : isLoadingLiquiditySummary ? 'Loading...' : 'N/A'}
-            />
-            <StatCard
-              label="Active Pools"
-              value={liquiditySummaryData 
-                ? liquiditySummaryData.activePools.toLocaleString()
-                : isLoadingLiquiditySummary ? 'Loading...' : '0'}
-            />
-            <StatCard
-              label="Treasury Pools"
-              value={liquiditySummaryData 
-                ? liquiditySummaryData.treasuryPools.toLocaleString()
-                : isLoadingLiquiditySummary ? 'Loading...' : '0'}
-            />
-          </div>
-
-          {/* Liquidity Pool Cards */}
-          <div className="liquidity-pools-container">
-            {liquidityPools.length > 0 ? (
-              <div className="liquidity-pools-grid">
-                {liquidityPools.map((pool, index) => (
-                  <LiquidityPoolCard
-                    key={index}
-                    item={pool}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                {isLoadingLiquidityPools ? 'Loading liquidity pools...' : 'No liquidity pools data available'}
-              </div>
-            )}
-          </div>
-        </GlassCard>
-      </section>
     </div>
   );
 }

@@ -222,8 +222,8 @@ export function RewardSystem() {
     return rows;
   }, [visibleRows, cyclesMap, selectedEpoch, currentEpoch, currentCycle]);
 
-  // Expand/Collapse state
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Expand/Collapse state - default to collapsed
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // Determine which rows to display based on expand/collapse
   const displayRows = useMemo(() => {
