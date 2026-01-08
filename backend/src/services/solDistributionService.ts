@@ -20,8 +20,8 @@ import { getTokenHolders, type TokenHolder } from './solanaService';
 import { REWARD_CONFIG, getMinimumPayoutThreshold } from '../config/constants';
 import {
   getAccumulatedReward,
-  addToAccumulatedReward,
-  clearAccumulatedReward,
+  // Note: addToAccumulatedReward and clearAccumulatedReward not used
+  // We only track accumulated rewards for informational purposes, never pay them
 } from './unpaidRewardsService';
 import {
   getEligibleWalletsWithUnpaidRewards,
@@ -127,7 +127,8 @@ export async function distributeSolToHolders(
     const thresholdSOL = minPayoutThresholdSOL ?? MIN_SOL_PAYOUT;
     const thresholdLamports = BigInt(Math.floor(thresholdSOL * LAMPORTS_PER_SOL));
 
-    // Step 5: Calculate per-holder rewards and check against accumulated rewards
+    // Step 5: Calculate per-holder rewards and check against threshold
+    // IMPORTANT: Only distribute SOL from current swap, NOT from accumulated rewards
     const rewardsToPay: Array<{ pubkey: string; amountLamports: bigint; wasAccumulated: boolean }> = [];
     const rewardsToAccumulate: Array<{ pubkey: string; amountLamports: bigint }> = [];
     
@@ -149,61 +150,55 @@ export async function distributeSolToHolders(
         continue;
       }
       
-      // Get accumulated reward in SOL
+      // Get accumulated reward for logging only (not used for payouts)
       const accumulatedRewardSOL = getAccumulatedReward(holder.owner);
       const accumulatedRewardLamports = BigInt(Math.floor(accumulatedRewardSOL * LAMPORTS_PER_SOL));
       
-      // Calculate total: current reward + accumulated reward
-      const totalRewardLamports = currentRewardLamports + accumulatedRewardLamports;
-      
-      // Compare total against threshold
-      if (totalRewardLamports >= thresholdLamports) {
-        // Total meets threshold: add to payout list (will clear accumulated after successful payout)
+      // Check if current reward meets threshold (ignore accumulated rewards)
+      if (currentRewardLamports >= thresholdLamports) {
+        // Current reward meets threshold: pay ONLY the current reward from swap
         rewardsToPay.push({
           pubkey: holder.owner,
-          amountLamports: totalRewardLamports,
-          wasAccumulated: accumulatedRewardLamports > 0n,
+          amountLamports: currentRewardLamports,  // ← ONLY current swap proceeds
+          wasAccumulated: false,  // Never pay accumulated rewards from wallet balance
+        });
+        
+        logger.info('Payout will be sent', {
+          wallet: holder.owner,
+          currentRewardSOL: (Number(currentRewardLamports) / LAMPORTS_PER_SOL).toFixed(6),
+          accumulatedRewardSOL: accumulatedRewardSOL.toFixed(6),  // For info only
+          thresholdSOL: thresholdSOL.toFixed(6),
+          status: 'PAYING',
+          note: 'Only paying current swap proceeds, not accumulated rewards',
         });
       } else {
-        // Total below threshold: accumulate current reward
+        // Current reward below threshold: skip payout (don't accumulate)
         const currentRewardSOL = Number(currentRewardLamports) / LAMPORTS_PER_SOL;
-        try {
-          addToAccumulatedReward(holder.owner, currentRewardSOL);
-          rewardsToAccumulate.push({
-            pubkey: holder.owner,
-            amountLamports: currentRewardLamports,
-          });
-          logger.info('Reward accumulated for wallet', {
-            wallet: holder.owner,
-            currentRewardSOL: currentRewardSOL.toFixed(6),
-            previousAccumulatedSOL: accumulatedRewardSOL.toFixed(6),
-            newAccumulatedSOL: (accumulatedRewardSOL + currentRewardSOL).toFixed(6),
-            totalRewardSOL: (Number(totalRewardLamports) / LAMPORTS_PER_SOL).toFixed(6),
-            thresholdSOL: thresholdSOL.toFixed(6),
-            status: 'ACCUMULATED',
-            reason: `Total (${(Number(totalRewardLamports) / LAMPORTS_PER_SOL).toFixed(6)} SOL) < threshold (${thresholdSOL.toFixed(6)} SOL)`,
-          });
-        } catch (error) {
-          logger.error('❌ Failed to accumulate reward for wallet (write error)', {
-            wallet: holder.owner,
-            currentRewardSOL: currentRewardSOL.toFixed(6),
-            previousAccumulatedSOL: accumulatedRewardSOL.toFixed(6),
-            error: error instanceof Error ? error.message : String(error),
-            errorType: error instanceof Error ? error.constructor.name : typeof error,
-            stack: error instanceof Error ? error.stack : undefined,
-          });
-          // Continue processing other holders even if accumulation fails
-        }
+        rewardsToAccumulate.push({
+          pubkey: holder.owner,
+          amountLamports: currentRewardLamports,
+        });
+        
+        logger.info('Payout skipped: below threshold', {
+          wallet: holder.owner,
+          currentRewardSOL: currentRewardSOL.toFixed(6),
+          accumulatedRewardSOL: accumulatedRewardSOL.toFixed(6),  // For info only
+          thresholdSOL: thresholdSOL.toFixed(6),
+          status: 'SKIPPED',
+          reason: `Current reward (${currentRewardSOL.toFixed(6)} SOL) < threshold (${thresholdSOL.toFixed(6)} SOL)`,
+          note: 'Will be paid in future cycles when swap proceeds are large enough',
+        });
       }
     }
 
     if (rewardsToPay.length === 0) {
-      logger.info('No holders meet minimum payout threshold (including accumulated rewards)', {
+      logger.info('No holders meet minimum payout threshold from current swap', {
         minPayoutThresholdSOL: thresholdSOL.toFixed(6),
         totalEligibleHolders: eligibleHolders.length,
-        accumulatedCount: rewardsToAccumulate.length,
-        totalAccumulatedSOL: rewardsToAccumulate.reduce((sum, r) => sum + Number(r.amountLamports) / LAMPORTS_PER_SOL, 0).toFixed(6),
+        skippedCount: rewardsToAccumulate.length,
+        totalSkippedSOL: rewardsToAccumulate.reduce((sum, r) => sum + Number(r.amountLamports) / LAMPORTS_PER_SOL, 0).toFixed(6),
         status: 'ALL_SKIPPED',
+        note: 'All rewards from current swap below threshold - will retry in next cycle',
       });
       return {
         distributedCount: 0,
@@ -214,13 +209,15 @@ export async function distributeSolToHolders(
       };
     }
 
-    logger.info('Calculated rewards for distribution with accumulation logic', {
+    logger.info('Calculated rewards for distribution from current swap', {
       eligibleWalletsCount: eligibleWalletsSet.size,
       eligibleHoldersProcessed: eligibleHolders.length,
       rewardsToPay: rewardsToPay.length,
-      rewardsAccumulated: rewardsToAccumulate.length,
+      rewardsBelowThreshold: rewardsToAccumulate.length,
       totalRewardLamports: rewardsToPay.reduce((sum, r) => sum + r.amountLamports, 0n).toString(),
+      totalRewardSOL: (Number(rewardsToPay.reduce((sum, r) => sum + r.amountLamports, 0n)) / LAMPORTS_PER_SOL).toFixed(6),
       minPayoutThresholdSOL: thresholdSOL,
+      note: 'Only distributing SOL from current NUKE swap, not accumulated rewards',
     });
 
     // Step 6: Get reward wallet
@@ -311,34 +308,20 @@ export async function distributeSolToHolders(
         const amountSOL = Number(reward.amountLamports) / LAMPORTS_PER_SOL;
         
         // Get accumulated reward before clearing for logging
-        const accumulatedBeforeClear = getAccumulatedReward(reward.pubkey);
+        const accumulatedRewardSOL = getAccumulatedReward(reward.pubkey);
         
-        // Clear accumulated reward after successful payout
-        let accumulatedCleared = false;
-        try {
-          clearAccumulatedReward(reward.pubkey);
-          accumulatedCleared = true;
-        } catch (error) {
-          logger.error('❌ Failed to clear accumulated reward after payout (write error)', {
-            wallet: reward.pubkey,
-            accumulatedAmountBeforeClear: accumulatedBeforeClear.toFixed(6),
-            error: error instanceof Error ? error.message : String(error),
-            errorType: error instanceof Error ? error.constructor.name : typeof error,
-            stack: error instanceof Error ? error.stack : undefined,
-            status: 'CLEAR_FAILED',
-          });
-          // Don't fail the payout if clearing accumulated reward fails
-        }
+        // NOTE: Accumulated rewards are NOT cleared because we never pay them
+        // They remain for informational/tracking purposes only
+        // Only SOL from NUKE swaps is distributed
 
         logger.info('SOL payout successful', {
           wallet: reward.pubkey,
           amountSOL: amountSOL.toFixed(6),
           amountLamports: reward.amountLamports.toString(),
           signature,
-          wasAccumulated: reward.wasAccumulated,
-          accumulatedBeforeClear: accumulatedBeforeClear.toFixed(6),
-          accumulatedCleared,
-          resetStatus: accumulatedCleared ? 'RESET' : 'CLEAR_FAILED',
+          wasAccumulated: false,  // Always false now - never pay accumulated
+          accumulatedTracked: accumulatedRewardSOL.toFixed(6),  // For info only
+          note: 'Only SOL from NUKE swap distributed, not accumulated rewards',
           status: 'PAID',
         });
       } catch (error) {
@@ -367,13 +350,14 @@ export async function distributeSolToHolders(
       eligibleWalletsCount: eligibleWalletsSet.size,
       eligibleHoldersProcessed: eligibleHolders.length,
       totalToPay: rewardsToPay.length,
-      accumulated: rewardsToAccumulate.length,
+      belowThreshold: rewardsToAccumulate.length,
       distributed: distributedCount,
       skipped: skippedCount,
       failed: errors.length,
       totalDistributedLamports: totalDistributed.toString(),
       totalDistributedSol: (Number(totalDistributed) / LAMPORTS_PER_SOL).toFixed(6),
       minPayoutThresholdSOL: thresholdSOL,
+      note: 'Only SOL from current NUKE swap distributed',
     });
 
     return {
