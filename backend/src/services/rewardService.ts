@@ -85,10 +85,31 @@ export function getAdminWallet(): Keypair {
  * Load reward state from file
  */
 function loadState(): RewardState {
+  const defaultState: RewardState = {
+    lastRewardRun: null,
+    holderRewards: {},
+    retryCounts: {},
+    pendingPayouts: [],
+  };
+
   try {
     if (fs.existsSync(STATE_FILE_PATH)) {
       const data = fs.readFileSync(STATE_FILE_PATH, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      
+      // Validate and merge with defaults to ensure all properties exist
+      return {
+        lastRewardRun: parsed.lastRewardRun ?? defaultState.lastRewardRun,
+        holderRewards: parsed.holderRewards && typeof parsed.holderRewards === 'object' 
+          ? parsed.holderRewards 
+          : defaultState.holderRewards,
+        retryCounts: parsed.retryCounts && typeof parsed.retryCounts === 'object'
+          ? parsed.retryCounts
+          : defaultState.retryCounts,
+        pendingPayouts: Array.isArray(parsed.pendingPayouts)
+          ? parsed.pendingPayouts
+          : defaultState.pendingPayouts,
+      };
     }
   } catch (error) {
     logger.warn('Failed to load reward state, using defaults', {
@@ -96,12 +117,7 @@ function loadState(): RewardState {
     });
   }
   
-  return {
-    lastRewardRun: null,
-    holderRewards: {},
-    retryCounts: {},
-    pendingPayouts: [],
-  };
+  return defaultState;
 }
 
 /**
@@ -123,6 +139,10 @@ function saveState(state: RewardState): void {
  */
 export function getLastReward(holderPubkey: string): number | null {
   const state = loadState();
+  // Defensive check: ensure holderRewards exists and is an object
+  if (!state.holderRewards || typeof state.holderRewards !== 'object') {
+    return null;
+  }
   return state.holderRewards[holderPubkey] || null;
 }
 
@@ -131,6 +151,10 @@ export function getLastReward(holderPubkey: string): number | null {
  */
 export function setLastReward(holderPubkey: string, timestamp: number): void {
   const state = loadState();
+  // Defensive check: ensure holderRewards exists and is an object
+  if (!state.holderRewards || typeof state.holderRewards !== 'object') {
+    state.holderRewards = {};
+  }
   state.holderRewards[holderPubkey] = timestamp;
   saveState(state);
 }
@@ -140,6 +164,10 @@ export function setLastReward(holderPubkey: string, timestamp: number): void {
  */
 export function getRetryCount(holderPubkey: string): number {
   const state = loadState();
+  // Defensive check: ensure retryCounts exists and is an object
+  if (!state.retryCounts || typeof state.retryCounts !== 'object') {
+    return 0;
+  }
   return state.retryCounts[holderPubkey] || 0;
 }
 
@@ -148,6 +176,10 @@ export function getRetryCount(holderPubkey: string): number {
  */
 export function incrementRetryCount(holderPubkey: string): number {
   const state = loadState();
+  // Defensive check: ensure retryCounts exists and is an object
+  if (!state.retryCounts || typeof state.retryCounts !== 'object') {
+    state.retryCounts = {};
+  }
   state.retryCounts[holderPubkey] = (state.retryCounts[holderPubkey] || 0) + 1;
   saveState(state);
   return state.retryCounts[holderPubkey];
@@ -158,7 +190,10 @@ export function incrementRetryCount(holderPubkey: string): number {
  */
 export function resetRetryCount(holderPubkey: string): void {
   const state = loadState();
-  delete state.retryCounts[holderPubkey];
+  // Defensive check: ensure retryCounts exists and is an object
+  if (state.retryCounts && typeof state.retryCounts === 'object') {
+    delete state.retryCounts[holderPubkey];
+  }
   saveState(state);
 }
 
