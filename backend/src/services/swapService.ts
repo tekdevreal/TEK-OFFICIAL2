@@ -34,6 +34,7 @@ import {
   getMint,
   createAssociatedTokenAccountInstruction,
   createSyncNativeInstruction,
+  createCloseAccountInstruction,
   NATIVE_MINT,
 } from '@solana/spl-token';
 import Decimal from 'decimal.js';
@@ -1866,9 +1867,24 @@ export async function swapNukeToSOL(
     // If WSOL ATA is missing, create it automatically
     // This happens regularly because unwrapping WSOL closes the account
     if (!userSolAccountExists) {
+      // Check if wallet has enough SOL to pay for ATA creation
+      // ATA creation costs ~0.002 SOL (rent-exempt minimum + tx fee)
+      const MIN_SOL_FOR_ATA = 0.003 * LAMPORTS_PER_SOL; // 0.003 SOL buffer
+      const walletBalance = await connection.getBalance(rewardWalletAddress, 'confirmed');
+      
+      if (walletBalance < MIN_SOL_FOR_ATA) {
+        throw new Error(
+          `Reward wallet has insufficient SOL to create WSOL ATA. ` +
+          `Balance: ${(walletBalance / LAMPORTS_PER_SOL).toFixed(6)} SOL, ` +
+          `Required: ~0.003 SOL. ` +
+          `Please fund the reward wallet: ${rewardWalletAddress.toBase58()}`
+        );
+      }
+
       logger.info('Creating WSOL ATA for reward wallet', {
         wsolAta: wsolAta.toBase58(),
         owner: rewardWalletAddress.toBase58(),
+        walletBalance: `${(walletBalance / LAMPORTS_PER_SOL).toFixed(6)} SOL`,
       });
 
       try {
@@ -2748,26 +2764,26 @@ export async function swapNukeToSOL(
 
     // Step 12: Unwrap WSOL to native SOL if needed (for all swap types)
     // Check if we received WSOL and unwrap it to native SOL
+    // Closing the WSOL account returns rent + wrapped SOL as native SOL to the wallet
+    // The ATA will be auto-recreated on the next swap if needed
     try {
       const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
       if (userSolBalance && userSolBalance.amount > 0n) {
         logger.info('Unwrapping WSOL to native SOL', {
           wsolAmount: userSolBalance.amount.toString(),
+          note: 'Closing WSOL ATA to unwrap - will auto-recreate on next swap',
         });
 
         const unwrapTx = new Transaction();
+        // Close WSOL account to unwrap SOL back to native
         unwrapTx.add(
-          createSyncNativeInstruction(userSolAccount),
-          // Close WSOL account and send SOL to reward wallet
-          new TransactionInstruction({
-            programId: TOKEN_PROGRAM_ID,
-            keys: [
-              { pubkey: userSolAccount, isSigner: false, isWritable: true },
-              { pubkey: rewardWalletAddress, isSigner: false, isWritable: true },
-              { pubkey: rewardWalletAddress, isSigner: true, isWritable: false },
-            ],
-            data: Buffer.from([9]), // CloseAccount instruction discriminator
-          })
+          createCloseAccountInstruction(
+            userSolAccount,       // account to close (WSOL ATA)
+            rewardWalletAddress,  // destination for lamports (reward wallet)
+            rewardWalletAddress,  // authority (reward wallet)
+            [],                   // multisig signers (none)
+            TOKEN_PROGRAM_ID      // program ID
+          )
         );
 
         const { blockhash: unwrapBlockhash } = await connection.getLatestBlockhash('confirmed');
@@ -2782,7 +2798,11 @@ export async function swapNukeToSOL(
             [rewardWallet],
             { commitment: 'confirmed', maxRetries: 3 }
           );
-          logger.info('WSOL unwrapped successfully', { signature: unwrapSignature });
+          logger.info('WSOL unwrapped and account closed', { 
+            signature: unwrapSignature,
+            wsolAmount: userSolBalance.amount.toString(),
+            note: 'ATA will be auto-recreated on next swap if wallet has sufficient SOL',
+          });
         } catch (unwrapError) {
           logger.warn('Failed to unwrap WSOL, but swap succeeded', {
             error: unwrapError instanceof Error ? unwrapError.message : String(unwrapError),
