@@ -54,12 +54,61 @@ Example: 0.201 SOL (swap) = 0.201 SOL ✅
 
 ---
 
+### Issue #3: Telegram Bot Not Sending Notifications 🔔 CRITICAL FIX
+**File:** `backend/src/services/rewardService.ts`
+
+**Problem:**
+- Telegram bot running but not sending distribution notifications
+- API response showing `lastSwapTx: null` (should have swap signature)
+- Bot checks if `lastSwapTx` changed, but it was always null
+
+**Root Cause:**
+`rewardService.ts` `saveState()` was overwriting entire `reward-state.json` file:
+```typescript
+// Old code - overwrites entire file
+fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(state, null, 2), 'utf-8');
+// ↑ This DELETED the taxState saved by taxService!
+```
+
+Both `taxService.ts` and `rewardService.ts` used the same file, but:
+- ✅ `taxService.ts` loaded existing state and merged
+- ❌ `rewardService.ts` overwrote entire file → deleted taxState
+
+Every time holder rewards updated (after each distribution), tax state wiped out!
+
+**Solution:**
+Changed `saveState()` to merge with existing state:
+```typescript
+// Load existing state
+if (fs.existsSync(STATE_FILE_PATH)) {
+  fullState = JSON.parse(data);
+}
+
+// Merge reward state (preserves taxState)
+fullState.lastRewardRun = state.lastRewardRun;
+fullState.holderRewards = state.holderRewards;
+fullState.retryCounts = state.retryCounts;
+fullState.pendingPayouts = state.pendingPayouts;
+
+// Save merged state
+fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(fullState, null, 2), 'utf-8');
+```
+
+**Result:**
+- Tax state persists across updates ✅
+- `lastSwapTx` available in API response ✅
+- Telegram bot can detect new distributions ✅
+- Notifications will be sent ✅
+
+---
+
 ## Files Modified
 
-1. `backend/src/services/rewardService.ts` - State validation fixes
+1. `backend/src/services/rewardService.ts` - State validation + state merge fixes
 2. `backend/src/services/solDistributionService.ts` - Distribution logic fix
 3. `DASHBOARD_ERROR_FIX.md` - Documentation for fix #1
 4. `CRITICAL_FIX_ACCUMULATED_REWARDS.md` - Documentation for fix #2
+5. `TELEGRAM_NOTIFICATION_FIX.md` - Documentation for fix #3
 
 ---
 
@@ -234,5 +283,29 @@ After deployment, you should see:
 - ✅ Wallet balance stays around 0.5-1 SOL
 - ✅ No large SOL drains from wallet
 - ✅ System runs sustainably
+- ✅ **Telegram notifications sent within 60 seconds of distribution** 🔔
+
+---
+
+## All Three Fixes Working Together
+
+### Before Fixes ❌
+```
+1. Dashboard crashes with "Cannot read properties of undefined"
+2. Wallet drains 7 SOL trying to pay accumulated rewards
+3. Telegram bot silent (no notifications)
+```
+
+### After Fixes ✅
+```
+1. Dashboard loads perfectly
+2. Only swap proceeds distributed (0.263 SOL per cycle)
+3. Telegram notification arrives:
+   💰 NUKE Rewards Distributed
+   • Total: 0.350700 SOL
+   • Holders: 0.263025 SOL
+   • Treasury: 0.087675 SOL
+   • Epoch: 2026-01-08 21:51:55
+```
 
 **Status: Ready for Deployment** 🚀
