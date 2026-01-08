@@ -122,10 +122,26 @@ function loadState(): RewardState {
 
 /**
  * Save reward state to file
+ * IMPORTANT: Merges with existing state to preserve taxState
  */
 function saveState(state: RewardState): void {
   try {
-    fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(state, null, 2), 'utf-8');
+    let fullState: any = {};
+    
+    // Load existing state if it exists (to preserve taxState and other data)
+    if (fs.existsSync(STATE_FILE_PATH)) {
+      const data = fs.readFileSync(STATE_FILE_PATH, 'utf-8');
+      fullState = JSON.parse(data);
+    }
+    
+    // Update reward state fields (merge, don't overwrite)
+    fullState.lastRewardRun = state.lastRewardRun;
+    fullState.holderRewards = state.holderRewards;
+    fullState.retryCounts = state.retryCounts;
+    fullState.pendingPayouts = state.pendingPayouts;
+    
+    // Save merged state (preserves taxState if it exists)
+    fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(fullState, null, 2), 'utf-8');
   } catch (error) {
     logger.error('Failed to save reward state', {
       error: error instanceof Error ? error.message : String(error),
