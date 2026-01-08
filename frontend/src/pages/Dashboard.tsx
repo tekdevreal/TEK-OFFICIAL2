@@ -4,7 +4,7 @@ import { StatCard } from '../components/StatCard';
 import { DistributionCard, type DistributionCardItem } from '../components/DistributionCard';
 import { GlassCard } from '../components/GlassCard';
 import { RewardSystem } from '../components/RewardSystem';
-import { useRewards, useHistoricalRewards, useCurrentCycleInfo } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useCurrentCycleInfo, useLiquiditySummary } from '../hooks/useApiData';
 import './Dashboard.css';
 
 export function Dashboard() {
@@ -29,6 +29,13 @@ export function Dashboard() {
     data: currentCycleInfo,
   } = useCurrentCycleInfo({
     refetchInterval: 1 * 60 * 1000, // 1 minute
+  });
+
+  const {
+    data: liquiditySummaryData,
+    isLoading: isLoadingLiquiditySummary,
+  } = useLiquiditySummary({
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 
   // Transform historical data to DistributionCard format
@@ -223,6 +230,14 @@ export function Dashboard() {
                 value={stats.totalHolders !== undefined && stats.totalHolders !== null
                   ? stats.totalHolders.toLocaleString()
                   : isLoadingRewards 
+                    ? 'Loading...'
+                    : 'N/A'}
+              />
+              <StatCard
+                label="DEX Vol 24h"
+                value={liquiditySummaryData && liquiditySummaryData.volume24hUSD > 0
+                  ? `$${liquiditySummaryData.volume24hUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                  : isLoadingLiquiditySummary
                     ? 'Loading...'
                     : 'N/A'}
               />

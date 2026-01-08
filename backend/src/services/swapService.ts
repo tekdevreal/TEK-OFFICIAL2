@@ -1842,6 +1842,7 @@ export async function swapNukeToSOL(
     }
 
     // Step 9: Verify WSOL ATA exists on-chain (REQUIRED for swap)
+    // If it doesn't exist, automatically create it (happens after unwrap closes the account)
     let userSolAccountExists = false;
     let wsolAccountInfo = null;
     try {
@@ -1855,20 +1856,66 @@ export async function swapNukeToSOL(
       });
     } catch (error) {
       userSolAccountExists = false;
-      logger.error('WSOL ATA does not exist on-chain', {
+      logger.warn('WSOL ATA does not exist on-chain - will create it', {
         wsolAta: wsolAta.toBase58(),
         error: error instanceof Error ? error.message : String(error),
-        note: 'Create this ATA once using create-wsol-atas.ts script BEFORE running swaps',
+        note: 'This is normal after unwrapping closes the account',
       });
     }
 
-    // If WSOL ATA is missing, abort with clear, actionable error.
-    // This prevents the SDK from crashing with `.filter` on undefined.
+    // If WSOL ATA is missing, create it automatically
+    // This happens regularly because unwrapping WSOL closes the account
     if (!userSolAccountExists) {
-      throw new Error(
-        `WSOL ATA for reward wallet does not exist on-chain: ${wsolAta.toBase58()}. ` +
-        `Create it once by running: cd backend && npx tsx create-wsol-atas.ts`
-      );
+      logger.info('Creating WSOL ATA for reward wallet', {
+        wsolAta: wsolAta.toBase58(),
+        owner: rewardWalletAddress.toBase58(),
+      });
+
+      try {
+        const createAtaTx = new Transaction();
+        createAtaTx.add(
+          createAssociatedTokenAccountInstruction(
+            rewardWalletAddress, // payer
+            wsolAta,             // ata
+            rewardWalletAddress, // owner
+            NATIVE_MINT,         // WSOL mint
+            TOKEN_PROGRAM_ID     // SPL Token program
+          )
+        );
+
+        const { blockhash: ataBlockhash } = await connection.getLatestBlockhash('confirmed');
+        createAtaTx.recentBlockhash = ataBlockhash;
+        createAtaTx.feePayer = rewardWalletAddress;
+        createAtaTx.sign(rewardWallet);
+
+        const ataSignature = await sendAndConfirmTransaction(
+          connection,
+          createAtaTx,
+          [rewardWallet],
+          { commitment: 'confirmed', maxRetries: 3 }
+        );
+
+        logger.info('WSOL ATA created successfully', {
+          signature: ataSignature,
+          wsolAta: wsolAta.toBase58(),
+        });
+
+        // Verify it was created
+        wsolAccountInfo = await getAccount(connection, wsolAta, 'confirmed', TOKEN_PROGRAM_ID);
+        userSolAccountExists = true;
+      } catch (createError) {
+        // Check if it was created by another transaction
+        try {
+          wsolAccountInfo = await getAccount(connection, wsolAta, 'confirmed', TOKEN_PROGRAM_ID);
+          userSolAccountExists = true;
+          logger.info('WSOL ATA exists (created by another transaction)');
+        } catch {
+          throw new Error(
+            `Failed to create WSOL ATA for reward wallet: ${wsolAta.toBase58()}. ` +
+            `Error: ${createError instanceof Error ? createError.message : String(createError)}`
+          );
+        }
+      }
     }
 
     // Final validation: Both ATAs must exist and be accessible
