@@ -160,8 +160,25 @@
 .reward-system-rows {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1rem;
   width: 100%;
+}
+
+.reward-system-row-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  animation: fadeInRow 0.3s ease-in;
+}
+
+.reward-system-row-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-left: 4px;
 }
 
 .reward-system-row {
@@ -170,7 +187,6 @@
   gap: 3px;
   width: 100%;
   min-width: 600px;
-  animation: fadeInRow 0.3s ease-in;
 }
 
 @keyframes fadeInRow {

@@ -183,7 +183,7 @@ export function RewardSystem() {
       ? currentCycle 
       : CYCLES_PER_EPOCH;
     
-    // Calculate the highest row index that has cycles
+    // Calculate the highest row index that has cycles (row containing current cycle)
     const maxRowIndex = Math.floor((maxCycle - 1) / CYCLES_PER_ROW);
     
     // Return array of visible row indices (0 to maxRowIndex)
@@ -192,7 +192,7 @@ export function RewardSystem() {
       rows.push(i);
     }
     
-    // Reverse so newest row (highest index) appears first
+    // Reverse so newest row (highest index, containing current cycle) appears first
     return rows.reverse();
   }, [selectedEpoch, currentEpoch, currentCycle]);
 
@@ -230,7 +230,11 @@ export function RewardSystem() {
     if (isExpanded) {
       return cyclesByRow;
     }
-    // Collapsed: show only current row (first) and previous row (second) if available
+    // Collapsed: show only the 2 most recent rows
+    // For current epoch: shows row containing current cycle + previous row
+    // For past epochs: shows last 2 rows that have data
+    // Since cyclesByRow is already in reverse order (newest first),
+    // slice(0, 2) gives us the 2 most recent rows
     return cyclesByRow.slice(0, 2);
   }, [cyclesByRow, isExpanded]);
 
@@ -323,25 +327,36 @@ export function RewardSystem() {
           <div className="reward-system-loading">No cycle data available</div>
         ) : (
           <div className="reward-system-rows">
-            {displayRows.map((row, rowIndex) => (
-              <div key={`row-${rowIndex}`} className="reward-system-row">
-                {row.map(({ cycleNumber, cycle }: { cycleNumber: number; cycle: CycleResult | null }) => (
-                  <div
-                    key={cycleNumber}
-                    className="cycle-block-wrapper"
-                    onMouseEnter={(e) => handleBlockHover(cycle, cycleNumber, e)}
-                    onMouseLeave={handleBlockLeave}
-                  >
-                    <CycleBlock
-                      cycleNumber={cycleNumber}
-                      cycle={cycle}
-                      currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
-                      onHover={() => {}}
-                    />
+            {displayRows.map((row, rowIndex) => {
+              // Calculate the cycle range for this row
+              const firstCycle = row[0]?.cycleNumber || 0;
+              const lastCycle = row[row.length - 1]?.cycleNumber || 0;
+              
+              return (
+                <div key={`row-${rowIndex}`} className="reward-system-row-container">
+                  <div className="reward-system-row-label">
+                    Cycles {firstCycle}-{lastCycle}
                   </div>
-                ))}
-              </div>
-            ))}
+                  <div className="reward-system-row">
+                    {row.map(({ cycleNumber, cycle }: { cycleNumber: number; cycle: CycleResult | null }) => (
+                      <div
+                        key={cycleNumber}
+                        className="cycle-block-wrapper"
+                        onMouseEnter={(e) => handleBlockHover(cycle, cycleNumber, e)}
+                        onMouseLeave={handleBlockLeave}
+                      >
+                        <CycleBlock
+                          cycleNumber={cycleNumber}
+                          cycle={cycle}
+                          currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
+                          onHover={() => {}}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
