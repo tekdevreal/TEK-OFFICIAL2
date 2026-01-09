@@ -24,6 +24,9 @@ export interface LiquidityPoolPerformance {
 }
 
 export function AnalyticsPage() {
+  // Treasury wallet address
+  const treasuryWalletAddress = import.meta.env.VITE_TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
+
   // Fetch real data from API
   const { data: rewardsData, isLoading: isLoadingRewards } = useRewards(undefined, {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
@@ -33,6 +36,10 @@ export function AnalyticsPage() {
 
   const { data: liquiditySummaryData } = useLiquiditySummary({
     refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { data: treasuryBalanceData } = useTreasuryBalance(treasuryWalletAddress, {
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 
   // Calculate stats from real data
@@ -99,7 +106,7 @@ export function AnalyticsPage() {
       .slice(0, 12); // Show max 12 groups (24 hours worth)
   }, [historicalData]);
 
-  // Real data for Volume vs Rewards Correlation chart - Last 2 days
+  // Real data for Volume vs Rewards Correlation chart - Last 2 days, grouped by 4 hours (12 bars for 48 hours)
   const volumeVsRewardsData = useMemo(() => {
     if (!historicalData?.cycles) return [];
     
@@ -115,34 +122,35 @@ export function AnalyticsPage() {
     // Use liquidity data for volume (approximate)
     const volume24h = liquiditySummaryData?.volume24hUSD || 0;
     
-    // Group by hour for better visualization
+    // Group by 4-hour blocks for better visualization (48 hours / 4 = 12 bars)
     const groupedData: { [key: string]: { solDistributed: number; count: number } } = {};
     
     recentCycles.forEach((cycle) => {
       const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
       const date = new Date(timestamp);
-      const hourKey = `${date.toISOString().split('T')[0]} ${date.getUTCHours()}:00`;
+      const hourBlock = Math.floor(date.getUTCHours() / 4) * 4; // 0, 4, 8, 12, 16, 20
+      const dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
       
-      if (!groupedData[hourKey]) {
-        groupedData[hourKey] = { solDistributed: 0, count: 0 };
+      if (!groupedData[dateKey]) {
+        groupedData[dateKey] = { solDistributed: 0, count: 0 };
       }
       
-      groupedData[hourKey].solDistributed += cycle.totalSOLDistributed || 0;
-      groupedData[hourKey].count += 1;
+      groupedData[dateKey].solDistributed += cycle.totalSOLDistributed || 0;
+      groupedData[dateKey].count += 1;
     });
     
     return Object.entries(groupedData)
       .map(([date, data]) => ({
         date,
-        volume24h: volume24h, // Use current 24h volume as approximation
-        solDistributed: data.solDistributed, // Total for the hour
+        volume24h: volume24h / 6, // Approximate volume per 4-hour period (24h / 6 = 4h)
+        solDistributed: data.solDistributed, // Total for the 4-hour period
       }))
-      .slice(0, 48); // Max 48 hours (2 days)
+      .slice(0, 12); // Max 12 bars (2 days in 4-hour blocks)
   }, [historicalData, liquiditySummaryData]);
 
   // Real data for Treasury Balance Over Time chart - Last 2 days
-  const treasuryBalanceData = useMemo(() => {
-    if (!historicalData?.cycles) return [];
+  const treasuryBalanceChartData = useMemo(() => {
+    if (!historicalData?.cycles || !treasuryBalanceData) return [];
     
     // Filter cycles from last 2 days
     const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
@@ -153,8 +161,14 @@ export function AnalyticsPage() {
       })
       .reverse(); // Oldest first
     
-    // Calculate cumulative for the 2-day period
-    let cumulativeTreasury = 0;
+    // Calculate cumulative received for the 2-day period
+    let cumulativeReceived = 0;
+    
+    // Get current treasury balance from API
+    const currentBalance = treasuryBalanceData.balanceSOL || 0;
+    
+    // Pending allocation (placeholder - would need API endpoint)
+    const pendingAllocation = 0; // TODO: Get from API when available
     
     // Group by 4-hour periods for better visualization
     const groupedData: { [key: string]: number } = {};
@@ -165,20 +179,20 @@ export function AnalyticsPage() {
       const hourBlock = Math.floor(date.getUTCHours() / 4) * 4;
       const dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
       
-      // Approximate: 25% of distributed SOL goes to treasury
+      // 25% of distributed SOL goes to treasury
       const treasuryAmount = (cycle.totalSOLDistributed || 0) * 0.25;
-      cumulativeTreasury += treasuryAmount;
+      cumulativeReceived += treasuryAmount;
       
-      groupedData[dateKey] = cumulativeTreasury;
+      groupedData[dateKey] = cumulativeReceived;
     });
     
-    return Object.entries(groupedData).map(([date, balance]) => ({
+    return Object.entries(groupedData).map(([date, receivedIn2Days]) => ({
       date,
-      treasuryBalance: balance,
-      deployed: balance * 0.6, // Approximate 60% deployed
-      available: balance * 0.4, // Approximate 40% available
+      treasuryBalance: currentBalance, // Current balance from wallet
+      deployed: pendingAllocation, // Pending allocation
+      receivedIn2Days: receivedIn2Days, // Total received in last 2 days
     }));
-  }, [historicalData]);
+  }, [historicalData, treasuryBalanceData]);
 
   // Real Liquidity Pool Performance table data
   const liquidityPoolData: LiquidityPoolPerformance[] = useMemo(() => {
@@ -308,7 +322,7 @@ export function AnalyticsPage() {
           {/* Section 3: Volume vs Rewards Correlation */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Volume vs Rewards Correlation</h3>
-            <p className="chart-section-description">Trading volume and rewards relationship from the last two days</p>
+            <p className="chart-section-description">Trading volume and rewards per 4-hour period from the last two days</p>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={volumeVsRewardsData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -358,9 +372,9 @@ export function AnalyticsPage() {
           {/* Section 4: Treasury Balance Over Time */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Treasury Balance Over Time</h3>
-            <p className="chart-section-description">Treasury accumulation from the last two days</p>
+            <p className="chart-section-description">Treasury accumulation and data</p>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={treasuryBalanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <LineChart data={treasuryBalanceChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                 <XAxis 
                   dataKey="date" 
@@ -392,15 +406,15 @@ export function AnalyticsPage() {
                   dataKey="deployed" 
                   stroke="#f59e0b" 
                   strokeWidth={2}
-                  name="Deployed"
+                  name="Pending Allocation"
                   dot={{ fill: '#f59e0b' }}
                 />
                 <Line 
                   type="monotone" 
-                  dataKey="available" 
+                  dataKey="receivedIn2Days" 
                   stroke="#3b82f6" 
                   strokeWidth={2}
-                  name="Available"
+                  name="Received in 2 Days"
                   dot={{ fill: '#3b82f6' }}
                 />
               </LineChart>
