@@ -139,29 +139,45 @@ async function fetchSwapDistributionNotification(
   const totalSOL = Number(solToHolders) + Number(solToTreasury);
   const totalSOLFormatted = (totalSOL / 1e9).toFixed(6);
   
-  // Get distribution count (holders paid)
-  const holdersPaid = rewards.tax.distributionCount || 0;
-  
-  // Get epoch timestamp (use lastTaxDistribution or lastRun)
-  const epochTimestamp = rewards.tax.lastTaxDistribution || rewards.lastRun;
-  let epochFormatted = 'N/A';
-  if (epochTimestamp) {
-    try {
-      const epochDate = new Date(epochTimestamp);
-      epochFormatted = epochDate.toISOString().replace('T', ' ').substring(0, 19);
-    } catch {
-      epochFormatted = epochTimestamp;
-    }
+  // Fetch current cycle information
+  let cycleInfo: { epoch: number; cycleNumber: number; cyclesPerEpoch: number } | null = null;
+  try {
+    const cycleResponse = await axios.get(`${backendUrl}/dashboard/cycles/current`, { timeout: 10000 });
+    cycleInfo = cycleResponse.data;
+  } catch (err) {
+    console.error('[Notification] Failed to fetch cycle info:', err);
   }
   
+  // Format distribution timestamp
+  const distributionTime = rewards.tax.lastTaxDistribution 
+    ? new Date(rewards.tax.lastTaxDistribution).toLocaleString('en-US', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: false 
+      })
+    : 'N/A';
+  
+  // Build message with bold titles using Telegram markdown
   const messageLines = [
-    '💰 NUKE Rewards Distributed',
+    '💰 *NUKE Rewards Distributed*',
     '',
-    `• Total: ${totalSOLFormatted} SOL`,
-    `• Holders: ${solToHoldersFormatted} SOL`,
-    `• Treasury: ${solToTreasuryFormatted} SOL`,
-    `• Epoch: ${epochFormatted}`,
+    `*Total:* ${totalSOLFormatted} SOL`,
+    `*Holders:* ${solToHoldersFormatted} SOL`,
+    `*Treasury:* ${solToTreasuryFormatted} SOL`,
   ];
+
+  // Add epoch and cycle info if available
+  if (cycleInfo) {
+    messageLines.push(`*Epoch:* ${cycleInfo.epoch}`);
+    messageLines.push(`*Cycle:* ${cycleInfo.cycleNumber} / ${cycleInfo.cyclesPerEpoch}`);
+  }
+
+  // Add timestamp
+  messageLines.push(`*Time:* ${distributionTime}`);
 
   const message = messageLines.join('\n');
 
@@ -174,33 +190,53 @@ async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl
     const response = await axios.get<RewardApiResponse>(`${backendUrl}/dashboard/rewards`, { timeout: 30000 });
     const rewards = response.data;
 
-    const messageLines = [
-      '📊 Reward System Status',
-      '',
-    ];
-
-    if (rewards.tax) {
-      const nukeSold = BigInt(rewards.tax.totalNukeSold || '0');
-      const solToHolders = BigInt(rewards.tax.totalSolDistributed || '0');
-      const solToTreasury = BigInt(rewards.tax.totalSolToTreasury || '0');
-      
-      const decimals = 6;
-      const nukeSoldFormatted = (Number(nukeSold) / Math.pow(10, decimals)).toFixed(2);
-      const solToHoldersFormatted = (Number(solToHolders) / 1e9).toFixed(6);
-      const solToTreasuryFormatted = (Number(solToTreasury) / 1e9).toFixed(6);
-      
-      messageLines.push(
-        'Recent Distribution:',
-        `• NUKE Sold: ${nukeSoldFormatted}`,
-        `• SOL to Holders: ${solToHoldersFormatted}`,
-        `• SOL to Treasury: ${solToTreasuryFormatted}`,
-        `• Distributions: ${rewards.tax.distributionCount}`,
-      );
-    } else {
-      messageLines.push('No distributions yet.');
+    if (!rewards.tax || !rewards.tax.totalSolDistributed) {
+      await bot.sendMessage(chatId, 'No reward distributions yet. Check back later! 🚀');
+      return;
     }
 
-    await bot.sendMessage(chatId, messageLines.join('\n'));
+    // Fetch current cycle information
+    let cycleInfo: { epoch: number; cycleNumber: number; cyclesPerEpoch: number } | null = null;
+    try {
+      const cycleResponse = await axios.get(`${backendUrl}/dashboard/cycles/current`, { timeout: 10000 });
+      cycleInfo = cycleResponse.data;
+    } catch (err) {
+      console.error('[Command] Failed to fetch cycle info:', err);
+    }
+
+    // Format accumulated stats
+    const totalDistributed = (parseInt(rewards.tax.totalSolDistributed) / 1e9).toFixed(6);
+    const totalToHolders = rewards.tax.totalRewardAmount 
+      ? (parseInt(rewards.tax.totalRewardAmount) / 1e9).toFixed(6)
+      : '0';
+    const totalToTreasury = rewards.tax.totalTreasuryAmount
+      ? (parseInt(rewards.tax.totalTreasuryAmount) / 1e9).toFixed(6)
+      : '0';
+
+    const lastDistribution = rewards.tax.lastTaxDistribution 
+      ? new Date(rewards.tax.lastTaxDistribution).toLocaleString()
+      : 'N/A';
+
+    const messageLines = [
+      '💰 *NUKE Reward Statistics*',
+      '',
+      `*Total Distributed:* ${totalDistributed} SOL`,
+      `*To Holders:* ${totalToHolders} SOL`,
+      `*To Treasury:* ${totalToTreasury} SOL`,
+      `*Distributions:* ${rewards.tax.distributionCount || 0}`,
+    ];
+
+    // Add cycle info if available
+    if (cycleInfo) {
+      messageLines.push(`*Current Epoch:* ${cycleInfo.epoch}`);
+      messageLines.push(`*Current Cycle:* ${cycleInfo.cycleNumber} / ${cycleInfo.cyclesPerEpoch}`);
+    }
+
+    messageLines.push(`*Last Distribution:* ${lastDistribution}`);
+
+    const message = messageLines.join('\n');
+
+    await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     await bot.sendMessage(chatId, `Failed to fetch rewards: ${reason}`);
@@ -294,7 +330,7 @@ function main(): void {
 
         for (const chatId of authorizedChatIds) {
           try {
-            await bot.sendMessage(chatId, message);
+            await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
             console.log('[AutoRewards] Sent distribution notification', { chatId });
           } catch (sendErr) {
             console.error('[AutoRewards] Failed to send notification', { chatId, error: sendErr });
