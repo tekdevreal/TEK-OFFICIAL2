@@ -85,7 +85,7 @@ type RewardApiResponse = {
 async function fetchSwapDistributionNotification(
   backendUrl: string,
   lastKnownDistributionTime: number | null
-): Promise<{ message: string | null; lastDistributionTime: number | null }> {
+): Promise<{ message: string | null; lastDistributionTime: number | null; distributionHash?: string }> {
   const response = await axios.get<RewardApiResponse>(`${backendUrl}/dashboard/rewards`, { timeout: 30000 });
   const rewards = response.data;
 
@@ -304,7 +304,7 @@ function main(): void {
         // Persist to disk to survive bot restarts
         lastKnownDistributionTime = lastDistributionTime;
         updateState({ 
-          lastDistributionTime,
+          lastDistributionTime: lastDistributionTime ?? undefined,
           lastDistributionHash: distributionHash 
         });
         console.log('[AutoRewards] Updated persistent state', { 
