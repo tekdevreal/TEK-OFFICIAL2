@@ -24,10 +24,10 @@ export function DistributionCard({ item, rewardWalletAddress }: DistributionCard
 
   return (
     <GlassCard className="distribution-card">
-      {/* Reward Epoch on left, Status badge on right */}
+      {/* Cycle on left, Status badge on right */}
       <div className="distribution-card-status-section">
         <div className="epoch-section">
-          <span className="status-label">Reward Epoch:</span>
+          <span className="status-label">Cycle:</span>
           <span className="epoch-number">
             {item.epochNumber !== undefined 
               ? String(item.epochNumber).padStart(4, '0')

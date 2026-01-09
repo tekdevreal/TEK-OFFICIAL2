@@ -33,6 +33,16 @@ function formatEpochDate(epoch: string): string {
   });
 }
 
+function getEpochNumber(epoch: string): number {
+  // Calculate epoch number from epoch date
+  const currentEpochDate = new Date(epoch + 'T00:00:00Z');
+  // Use Dec 1, 2024 as reference start date (adjust if needed)
+  const firstEpochDate = new Date(Date.UTC(2024, 11, 1, 0, 0, 0, 0));
+  const timeDiff = currentEpochDate.getTime() - firstEpochDate.getTime();
+  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+  return daysDiff + 1; // Epoch 1 is the first day
+}
+
 function getCycleStateColor(state: CycleState | 'PENDING' | 'NOT_EXECUTED'): string {
   switch (state) {
     case 'DISTRIBUTED':
@@ -110,17 +120,12 @@ interface TooltipProps {
   cycleNumber: number;
   currentCycle: number;
   epoch: string;
+  epochNumber: number;
   x: number;
   y: number;
 }
 
-function Tooltip({ cycle, cycleNumber, currentCycle, epoch, x, y }: TooltipProps) {
-  // Format epoch date for display
-  const formatEpochDisplay = (epochStr: string) => {
-    const date = new Date(epochStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
+function Tooltip({ cycle, cycleNumber, currentCycle, epoch, epochNumber, x, y }: TooltipProps) {
   if (!cycle) {
     const isFuture = cycleNumber > currentCycle;
     return (
@@ -132,7 +137,7 @@ function Tooltip({ cycle, cycleNumber, currentCycle, epoch, x, y }: TooltipProps
           transform: 'translateX(-50%)',
         }}
       >
-        <div className="tooltip-epoch">Epoch: {formatEpochDisplay(epoch)}</div>
+        <div className="tooltip-epoch">Epoch: {epochNumber}</div>
         <div className="tooltip-title">Cycle {cycleNumber}</div>
         <div className="tooltip-status">{isFuture ? 'Not executed yet' : 'No data'}</div>
       </div>
@@ -151,7 +156,7 @@ function Tooltip({ cycle, cycleNumber, currentCycle, epoch, x, y }: TooltipProps
         transform: 'translateX(-50%)',
       }}
     >
-      <div className="tooltip-epoch">Epoch: {formatEpochDisplay(epoch)}</div>
+      <div className="tooltip-epoch">Epoch: {epochNumber}</div>
       <div className="tooltip-title">Cycle {cycle.cycleNumber}</div>
       <div className="tooltip-time">{timeLabel}</div>
       <div className="tooltip-status">{statusLabel}</div>
@@ -313,13 +318,6 @@ export function RewardSystem() {
           >
             Yesterday
           </button>
-          <input
-            type="date"
-            className="epoch-date-picker"
-            value={selectedEpoch}
-            onChange={(e) => handleEpochChange(e.target.value)}
-            max={currentEpoch}
-          />
         </div>
         <div className="reward-system-controls-right">
           {selectedEpoch && (
@@ -389,6 +387,7 @@ export function RewardSystem() {
           cycleNumber={hoveredCycle.cycleNumber}
           currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
           epoch={selectedEpoch}
+          epochNumber={getEpochNumber(selectedEpoch)}
           x={hoveredCycle.x}
           y={hoveredCycle.y}
         />,

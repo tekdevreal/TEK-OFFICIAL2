@@ -338,7 +338,38 @@ export function Dashboard() {
       {/* Section 3: Distributions with Pagination */}
       <section className="dashboard-section">
         <GlassCard className="dashboard-section-card">
-          <h2 className="section-title">Distributions</h2>
+          <h2 className="section-title">
+            Distributions Epoch: {(() => {
+              if (currentCycleInfo?.epoch) {
+                const currentEpochDate = new Date(currentCycleInfo.epoch + 'T00:00:00Z');
+                let firstEpochDate: Date | null = null;
+                
+                if (historicalData?.cycles && historicalData.cycles.length > 0) {
+                  const oldestCycle = historicalData.cycles[historicalData.cycles.length - 1];
+                  if (oldestCycle?.timestamp) {
+                    const oldestDate = new Date(oldestCycle.timestamp);
+                    firstEpochDate = new Date(Date.UTC(
+                      oldestDate.getUTCFullYear(),
+                      oldestDate.getUTCMonth(),
+                      oldestDate.getUTCDate(),
+                      0, 0, 0, 0
+                    ));
+                  }
+                }
+                
+                if (!firstEpochDate) {
+                  firstEpochDate = new Date(Date.UTC(2024, 11, 1, 0, 0, 0, 0));
+                }
+                
+                const timeDiff = currentEpochDate.getTime() - firstEpochDate.getTime();
+                const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                const epochNumber = daysDiff + 1;
+                
+                return epochNumber;
+              }
+              return 'N/A';
+            })()}
+          </h2>
           <div className="distribution-container">
             {currentPageCards.length > 0 ? (
               <>

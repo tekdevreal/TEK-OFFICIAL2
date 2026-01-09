@@ -301,10 +301,16 @@ export function AnalyticsPage() {
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'var(--bg-card)', 
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-primary)'
+                    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: '#ffffff',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    padding: '10px 12px'
                   }}
+                  labelStyle={{ color: '#ffffff' }}
+                  itemStyle={{ color: '#ffffff' }}
+                  cursor={{ stroke: 'rgba(255, 255, 255, 0.3)', strokeWidth: 1 }}
                 />
                 <Legend />
                 <Line 
@@ -344,10 +350,16 @@ export function AnalyticsPage() {
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'var(--bg-card)', 
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-primary)'
+                    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: '#ffffff',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    padding: '10px 12px'
                   }}
+                  labelStyle={{ color: '#ffffff' }}
+                  itemStyle={{ color: '#ffffff' }}
+                  cursor={{ stroke: 'rgba(255, 255, 255, 0.3)', strokeWidth: 1 }}
                 />
                 <Legend />
                 <Bar 
@@ -387,10 +399,16 @@ export function AnalyticsPage() {
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'var(--bg-card)', 
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-primary)'
+                    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    color: '#ffffff',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    padding: '10px 12px'
                   }}
+                  labelStyle={{ color: '#ffffff' }}
+                  itemStyle={{ color: '#ffffff' }}
+                  cursor={{ stroke: 'rgba(255, 255, 255, 0.3)', strokeWidth: 1 }}
                 />
                 <Legend />
                 <Line 
