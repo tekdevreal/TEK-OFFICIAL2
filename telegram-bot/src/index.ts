@@ -66,6 +66,7 @@ type RewardApiResponse = {
     totalSolDistributed: string;
     totalSolToTreasury: string;
     lastTaxDistribution: string | null;
+    lastTaxDistributionTime: number | null;
     lastSwapTx: string | null;
     lastDistributionTx: string | null;
     distributionCount: number;
@@ -74,25 +75,31 @@ type RewardApiResponse = {
 
 /**
  * Fetch rewards from the backend and return swap/distribution notification message
- * Only returns a message if a swap + distribution occurred (lastSwapTx changed)
+ * Only returns a message if a distribution occurred (uses lastTaxDistribution timestamp)
+ * 
+ * NOTE: Uses lastTaxDistribution instead of lastSwapTx to handle batch splitting correctly.
+ * When batch splitting occurs, there are multiple swap transactions but only ONE distribution.
+ * Tracking by timestamp ensures we notify once per distribution, not once per swap.
  */
 async function fetchSwapDistributionNotification(
   backendUrl: string,
-  lastKnownSwapTx: string | null
-): Promise<{ message: string | null; lastSwapTx: string | null }> {
+  lastKnownDistributionTime: number | null
+): Promise<{ message: string | null; lastDistributionTime: number | null }> {
   const response = await axios.get<RewardApiResponse>(`${backendUrl}/dashboard/rewards`, { timeout: 30000 });
   const rewards = response.data;
 
-  // Check if tax data exists and has a swap transaction
-  if (!rewards.tax || !rewards.tax.lastSwapTx) {
-    return { message: null, lastSwapTx: null };
+  // Check if tax data exists and has a distribution
+  if (!rewards.tax || !rewards.tax.lastTaxDistribution) {
+    return { message: null, lastDistributionTime: null };
   }
 
-  const currentSwapTx = rewards.tax.lastSwapTx;
+  const currentDistributionTime = typeof rewards.tax.lastTaxDistribution === 'string'
+    ? new Date(rewards.tax.lastTaxDistribution).getTime()
+    : Number(rewards.tax.lastTaxDistribution);
   
-  // Only notify if swap transaction changed (new swap occurred)
-  if (currentSwapTx === lastKnownSwapTx) {
-    return { message: null, lastSwapTx: currentSwapTx };
+  // Only notify if distribution time changed (new distribution occurred)
+  if (currentDistributionTime === lastKnownDistributionTime) {
+    return { message: null, lastDistributionTime: currentDistributionTime };
   }
 
   // Format notification message for successful swap + distribution
@@ -133,7 +140,7 @@ async function fetchSwapDistributionNotification(
 
   const message = messageLines.join('\n');
 
-  return { message, lastSwapTx: currentSwapTx };
+  return { message, lastDistributionTime: currentDistributionTime };
 }
 
 async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl: string): Promise<void> {
@@ -230,39 +237,47 @@ function main(): void {
 
     // Automatic reward notifications loop:
     // - Runs every POLLING_INTERVAL_MS (default 60000ms)
-    // - Only sends notifications when a swap + distribution occurred (lastSwapTx changed)
-    // - Persists lastSwapTx to disk to prevent duplicate notifications after bot restarts
-    let lastKnownSwapTx: string | null = getLastState().lastSwapTx || null;
-    console.log('[Bot] Loaded last known swap tx from state:', lastKnownSwapTx || 'none');
+    // - Only sends notifications when a distribution occurred (lastTaxDistribution changed)
+    // - Uses distribution timestamp instead of swap tx to handle batch splitting correctly
+    // - Persists lastDistributionTime to disk to prevent duplicate notifications after bot restarts
+    const initialState = getLastState();
+    let lastKnownDistributionTime: number | null = initialState.lastDistributionTime || null;
+    console.log('[Bot] Loaded last known distribution time from state:', 
+      lastKnownDistributionTime ? new Date(lastKnownDistributionTime).toISOString() : 'none');
 
     const tickAutomaticRewards = async () => {
       try {
-        const { message, lastSwapTx } = await fetchSwapDistributionNotification(backendUrl, lastKnownSwapTx);
+        const { message, lastDistributionTime } = await fetchSwapDistributionNotification(backendUrl, lastKnownDistributionTime);
         
         if (!message) {
-          // No new swap/distribution detected
+          // No new distribution detected
           return;
         }
 
-        console.log('[AutoRewards] New swap + distribution detected, broadcasting to authorized chats', {
-          previousSwapTx: lastKnownSwapTx || 'none',
-          newSwapTx: lastSwapTx,
+        console.log('[AutoRewards] New distribution detected, broadcasting to authorized chats', {
+          previousDistributionTime: lastKnownDistributionTime 
+            ? new Date(lastKnownDistributionTime).toISOString() 
+            : 'none',
+          newDistributionTime: lastDistributionTime 
+            ? new Date(lastDistributionTime).toISOString() 
+            : 'unknown',
           authorizedChatIds,
         });
 
         for (const chatId of authorizedChatIds) {
           try {
             await bot.sendMessage(chatId, message);
-            console.log('[AutoRewards] Sent swap/distribution notification', { chatId });
+            console.log('[AutoRewards] Sent distribution notification', { chatId });
           } catch (sendErr) {
             console.error('[AutoRewards] Failed to send notification', { chatId, error: sendErr });
           }
         }
 
         // Persist to disk to survive bot restarts
-        lastKnownSwapTx = lastSwapTx;
-        updateState({ lastSwapTx: lastSwapTx || undefined });
-        console.log('[AutoRewards] Updated persistent state with lastSwapTx:', lastSwapTx);
+        lastKnownDistributionTime = lastDistributionTime;
+        updateState({ lastDistributionTime });
+        console.log('[AutoRewards] Updated persistent state with lastDistributionTime:', 
+          lastDistributionTime ? new Date(lastDistributionTime).toISOString() : 'none');
       } catch (err) {
         console.error('[AutoRewards] Error while fetching or broadcasting notifications:', err);
       }

@@ -13,7 +13,8 @@ import * as path from 'path';
 interface NotificationState {
   lastRewardRunId?: string;
   lastPayoutId?: string;
-  lastSwapTx?: string; // Track last swap transaction to prevent duplicate notifications
+  lastSwapTx?: string; // Legacy: Track last swap transaction (deprecated in favor of lastDistributionTime)
+  lastDistributionTime?: number; // Track last distribution timestamp to prevent duplicate notifications (handles batch splitting correctly)
 }
 
 class NotificationStateManager {
@@ -70,6 +71,9 @@ class NotificationStateManager {
           : undefined,
         lastSwapTx: typeof state.lastSwapTx === 'string'
           ? state.lastSwapTx
+          : undefined,
+        lastDistributionTime: typeof state.lastDistributionTime === 'number'
+          ? state.lastDistributionTime
           : undefined,
       };
     } catch (error) {
