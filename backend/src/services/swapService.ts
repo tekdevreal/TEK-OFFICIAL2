@@ -2766,11 +2766,18 @@ export async function swapNukeToSOL(
     // Check if we received WSOL and unwrap it to native SOL
     // Closing the WSOL account returns rent + wrapped SOL as native SOL to the wallet
     // The ATA will be auto-recreated on the next swap if needed
+    
+    // CRITICAL: Capture the WSOL amount BEFORE unwrapping - this is the actual swap proceeds
+    let solReceived = 0n;
     try {
       const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
       if (userSolBalance && userSolBalance.amount > 0n) {
+        // Capture the actual swap proceeds from WSOL balance BEFORE unwrapping
+        solReceived = userSolBalance.amount;
+        
         logger.info('Unwrapping WSOL to native SOL', {
           wsolAmount: userSolBalance.amount.toString(),
+          solReceivedFromSwap: solReceived.toString(),
           note: 'Closing WSOL ATA to unwrap - will auto-recreate on next swap',
         });
 
@@ -2816,27 +2823,27 @@ export async function swapNukeToSOL(
       });
     }
 
-    // Step 13: Verify SOL was received
-    // Check both native SOL balance (after unwrap) and WSOL account balance
-    let solReceived = 0n;
-    try {
-      const balance = await connection.getBalance(rewardWalletAddress, 'confirmed');
-      solReceived = BigInt(balance);
-    } catch {
-      // Fallback to WSOL account balance
-      const userSolBalance = await getAccount(connection, userSolAccount, 'confirmed', TOKEN_PROGRAM_ID).catch(() => null);
-      solReceived = userSolBalance ? userSolBalance.amount : 0n;
+    // If we didn't get the amount from WSOL (shouldn't happen), use expected amount
+    if (solReceived === 0n) {
+      solReceived = expectedDestAmount;
+      logger.warn('Could not determine actual swap proceeds, using expected amount', {
+        expectedDestAmount: expectedDestAmount.toString(),
+        note: 'This should not happen - WSOL balance should have been captured',
+      });
     }
 
     logger.info('Raydium swap completed successfully', {
       signature,
       solReceived: solReceived.toString(),
+      solReceivedSOL: (Number(solReceived) / 1e9).toFixed(9),
       expectedSol: expectedDestAmount.toString(),
+      expectedSolSOL: (Number(expectedDestAmount) / 1e9).toFixed(9),
       poolType: poolInfo.poolType,
+      note: 'solReceived is actual swap proceeds from WSOL balance, NOT total wallet balance',
     });
 
     return {
-      solReceived: solReceived > 0n ? solReceived : expectedDestAmount, // Use actual if available, else expected
+      solReceived, // Actual swap proceeds from WSOL balance, NOT total wallet balance
       txSignature: signature,
     };
   } catch (error) {
