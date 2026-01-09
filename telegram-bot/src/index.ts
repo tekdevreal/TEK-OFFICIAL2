@@ -2,6 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
+import { getLastState, updateState } from './state/notificationState';
 
 dotenv.config();
 
@@ -230,7 +231,9 @@ function main(): void {
     // Automatic reward notifications loop:
     // - Runs every POLLING_INTERVAL_MS (default 60000ms)
     // - Only sends notifications when a swap + distribution occurred (lastSwapTx changed)
-    let lastKnownSwapTx: string | null = null;
+    // - Persists lastSwapTx to disk to prevent duplicate notifications after bot restarts
+    let lastKnownSwapTx: string | null = getLastState().lastSwapTx || null;
+    console.log('[Bot] Loaded last known swap tx from state:', lastKnownSwapTx || 'none');
 
     const tickAutomaticRewards = async () => {
       try {
@@ -242,7 +245,8 @@ function main(): void {
         }
 
         console.log('[AutoRewards] New swap + distribution detected, broadcasting to authorized chats', {
-          lastSwapTx,
+          previousSwapTx: lastKnownSwapTx || 'none',
+          newSwapTx: lastSwapTx,
           authorizedChatIds,
         });
 
@@ -255,7 +259,10 @@ function main(): void {
           }
         }
 
+        // Persist to disk to survive bot restarts
         lastKnownSwapTx = lastSwapTx;
+        updateState({ lastSwapTx });
+        console.log('[AutoRewards] Updated persistent state with lastSwapTx:', lastSwapTx);
       } catch (err) {
         console.error('[AutoRewards] Error while fetching or broadcasting notifications:', err);
       }

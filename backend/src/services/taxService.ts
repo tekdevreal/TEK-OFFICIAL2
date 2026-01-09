@@ -150,8 +150,18 @@ function saveTaxState(taxState: TaxState): void {
     // Update tax state
     state.taxState = taxState;
     
-    // Save to file
+    // Save to file with explicit flush
     fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(state, null, 2), 'utf-8');
+    
+    // Force flush to disk (important for cloud environments like Render)
+    const fd = fs.openSync(STATE_FILE_PATH, 'r+');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    
+    logger.debug('Tax state saved successfully', {
+      lastSwapTx: taxState.lastSwapTx,
+      timestamp: Date.now(),
+    });
   } catch (error) {
     logger.error('Failed to save tax state', {
       error: error instanceof Error ? error.message : String(error),

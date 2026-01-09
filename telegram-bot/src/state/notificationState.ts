@@ -13,6 +13,7 @@ import * as path from 'path';
 interface NotificationState {
   lastRewardRunId?: string;
   lastPayoutId?: string;
+  lastSwapTx?: string; // Track last swap transaction to prevent duplicate notifications
 }
 
 class NotificationStateManager {
@@ -66,6 +67,9 @@ class NotificationStateManager {
           : undefined,
         lastPayoutId: typeof state.lastPayoutId === 'string' 
           ? state.lastPayoutId 
+          : undefined,
+        lastSwapTx: typeof state.lastSwapTx === 'string'
+          ? state.lastSwapTx
           : undefined,
       };
     } catch (error) {
