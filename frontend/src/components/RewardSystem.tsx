@@ -92,9 +92,8 @@ function CycleBlock({ cycleNumber, cycle, currentCycle, onHover }: CycleBlockPro
   // NOT_EXECUTED only applies to future cycles in the active row
   const finalState = isFuture ? 'NOT_EXECUTED' : state;
   const color = getCycleStateColor(finalState);
-  const label = isFuture 
-    ? 'Not executed yet' 
-    : getCycleStateLabel(state, cycle?.error);
+  // Label is used in tooltip, not here
+  // const label = isFuture ? 'Not executed yet' : getCycleStateLabel(state, cycle?.error);
 
   return (
     <div

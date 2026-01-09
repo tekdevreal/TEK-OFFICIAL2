@@ -64,14 +64,16 @@ export function AnalyticsPage() {
     // Filter cycles from last 2 days
     const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
     const recentCycles = historicalData.cycles
-      .filter(cycle => cycle.timestamp >= twoDaysAgo)
+      .filter(cycle => {
+        const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
+        return timestamp >= twoDaysAgo;
+      })
       .reverse(); // Oldest first
     
     // Group by 24 cycles (2 hours of cycles, since 1 cycle = 5 min, 24 cycles = 120 min = 2 hours)
     const groupedData: { [key: string]: { solDistributed: number; count: number; minCycle: number; maxCycle: number } } = {};
     
     recentCycles.forEach((cycle) => {
-      const date = new Date(cycle.timestamp);
       const cycleNum = cycle.id ? parseInt(cycle.id.split('T')[1]?.split(':')[0] || '0') : 0;
       
       // Group by cycle ranges (e.g., 1-24, 25-48, 49-72, etc.)
@@ -104,7 +106,10 @@ export function AnalyticsPage() {
     // Filter cycles from last 2 days
     const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
     const recentCycles = historicalData.cycles
-      .filter(cycle => cycle.timestamp >= twoDaysAgo)
+      .filter(cycle => {
+        const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
+        return timestamp >= twoDaysAgo;
+      })
       .reverse(); // Oldest first
     
     // Use liquidity data for volume (approximate)
@@ -114,7 +119,8 @@ export function AnalyticsPage() {
     const groupedData: { [key: string]: { solDistributed: number; count: number } } = {};
     
     recentCycles.forEach((cycle) => {
-      const date = new Date(cycle.timestamp);
+      const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
+      const date = new Date(timestamp);
       const hourKey = `${date.toISOString().split('T')[0]} ${date.getUTCHours()}:00`;
       
       if (!groupedData[hourKey]) {
@@ -136,16 +142,16 @@ export function AnalyticsPage() {
 
   // Real data for Treasury Balance Over Time chart - Last 2 days
   const treasuryBalanceData = useMemo(() => {
-    if (!historicalData?.cycles || !rewardsData?.tax) return [];
+    if (!historicalData?.cycles) return [];
     
     // Filter cycles from last 2 days
     const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
     const recentCycles = historicalData.cycles
-      .filter(cycle => cycle.timestamp >= twoDaysAgo)
+      .filter(cycle => {
+        const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
+        return timestamp >= twoDaysAgo;
+      })
       .reverse(); // Oldest first
-    
-    // Get total treasury balance from tax data
-    const totalTreasury = parseFloat(rewardsData.tax.totalSolToTreasury || '0') / 1e9;
     
     // Calculate cumulative for the 2-day period
     let cumulativeTreasury = 0;
@@ -154,7 +160,8 @@ export function AnalyticsPage() {
     const groupedData: { [key: string]: number } = {};
     
     recentCycles.forEach((cycle) => {
-      const date = new Date(cycle.timestamp);
+      const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
+      const date = new Date(timestamp);
       const hourBlock = Math.floor(date.getUTCHours() / 4) * 4;
       const dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
       
@@ -171,7 +178,7 @@ export function AnalyticsPage() {
       deployed: balance * 0.6, // Approximate 60% deployed
       available: balance * 0.4, // Approximate 40% available
     }));
-  }, [historicalData, rewardsData]);
+  }, [historicalData]);
 
   // Real Liquidity Pool Performance table data
   const liquidityPoolData: LiquidityPoolPerformance[] = useMemo(() => {
@@ -185,7 +192,7 @@ export function AnalyticsPage() {
     
     return [{
       poolPair: 'NUKE / SOL',
-      totalFeesGenerated: `$${liquiditySummaryData.totalFeesUSD?.toLocaleString() || '0'}`,
+      totalFeesGenerated: `$${(liquiditySummaryData.volume24hUSD ? liquiditySummaryData.volume24hUSD * 0.003 : 0).toLocaleString()}`, // 0.3% fee
       average24HVolume: `$${liquiditySummaryData.volume24hUSD?.toLocaleString() || '0'}`,
     }];
   }, [liquiditySummaryData]);
