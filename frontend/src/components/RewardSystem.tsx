@@ -161,8 +161,8 @@ function Tooltip({ cycle, cycleNumber, currentCycle, epochNumber, x, y }: Toolti
       <div className="tooltip-status">{statusLabel}</div>
       {cycle.taxResult && (
         <div className="tooltip-details">
-          <div>Harvest (NUKE): {parseFloat(cycle.taxResult.nukeHarvested).toLocaleString()}</div>
-          <div>Distribute (SOL): {cycle.taxResult.solToHolders}</div>
+          <div>Harvest (NUKE): {(parseFloat(cycle.taxResult.nukeHarvested) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}</div>
+          <div>Distribute (SOL): {(parseFloat(cycle.taxResult.solToHolders) + parseFloat(cycle.taxResult.solToTreasury || '0')).toFixed(6)}</div>
         </div>
       )}
     </div>
