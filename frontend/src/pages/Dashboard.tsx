@@ -44,6 +44,9 @@ export function Dashboard() {
       return [];
     }
 
+    // Get current epoch date (YYYY-MM-DD format)
+    const currentEpochDate = currentCycleInfo?.epoch || null;
+    
     // Get tax statistics to calculate NUKE amounts
     const tax = rewardsData?.tax || {
       totalNukeHarvested: '0',
@@ -53,8 +56,17 @@ export function Dashboard() {
     const totalNukeSold = parseFloat(tax.totalNukeSold || '0');
     const totalSolDistributedAllTime = parseFloat(tax.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
 
-    // Get up to 108 items (12 pages * 9 cards per page)
-    const cycles = historicalData.cycles.slice(0, 108);
+    // Filter cycles to only include those from the current epoch
+    const currentEpochCycles = currentEpochDate
+      ? historicalData.cycles.filter((cycle: RewardCycle) => {
+          const cycleDate = new Date(cycle.timestamp);
+          const cycleDateStr = `${cycleDate.getUTCFullYear()}-${String(cycleDate.getUTCMonth() + 1).padStart(2, '0')}-${String(cycleDate.getUTCDate()).padStart(2, '0')}`;
+          return cycleDateStr === currentEpochDate;
+        })
+      : historicalData.cycles;
+
+    // Get up to 108 items (12 pages * 9 cards per page) from current epoch only
+    const cycles = currentEpochCycles.slice(0, 108);
     
     return cycles
       .map((cycle: RewardCycle, index: number) => {
@@ -93,7 +105,7 @@ export function Dashboard() {
         return item.harvestedNUKE > 0 || item.distributedSOL > 0;
       });
     // Note: cycles are already sorted newest first from the API, so no need to reverse
-  }, [historicalData, rewardsData]);
+  }, [historicalData, rewardsData, currentCycleInfo]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
