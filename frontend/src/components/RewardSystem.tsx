@@ -119,13 +119,12 @@ interface TooltipProps {
   cycle: CycleResult | null;
   cycleNumber: number;
   currentCycle: number;
-  epoch: string;
   epochNumber: number;
   x: number;
   y: number;
 }
 
-function Tooltip({ cycle, cycleNumber, currentCycle, epoch, epochNumber, x, y }: TooltipProps) {
+function Tooltip({ cycle, cycleNumber, currentCycle, epochNumber, x, y }: TooltipProps) {
   if (!cycle) {
     const isFuture = cycleNumber > currentCycle;
     return (
@@ -386,7 +385,6 @@ export function RewardSystem() {
           cycle={hoveredCycle.cycle}
           cycleNumber={hoveredCycle.cycleNumber}
           currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
-          epoch={selectedEpoch}
           epochNumber={getEpochNumber(selectedEpoch)}
           x={hoveredCycle.x}
           y={hoveredCycle.y}
