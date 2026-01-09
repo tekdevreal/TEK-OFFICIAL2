@@ -372,7 +372,7 @@ export function AnalyticsPage() {
           {/* Section 4: Treasury Balance Over Time */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Treasury Balance Over Time</h3>
-            <p className="chart-section-description">Treasury accumulation and data</p>
+            <p className="chart-section-description">Treasury accumulation from the last two days</p>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={treasuryBalanceChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -395,26 +395,10 @@ export function AnalyticsPage() {
                 <Legend />
                 <Line 
                   type="monotone" 
-                  dataKey="treasuryBalance" 
-                  stroke="#22c55e" 
-                  strokeWidth={2}
-                  name="Treasury Balance"
-                  dot={{ fill: '#22c55e' }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="deployed" 
-                  stroke="#f59e0b" 
-                  strokeWidth={2}
-                  name="Pending Allocation"
-                  dot={{ fill: '#f59e0b' }}
-                />
-                <Line 
-                  type="monotone" 
                   dataKey="receivedIn2Days" 
                   stroke="#3b82f6" 
                   strokeWidth={2}
-                  name="Received in 2 Days"
+                  name="Received in 2 Days (SOL)"
                   dot={{ fill: '#3b82f6' }}
                 />
               </LineChart>
