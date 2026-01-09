@@ -249,8 +249,7 @@
   font-size: 0.875rem;
   pointer-events: none;
   z-index: 1000;
-  transform: translateX(-50%) translateY(-100%);
-  margin-top: -2px; /* Very close to the block */
+  transform: translateX(-50%); /* Center horizontally only, positioned below block */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   white-space: normal;
   max-width: 300px;

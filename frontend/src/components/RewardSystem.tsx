@@ -101,7 +101,6 @@ function CycleBlock({ cycleNumber, cycle, currentCycle, onHover }: CycleBlockPro
       className="cycle-block"
       style={{ backgroundColor: color }}
       onMouseEnter={() => onHover(cycle, cycleNumber)}
-      title={`Cycle ${cycleNumber}${cycle ? ` - ${label}` : ' - Not executed yet'}`}
     />
   );
 }
@@ -240,11 +239,12 @@ export function RewardSystem() {
 
   const handleBlockHover = (cycle: CycleResult | null, cycleNumber: number, event: React.MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    // Position tooltip directly at the box location
     setHoveredCycle({
       cycle,
       cycleNumber,
-      x: rect.left + rect.width / 2,
-      y: rect.top - 4, // Closer to the block
+      x: rect.left + rect.width / 2, // Center horizontally on the block
+      y: rect.bottom + 8, // Position below the block with small gap
     });
   };
 

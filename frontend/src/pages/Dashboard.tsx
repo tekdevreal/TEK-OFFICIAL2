@@ -311,10 +311,14 @@ export function Dashboard() {
               <StatCard
                 label="Cycle"
                 value={(() => {
+                  // Show last completed cycle (current cycle - 1)
                   // Cycle counter resets to #1 at epoch start (00:00 UTC)
                   // Cycles increment every 5 minutes (288 cycles per epoch)
                   if (currentCycleInfo?.cycleNumber) {
-                    return `${currentCycleInfo.cycleNumber} / 288`;
+                    const lastCycle = currentCycleInfo.cycleNumber - 1;
+                    // If current is cycle 1, show 288 (last cycle of previous epoch)
+                    const displayCycle = lastCycle < 1 ? 288 : lastCycle;
+                    return `${displayCycle} / 288`;
                   }
                   return 'N/A';
                 })()}

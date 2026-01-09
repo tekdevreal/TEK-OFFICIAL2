@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
   ComposedChart,
 } from 'recharts';
+import { useRewards, useHistoricalRewards, useLiquiditySummary } from '../hooks/useApiData';
 import './AnalyticsPage.css';
 
 export interface LiquidityPoolPerformance {
@@ -23,67 +24,115 @@ export interface LiquidityPoolPerformance {
 }
 
 export function AnalyticsPage() {
-  // Stats data
-  const totalSOLDistributed = '125,450.75';
-  const averageSOLPerEpoch = '1,045.42';
-  const totalRewardEpochs = '120';
-  const totalTreasuryDeployed = '$45,200';
+  // Fetch real data from API
+  const { data: rewardsData, isLoading: isLoadingRewards } = useRewards(undefined, {
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
 
-  // Placeholder data for Rewards Over Time chart
+  const { data: historicalData, isLoading: isLoadingHistorical } = useHistoricalRewards({ limit: 100 });
+
+  const { data: liquiditySummaryData } = useLiquiditySummary({
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Calculate stats from real data
+  const totalSOLDistributed = useMemo(() => {
+    const sol = parseFloat(rewardsData?.tax?.totalSolDistributed || '0') / 1e9;
+    return sol.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  }, [rewardsData]);
+
+  const averageSOLPerEpoch = useMemo(() => {
+    if (!historicalData?.cycles || historicalData.cycles.length === 0) return '0.00';
+    const totalSOL = historicalData.cycles.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
+    const avg = totalSOL / historicalData.cycles.length;
+    return avg.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  }, [historicalData]);
+
+  const totalRewardEpochs = useMemo(() => {
+    return (rewardsData?.tax?.distributionCount || 0).toString();
+  }, [rewardsData]);
+
+  const totalTreasuryDeployed = useMemo(() => {
+    const sol = parseFloat(rewardsData?.tax?.totalSolToTreasury || '0') / 1e9;
+    return `${sol.toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL`;
+  }, [rewardsData]);
+
+  // Real data for Rewards Over Time chart
   const rewardsOverTimeData = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - i));
+    if (!historicalData?.cycles) return [];
+    
+    // Get last 30 distributions
+    const recentCycles = historicalData.cycles.slice(0, 30).reverse();
+    
+    return recentCycles.map((cycle, index) => {
+      const date = new Date(cycle.timestamp);
       return {
-        epoch: `Epoch ${120 - (29 - i)}`,
+        epoch: `#${recentCycles.length - index}`,
         date: date.toISOString().split('T')[0],
-        solDistributed: Math.floor(Math.random() * 2000) + 500,
+        solDistributed: cycle.totalSOLDistributed || 0,
       };
     });
-  }, []);
+  }, [historicalData]);
 
-  // Placeholder data for Volume vs Rewards Correlation chart
+  // Real data for Volume vs Rewards Correlation chart
   const volumeVsRewardsData = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - i));
+    if (!historicalData?.cycles) return [];
+    
+    // Get last 30 distributions
+    const recentCycles = historicalData.cycles.slice(0, 30).reverse();
+    
+    // Use liquidity data for volume (approximate)
+    const volume24h = liquiditySummaryData?.volume24hUSD || 0;
+    
+    return recentCycles.map((cycle) => {
+      const date = new Date(cycle.timestamp);
       return {
         date: date.toISOString().split('T')[0],
-        volume24h: Math.floor(Math.random() * 500000) + 100000,
-        solDistributed: Math.floor(Math.random() * 2000) + 500,
+        volume24h: volume24h, // Use current 24h volume as approximation
+        solDistributed: cycle.totalSOLDistributed || 0,
       };
     });
-  }, []);
+  }, [historicalData, liquiditySummaryData]);
 
-  // Placeholder data for Treasury Balance Over Time chart
+  // Real data for Treasury Balance Over Time chart
   const treasuryBalanceData = useMemo(() => {
-    return Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - i));
+    if (!historicalData?.cycles) return [];
+    
+    // Get last 30 distributions and calculate cumulative treasury
+    const recentCycles = historicalData.cycles.slice(0, 30).reverse();
+    let cumulativeTreasury = 0;
+    
+    return recentCycles.map((cycle) => {
+      const date = new Date(cycle.timestamp);
+      // Approximate: 25% of distributed SOL goes to treasury
+      const treasuryAmount = (cycle.totalSOLDistributed || 0) * 0.25;
+      cumulativeTreasury += treasuryAmount;
+      
       return {
         date: date.toISOString().split('T')[0],
-        treasuryBalance: Math.floor(Math.random() * 10000) + 20000,
-        deployed: Math.floor(Math.random() * 5000) + 10000,
-        available: Math.floor(Math.random() * 5000) + 5000,
+        treasuryBalance: cumulativeTreasury,
+        deployed: cumulativeTreasury * 0.6, // Approximate 60% deployed
+        available: cumulativeTreasury * 0.4, // Approximate 40% available
       };
     });
-  }, []);
+  }, [historicalData]);
 
-  // Liquidity Pool Performance table data
+  // Real Liquidity Pool Performance table data
   const liquidityPoolData: LiquidityPoolPerformance[] = useMemo(() => {
-    return [
-      {
+    if (!liquiditySummaryData) {
+      return [{
         poolPair: 'NUKE / SOL',
-        totalFeesGenerated: '$12,450',
-        average24HVolume: '$125,800',
-      },
-      {
-        poolPair: 'NUKE / USDC',
-        totalFeesGenerated: '$8,920',
-        average24HVolume: '$95,200',
-      },
-    ];
-  }, []);
+        totalFeesGenerated: 'Loading...',
+        average24HVolume: 'Loading...',
+      }];
+    }
+    
+    return [{
+      poolPair: 'NUKE / SOL',
+      totalFeesGenerated: `$${liquiditySummaryData.totalFeesUSD?.toLocaleString() || '0'}`,
+      average24HVolume: `$${liquiditySummaryData.volume24hUSD?.toLocaleString() || '0'}`,
+    }];
+  }, [liquiditySummaryData]);
 
   // Table columns for Liquidity Pool Performance
   const liquidityPoolColumns: TableColumn<LiquidityPoolPerformance>[] = useMemo(() => [
@@ -117,6 +166,17 @@ export function AnalyticsPage() {
       },
     },
   ], []);
+
+  // Loading state
+  if (isLoadingRewards || isLoadingHistorical) {
+    return (
+      <div className="analytics-page">
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          Loading analytics data...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="analytics-page">
@@ -295,7 +355,7 @@ export function AnalyticsPage() {
                 searchable={false}
                 pagination={false}
                 exportable={false}
-                loading={false}
+                loading={!liquiditySummaryData}
               />
             </div>
           </div>
@@ -306,20 +366,26 @@ export function AnalyticsPage() {
             <p className="chart-section-description">Show system reliability and operational performance</p>
             <div className="reliability-metrics-grid">
               <div className="metric-item">
-                <span className="metric-label">Successful Reward Epochs:</span>
-                <span className="metric-value">98.5%</span>
+                <span className="metric-label">Total Distributions:</span>
+                <span className="metric-value">{rewardsData?.tax?.distributionCount || 0}</span>
               </div>
               <div className="metric-item">
-                <span className="metric-label">Failed Reward Epochs:</span>
-                <span className="metric-value">1.5%</span>
+                <span className="metric-label">Total NUKE Harvested:</span>
+                <span className="metric-value">
+                  {(parseFloat(rewardsData?.tax?.totalNukeHarvested || '0') / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </span>
               </div>
               <div className="metric-item">
-                <span className="metric-label">Average Distribution Processing Time:</span>
-                <span className="metric-value">2.3 seconds</span>
+                <span className="metric-label">Total SOL to Holders:</span>
+                <span className="metric-value">
+                  {(parseFloat(rewardsData?.tax?.totalSolDistributed || '0') / 1e9).toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL
+                </span>
               </div>
               <div className="metric-item">
-                <span className="metric-label">Average Harvest to Distribution Delay:</span>
-                <span className="metric-value">15 minutes</span>
+                <span className="metric-label">Total SOL to Treasury:</span>
+                <span className="metric-value">
+                  {(parseFloat(rewardsData?.tax?.totalSolToTreasury || '0') / 1e9).toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL
+                </span>
               </div>
             </div>
           </div>
