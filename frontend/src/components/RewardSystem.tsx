@@ -118,7 +118,11 @@ function Tooltip({ cycle, cycleNumber, currentCycle, x, y }: TooltipProps) {
     return (
       <div 
         className="cycle-tooltip"
-        style={{ left: `${x}px`, top: `${y}px` }}
+        style={{ 
+          left: `${x}px`, 
+          top: `${y}px`,
+          transform: 'translateX(-50%)',
+        }}
       >
         <div className="tooltip-title">Cycle {cycleNumber}</div>
         <div className="tooltip-status">{isFuture ? 'Not executed yet' : 'No data'}</div>
@@ -132,7 +136,11 @@ function Tooltip({ cycle, cycleNumber, currentCycle, x, y }: TooltipProps) {
   return (
     <div 
       className="cycle-tooltip"
-      style={{ left: `${x}px`, top: `${y}px` }}
+      style={{ 
+        left: `${x}px`, 
+        top: `${y}px`,
+        transform: 'translateX(-50%)',
+      }}
     >
       <div className="tooltip-title">Cycle {cycle.cycleNumber}</div>
       <div className="tooltip-time">{timeLabel}</div>
@@ -238,13 +246,46 @@ export function RewardSystem() {
 
   const handleBlockHover = (cycle: CycleResult | null, cycleNumber: number, event: React.MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    // Position tooltip directly below the box
-    // Note: CSS transform will add translateY(8px) to create small gap
+    const tooltipHeight = 150; // Approximate tooltip height
+    const tooltipWidth = 200; // Approximate tooltip width
+    const gap = 8; // Gap between block and tooltip
+    
+    // Get viewport dimensions
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    
+    // Calculate horizontal position (centered on block)
+    let x = rect.left + rect.width / 2;
+    
+    // Check if tooltip would go off-screen horizontally
+    const halfTooltipWidth = tooltipWidth / 2;
+    if (x - halfTooltipWidth < 10) {
+      x = halfTooltipWidth + 10; // Keep 10px margin from left edge
+    } else if (x + halfTooltipWidth > viewportWidth - 10) {
+      x = viewportWidth - halfTooltipWidth - 10; // Keep 10px margin from right edge
+    }
+    
+    // Calculate vertical position (prefer below, but show above if not enough space)
+    let y;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    
+    if (spaceBelow >= tooltipHeight + gap) {
+      // Show below (preferred)
+      y = rect.bottom + gap;
+    } else if (spaceAbove >= tooltipHeight + gap) {
+      // Show above
+      y = rect.top - tooltipHeight - gap;
+    } else {
+      // Not enough space either way, show below anyway
+      y = rect.bottom + gap;
+    }
+    
     setHoveredCycle({
       cycle,
       cycleNumber,
-      x: rect.left + rect.width / 2, // Center horizontally on the block
-      y: rect.bottom, // Position at bottom of block (CSS will add the gap)
+      x,
+      y,
     });
   };
 
