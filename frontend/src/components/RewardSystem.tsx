@@ -238,12 +238,13 @@ export function RewardSystem() {
 
   const handleBlockHover = (cycle: CycleResult | null, cycleNumber: number, event: React.MouseEvent) => {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    // Position tooltip directly at the box location
+    // Position tooltip directly below the box
+    // Note: CSS transform will add translateY(8px) to create small gap
     setHoveredCycle({
       cycle,
       cycleNumber,
       x: rect.left + rect.width / 2, // Center horizontally on the block
-      y: rect.bottom + 8, // Position below the block with small gap
+      y: rect.bottom, // Position at bottom of block (CSS will add the gap)
     });
   };
 

@@ -101,7 +101,7 @@ export function AnalyticsPage() {
       .map(([epoch, data]) => ({
         epoch,
         date: epoch,
-        solDistributed: data.count > 0 ? data.solDistributed / data.count : 0, // Average per cycle in group
+        solDistributed: data.count > 0 ? parseFloat((data.solDistributed / data.count).toFixed(4)) : 0, // Average per cycle in group (4 decimals)
       }))
       .slice(0, 12); // Show max 12 groups (24 hours worth)
   }, [historicalData]);
@@ -142,8 +142,8 @@ export function AnalyticsPage() {
     return Object.entries(groupedData)
       .map(([date, data]) => ({
         date,
-        volume24h: volume24h / 6, // Approximate volume per 4-hour period (24h / 6 = 4h)
-        solDistributed: data.solDistributed, // Total for the 4-hour period
+        volume24h: parseFloat((volume24h / 6).toFixed(4)), // Approximate volume per 4-hour period (4 decimals)
+        solDistributed: parseFloat(data.solDistributed.toFixed(4)), // Total for the 4-hour period (4 decimals)
       }))
       .slice(0, 12); // Max 12 bars (2 days in 4-hour blocks)
   }, [historicalData, liquiditySummaryData]);
@@ -188,9 +188,9 @@ export function AnalyticsPage() {
     
     return Object.entries(groupedData).map(([date, receivedIn2Days]) => ({
       date,
-      treasuryBalance: currentBalance, // Current balance from wallet
-      deployed: pendingAllocation, // Pending allocation
-      receivedIn2Days: receivedIn2Days, // Total received in last 2 days
+      treasuryBalance: parseFloat(currentBalance.toFixed(4)), // Current balance from wallet (4 decimals)
+      deployed: parseFloat(pendingAllocation.toFixed(4)), // Pending allocation (4 decimals)
+      receivedIn2Days: parseFloat(receivedIn2Days.toFixed(4)), // Total received in last 2 days (4 decimals)
     }));
   }, [historicalData, treasuryBalanceData]);
 
