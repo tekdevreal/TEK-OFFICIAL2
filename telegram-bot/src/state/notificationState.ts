@@ -15,6 +15,7 @@ interface NotificationState {
   lastPayoutId?: string;
   lastSwapTx?: string; // Legacy: Track last swap transaction (deprecated in favor of lastDistributionTime)
   lastDistributionTime?: number; // Track last distribution timestamp to prevent duplicate notifications (handles batch splitting correctly)
+  lastDistributionHash?: string; // Hash of distribution data to detect true duplicates even if timestamp changes
 }
 
 class NotificationStateManager {
@@ -74,6 +75,9 @@ class NotificationStateManager {
           : undefined,
         lastDistributionTime: typeof state.lastDistributionTime === 'number'
           ? state.lastDistributionTime
+          : undefined,
+        lastDistributionHash: typeof state.lastDistributionHash === 'string'
+          ? state.lastDistributionHash
           : undefined,
       };
     } catch (error) {

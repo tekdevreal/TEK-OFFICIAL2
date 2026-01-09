@@ -2,6 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
+import crypto from 'crypto';
 import { getLastState, updateState } from './state/notificationState';
 
 dotenv.config();
@@ -97,8 +98,32 @@ async function fetchSwapDistributionNotification(
     ? new Date(rewards.tax.lastTaxDistribution).getTime()
     : Number(rewards.tax.lastTaxDistribution);
   
+  // Round to nearest second to avoid millisecond precision issues
+  const currentDistributionTimeRounded = Math.floor(currentDistributionTime / 1000) * 1000;
+  const lastKnownDistributionTimeRounded = lastKnownDistributionTime 
+    ? Math.floor(lastKnownDistributionTime / 1000) * 1000 
+    : null;
+  
   // Only notify if distribution time changed (new distribution occurred)
-  if (currentDistributionTime === lastKnownDistributionTime) {
+  // Using rounded timestamps to avoid precision issues
+  if (currentDistributionTimeRounded === lastKnownDistributionTimeRounded) {
+    return { message: null, lastDistributionTime: currentDistributionTime };
+  }
+  
+  // Create a unique hash of the distribution data to detect true duplicates
+  // This prevents notifying about the same distribution multiple times even if timestamp changes slightly
+  const distributionHash = crypto.createHash('sha256')
+    .update(`${rewards.tax.totalSolDistributed}-${rewards.tax.totalSolToTreasury}-${rewards.tax.distributionCount}`)
+    .digest('hex')
+    .substring(0, 16);
+  
+  // Check if we've already notified about this exact distribution
+  const lastState = getLastState();
+  if (lastState.lastDistributionHash === distributionHash) {
+    console.log('[AutoRewards] Skipping notification - already notified about this distribution', {
+      distributionHash,
+      distributionTime: new Date(currentDistributionTime).toISOString(),
+    });
     return { message: null, lastDistributionTime: currentDistributionTime };
   }
 
@@ -140,7 +165,7 @@ async function fetchSwapDistributionNotification(
 
   const message = messageLines.join('\n');
 
-  return { message, lastDistributionTime: currentDistributionTime };
+  return { message, lastDistributionTime: currentDistributionTime, distributionHash };
 }
 
 async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl: string): Promise<void> {
@@ -247,12 +272,14 @@ function main(): void {
 
     const tickAutomaticRewards = async () => {
       try {
-        const { message, lastDistributionTime } = await fetchSwapDistributionNotification(backendUrl, lastKnownDistributionTime);
+        const result = await fetchSwapDistributionNotification(backendUrl, lastKnownDistributionTime);
         
-        if (!message) {
+        if (!result.message) {
           // No new distribution detected
           return;
         }
+
+        const { message, lastDistributionTime, distributionHash } = result;
 
         console.log('[AutoRewards] New distribution detected, broadcasting to authorized chats', {
           previousDistributionTime: lastKnownDistributionTime 
@@ -261,6 +288,7 @@ function main(): void {
           newDistributionTime: lastDistributionTime 
             ? new Date(lastDistributionTime).toISOString() 
             : 'unknown',
+          distributionHash,
           authorizedChatIds,
         });
 
@@ -275,9 +303,14 @@ function main(): void {
 
         // Persist to disk to survive bot restarts
         lastKnownDistributionTime = lastDistributionTime;
-        updateState({ lastDistributionTime });
-        console.log('[AutoRewards] Updated persistent state with lastDistributionTime:', 
-          lastDistributionTime ? new Date(lastDistributionTime).toISOString() : 'none');
+        updateState({ 
+          lastDistributionTime,
+          lastDistributionHash: distributionHash 
+        });
+        console.log('[AutoRewards] Updated persistent state', { 
+          lastDistributionTime: lastDistributionTime ? new Date(lastDistributionTime).toISOString() : 'none',
+          distributionHash,
+        });
       } catch (err) {
         console.error('[AutoRewards] Error while fetching or broadcasting notifications:', err);
       }
