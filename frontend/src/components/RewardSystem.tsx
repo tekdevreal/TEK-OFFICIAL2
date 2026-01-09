@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useEpochCycles, useCurrentCycleInfo } from '../hooks/useApiData';
 import type { CycleResult, CycleState } from '../types/api';
 import './RewardSystem.css';
@@ -245,56 +246,32 @@ export function RewardSystem() {
   }, [cyclesByRow, isExpanded]);
 
   const handleBlockHover = (cycle: CycleResult | null, cycleNumber: number, event: React.MouseEvent) => {
-    // Get the actual CycleBlock element (child of the wrapper)
-    const wrapperElement = event.currentTarget as HTMLElement;
-    const blockElement = wrapperElement.querySelector('.cycle-block') as HTMLElement;
+    // Simple approach: get the hovered element's position
+    const element = event.currentTarget as HTMLElement;
+    const rect = element.getBoundingClientRect();
     
-    if (!blockElement) {
-      console.warn('CycleBlock element not found');
-      return;
-    }
+    // Position tooltip directly below the block, centered
+    const x = rect.left + rect.width / 2;
+    const y = rect.bottom + 8; // 8px below the block
     
-    const rect = blockElement.getBoundingClientRect();
-    const tooltipHeight = 160; // Approximate tooltip height
-    const tooltipWidth = 200; // Approximate tooltip width
-    const gap = 8; // Gap between block and tooltip
-    
-    // Get viewport dimensions
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
-    // Calculate horizontal position (centered on block)
-    let x = rect.left + rect.width / 2;
-    
-    // Check if tooltip would go off-screen horizontally
-    const halfTooltipWidth = tooltipWidth / 2;
-    if (x - halfTooltipWidth < 10) {
-      x = halfTooltipWidth + 10; // Keep 10px margin from left edge
-    } else if (x + halfTooltipWidth > viewportWidth - 10) {
-      x = viewportWidth - halfTooltipWidth - 10; // Keep 10px margin from right edge
-    }
-    
-    // Calculate vertical position (prefer below, but show above if not enough space)
-    let y;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    
-    if (spaceBelow >= tooltipHeight + gap) {
-      // Show below (preferred)
-      y = rect.bottom + gap;
-    } else if (spaceAbove >= tooltipHeight + gap) {
-      // Show above
-      y = rect.top - tooltipHeight - gap;
-    } else {
-      // Not enough space either way, show below anyway
-      y = rect.bottom + gap;
-    }
-    
-    console.log('Tooltip position:', { 
-      cycleNumber, 
-      blockRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-      tooltipPos: { x, y },
-      viewport: { width: viewportWidth, height: viewportHeight }
+    // Debug logging
+    console.log('🎯 Tooltip Debug:', {
+      cycleNumber,
+      element: element.className,
+      rect: {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      },
+      calculated: { x, y },
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+        scrollY: window.scrollY,
+      }
     });
     
     setHoveredCycle({
@@ -418,14 +395,15 @@ export function RewardSystem() {
         )}
       </div>
 
-      {hoveredCycle && (
+      {hoveredCycle && createPortal(
         <Tooltip
           cycle={hoveredCycle.cycle}
           cycleNumber={hoveredCycle.cycleNumber}
           currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
           x={hoveredCycle.x}
           y={hoveredCycle.y}
-        />
+        />,
+        document.body
       )}
 
       {epochData?.statistics && (
