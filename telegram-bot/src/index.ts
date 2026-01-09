@@ -140,7 +140,7 @@ async function fetchSwapDistributionNotification(
   const totalSOLFormatted = (totalSOL / 1e9).toFixed(6);
   
   // Fetch current cycle information
-  let cycleInfo: { epoch: number; cycleNumber: number; cyclesPerEpoch: number } | null = null;
+  let cycleInfo: { epoch: string; epochNumber: number; cycleNumber: number; cyclesPerEpoch: number } | null = null;
   try {
     const cycleResponse = await axios.get(`${backendUrl}/dashboard/cycles/current`, { timeout: 10000 });
     cycleInfo = cycleResponse.data;
@@ -172,7 +172,7 @@ async function fetchSwapDistributionNotification(
 
   // Add epoch and cycle info if available
   if (cycleInfo) {
-    messageLines.push(`*Epoch:* ${cycleInfo.epoch}`);
+    messageLines.push(`*Epoch:* ${cycleInfo.epochNumber}`); // Use epochNumber instead of epoch date
     messageLines.push(`*Cycle:* ${cycleInfo.cycleNumber} / ${cycleInfo.cyclesPerEpoch}`);
   }
 
@@ -196,7 +196,7 @@ async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl
     }
 
     // Fetch current cycle information
-    let cycleInfo: { epoch: number; cycleNumber: number; cyclesPerEpoch: number } | null = null;
+    let cycleInfo: { epoch: string; epochNumber: number; cycleNumber: number; cyclesPerEpoch: number } | null = null;
     try {
       const cycleResponse = await axios.get(`${backendUrl}/dashboard/cycles/current`, { timeout: 10000 });
       cycleInfo = cycleResponse.data;
@@ -228,7 +228,7 @@ async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl
 
     // Add cycle info if available
     if (cycleInfo) {
-      messageLines.push(`*Current Epoch:* ${cycleInfo.epoch}`);
+      messageLines.push(`*Current Epoch:* ${cycleInfo.epochNumber}`); // Use epochNumber instead of epoch date
       messageLines.push(`*Current Cycle:* ${cycleInfo.cycleNumber} / ${cycleInfo.cyclesPerEpoch}`);
     }
 

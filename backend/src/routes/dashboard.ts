@@ -870,9 +870,14 @@ router.get('/cycles/current', async (req: Request, res: Response): Promise<void>
     logger.debug('Dashboard API: GET /dashboard/cycles/current');
 
     const epochInfo = getCurrentEpochInfo();
+    
+    // Calculate epoch number (count of all epochs in state)
+    const allEpochs = getAllEpochStates();
+    const epochNumber = allEpochs.findIndex(e => e.epoch === epochInfo.epoch) + 1;
 
     const response = {
-      epoch: epochInfo.epoch,
+      epoch: epochInfo.epoch, // Date string (YYYY-MM-DD)
+      epochNumber: epochNumber > 0 ? epochNumber : 1, // Sequential epoch number
       cycleNumber: epochInfo.cycleNumber,
       nextCycleIn: epochInfo.nextCycleIn,
       nextCycleInSeconds: Math.floor(epochInfo.nextCycleIn / 1000),
