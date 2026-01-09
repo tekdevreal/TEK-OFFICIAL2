@@ -14,7 +14,7 @@ import {
   ResponsiveContainer,
   ComposedChart,
 } from 'recharts';
-import { useRewards, useHistoricalRewards, useLiquiditySummary } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useLiquiditySummary, useTreasuryBalance } from '../hooks/useApiData';
 import './AnalyticsPage.css';
 
 export interface LiquidityPoolPerformance {
