@@ -261,7 +261,7 @@ function main(): void {
 
         // Persist to disk to survive bot restarts
         lastKnownSwapTx = lastSwapTx;
-        updateState({ lastSwapTx });
+        updateState({ lastSwapTx: lastSwapTx || undefined });
         console.log('[AutoRewards] Updated persistent state with lastSwapTx:', lastSwapTx);
       } catch (err) {
         console.error('[AutoRewards] Error while fetching or broadcasting notifications:', err);
