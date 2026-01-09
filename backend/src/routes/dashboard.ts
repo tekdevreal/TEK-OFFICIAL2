@@ -262,6 +262,11 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
         totalSolDistributed: taxStats.totalSolDistributed,
         totalSolToTreasury: taxStats.totalSolToTreasury,
         lastTaxDistribution: taxStats.lastTaxDistribution ? new Date(taxStats.lastTaxDistribution).toISOString() : null,
+        lastDistributionCycleNumber: taxStats.lastDistributionCycleNumber,
+        lastDistributionEpoch: taxStats.lastDistributionEpoch,
+        lastDistributionEpochNumber: taxStats.lastDistributionEpoch 
+          ? (getAllEpochStates().findIndex(e => e.epoch === taxStats.lastDistributionEpoch) + 1) || null
+          : null,
         lastSwapTx: taxStats.lastSwapTx,
         lastDistributionTx: taxStats.lastDistributionTx,
         distributionCount: taxStats.distributionCount,

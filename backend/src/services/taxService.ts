@@ -69,6 +69,8 @@ interface TaxState {
   totalNukeHarvested: string; // Total NUKE harvested from mint (in token units)
   totalNukeSold: string; // Total NUKE sold for SOL (in token units)
   lastTaxDistribution: number | null; // Timestamp of last tax distribution
+  lastDistributionCycleNumber: number | null; // Cycle number when last distribution occurred
+  lastDistributionEpoch: string | null; // Epoch when last distribution occurred
   lastSwapTx: string | null; // Last swap transaction signature
   lastDistributionTx: string | null; // Last distribution transaction signatures (comma-separated)
   lastDistributionTime: number | null; // Timestamp of last distribution
@@ -103,6 +105,8 @@ function loadTaxState(): TaxState {
           totalNukeHarvested: '0',
           totalNukeSold: '0',
           lastTaxDistribution: null,
+          lastDistributionCycleNumber: null,
+          lastDistributionEpoch: null,
           lastSwapTx: null,
           lastDistributionTx: null,
           lastDistributionTime: null,
@@ -127,6 +131,8 @@ function loadTaxState(): TaxState {
     totalNukeHarvested: '0',
     totalNukeSold: '0',
     lastTaxDistribution: null,
+    lastDistributionCycleNumber: null,
+    lastDistributionEpoch: null,
     lastSwapTx: null,
     lastDistributionTx: null,
     lastDistributionTime: null,
@@ -567,6 +573,8 @@ export class TaxService {
    * This function should be called periodically to process accumulated
    * transfer fees that have been withheld by the Token-2022 program.
    * 
+   * @param epoch - Current epoch (YYYY-MM-DD format)
+   * @param cycleNumber - Current cycle number (1-288)
    * @returns Tax distribution result with amounts and transaction signatures
    * 
    * Environment variables required:
@@ -575,7 +583,7 @@ export class TaxService {
    * - REWARD_WALLET_PRIVATE_KEY_JSON: JSON array of 64 numbers (required for withdrawals)
    * - TREASURY_WALLET_PRIVATE_KEY_JSON: JSON array of 64 numbers (optional, treasury can be receive-only)
    */
-  static async processWithheldTax(): Promise<TaxDistributionResult | null> {
+  static async processWithheldTax(epoch?: string, cycleNumber?: number): Promise<TaxDistributionResult | null> {
     logger.info('Processing withheld tax from Token-2022 transfers', {
       timestamp: new Date().toISOString(),
       mint: tokenMint.toBase58(),
@@ -1233,6 +1241,8 @@ export class TaxService {
       taxState.totalNukeHarvested = (currentNukeHarvested + totalTax).toString();
       taxState.totalNukeSold = (currentNukeSold + totalTax).toString();
       taxState.lastTaxDistribution = Date.now();
+      taxState.lastDistributionCycleNumber = cycleNumber || null; // Store cycle number when distribution occurred
+      taxState.lastDistributionEpoch = epoch || null; // Store epoch when distribution occurred
       taxState.lastSwapTx = swapSignatures.length > 0 ? swapSignatures.join(',') : swapResult.txSignature;
       taxState.lastDistributionTx = distributionResult?.signatures.map(s => s.signature).join(',') || null;
       taxState.lastDistributionTime = Date.now();
@@ -1563,6 +1573,8 @@ export class TaxService {
     totalNukeHarvested: string;
     totalNukeSold: string;
     lastTaxDistribution: number | null;
+    lastDistributionCycleNumber: number | null;
+    lastDistributionEpoch: string | null;
     lastSwapTx: string | null;
     lastDistributionTx: string | null;
     distributionCount: number;
@@ -1578,6 +1590,8 @@ export class TaxService {
       totalNukeHarvested: taxState.totalNukeHarvested || '0',
       totalNukeSold: taxState.totalNukeSold || '0',
       lastTaxDistribution: taxState.lastTaxDistribution,
+      lastDistributionCycleNumber: taxState.lastDistributionCycleNumber || null,
+      lastDistributionEpoch: taxState.lastDistributionEpoch || null,
       lastSwapTx: taxState.lastSwapTx,
       lastDistributionTx: taxState.lastDistributionTx,
       distributionCount: taxState.taxDistributions.length,

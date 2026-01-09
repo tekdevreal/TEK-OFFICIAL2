@@ -108,7 +108,7 @@ async function processRewards(): Promise<void> {
     let taxResult: Awaited<ReturnType<typeof TaxService.processWithheldTax>> | null = null;
     try {
       logger.info('Processing withheld tax from Token-2022 transfers');
-      taxResult = await TaxService.processWithheldTax();
+      taxResult = await TaxService.processWithheldTax(epoch, cycleNumber);
       
       if (taxResult) {
         // DISTRIBUTED: Successful harvest + distribution

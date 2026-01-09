@@ -68,6 +68,9 @@ type RewardApiResponse = {
     totalSolToTreasury: string;
     lastTaxDistribution: string | null;
     lastTaxDistributionTime: number | null;
+    lastDistributionCycleNumber: number | null;
+    lastDistributionEpoch: string | null;
+    lastDistributionEpochNumber: number | null;
     lastSwapTx: string | null;
     lastDistributionTx: string | null;
     distributionCount: number;
@@ -172,8 +175,12 @@ async function fetchSwapDistributionNotification(
 
   // Add epoch and cycle info if available
   if (cycleInfo) {
-    messageLines.push(`*Epoch:* ${cycleInfo.epochNumber}`); // Use epochNumber instead of epoch date
-    messageLines.push(`*Cycle:* ${cycleInfo.cycleNumber} / ${cycleInfo.cyclesPerEpoch}`);
+    // Use the stored cycle number from when distribution occurred, not current cycle
+    const distributionCycleNumber = rewards.tax.lastDistributionCycleNumber || cycleInfo.cycleNumber;
+    const distributionEpochNumber = rewards.tax.lastDistributionEpochNumber || cycleInfo.epochNumber;
+    
+    messageLines.push(`*Epoch:* ${distributionEpochNumber}`); // Use stored epoch number from distribution
+    messageLines.push(`*Cycle:* ${distributionCycleNumber} / ${cycleInfo.cyclesPerEpoch}`); // Use stored cycle number from distribution
   }
 
   // Add timestamp
