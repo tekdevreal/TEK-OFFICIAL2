@@ -245,8 +245,17 @@ export function RewardSystem() {
   }, [cyclesByRow, isExpanded]);
 
   const handleBlockHover = (cycle: CycleResult | null, cycleNumber: number, event: React.MouseEvent) => {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const tooltipHeight = 150; // Approximate tooltip height
+    // Get the actual CycleBlock element (child of the wrapper)
+    const wrapperElement = event.currentTarget as HTMLElement;
+    const blockElement = wrapperElement.querySelector('.cycle-block') as HTMLElement;
+    
+    if (!blockElement) {
+      console.warn('CycleBlock element not found');
+      return;
+    }
+    
+    const rect = blockElement.getBoundingClientRect();
+    const tooltipHeight = 160; // Approximate tooltip height
     const tooltipWidth = 200; // Approximate tooltip width
     const gap = 8; // Gap between block and tooltip
     
@@ -280,6 +289,13 @@ export function RewardSystem() {
       // Not enough space either way, show below anyway
       y = rect.bottom + gap;
     }
+    
+    console.log('Tooltip position:', { 
+      cycleNumber, 
+      blockRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+      tooltipPos: { x, y },
+      viewport: { width: viewportWidth, height: viewportHeight }
+    });
     
     setHoveredCycle({
       cycle,
