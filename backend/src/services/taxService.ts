@@ -71,6 +71,8 @@ interface TaxState {
   lastTaxDistribution: number | null; // Timestamp of last tax distribution
   lastDistributionCycleNumber: number | null; // Cycle number when last distribution occurred
   lastDistributionEpoch: string | null; // Epoch when last distribution occurred
+  lastDistributionSolToHolders: string; // Last distribution: SOL to holders (in lamports)
+  lastDistributionSolToTreasury: string; // Last distribution: SOL to treasury (in lamports)
   lastSwapTx: string | null; // Last swap transaction signature
   lastDistributionTx: string | null; // Last distribution transaction signatures (comma-separated)
   lastDistributionTime: number | null; // Timestamp of last distribution
@@ -107,6 +109,8 @@ function loadTaxState(): TaxState {
           lastTaxDistribution: null,
           lastDistributionCycleNumber: null,
           lastDistributionEpoch: null,
+          lastDistributionSolToHolders: '0',
+          lastDistributionSolToTreasury: '0',
           lastSwapTx: null,
           lastDistributionTx: null,
           lastDistributionTime: null,
@@ -133,6 +137,8 @@ function loadTaxState(): TaxState {
     lastTaxDistribution: null,
     lastDistributionCycleNumber: null,
     lastDistributionEpoch: null,
+    lastDistributionSolToHolders: '0',
+    lastDistributionSolToTreasury: '0',
     lastSwapTx: null,
     lastDistributionTx: null,
     lastDistributionTime: null,
@@ -1243,6 +1249,8 @@ export class TaxService {
       taxState.lastTaxDistribution = Date.now();
       taxState.lastDistributionCycleNumber = cycleNumber || null; // Store cycle number when distribution occurred
       taxState.lastDistributionEpoch = epoch || null; // Store epoch when distribution occurred
+      taxState.lastDistributionSolToHolders = holdersSol.toString(); // Store last distribution amount to holders
+      taxState.lastDistributionSolToTreasury = treasurySol.toString(); // Store last distribution amount to treasury
       taxState.lastSwapTx = swapSignatures.length > 0 ? swapSignatures.join(',') : swapResult.txSignature;
       taxState.lastDistributionTx = distributionResult?.signatures.map(s => s.signature).join(',') || null;
       taxState.lastDistributionTime = Date.now();
@@ -1575,6 +1583,8 @@ export class TaxService {
     lastTaxDistribution: number | null;
     lastDistributionCycleNumber: number | null;
     lastDistributionEpoch: string | null;
+    lastDistributionSolToHolders: string;
+    lastDistributionSolToTreasury: string;
     lastSwapTx: string | null;
     lastDistributionTx: string | null;
     distributionCount: number;
@@ -1592,6 +1602,8 @@ export class TaxService {
       lastTaxDistribution: taxState.lastTaxDistribution,
       lastDistributionCycleNumber: taxState.lastDistributionCycleNumber || null,
       lastDistributionEpoch: taxState.lastDistributionEpoch || null,
+      lastDistributionSolToHolders: taxState.lastDistributionSolToHolders || '0',
+      lastDistributionSolToTreasury: taxState.lastDistributionSolToTreasury || '0',
       lastSwapTx: taxState.lastSwapTx,
       lastDistributionTx: taxState.lastDistributionTx,
       distributionCount: taxState.taxDistributions.length,

@@ -71,6 +71,8 @@ type RewardApiResponse = {
     lastDistributionCycleNumber: number | null;
     lastDistributionEpoch: string | null;
     lastDistributionEpochNumber: number | null;
+    lastDistributionSolToHolders: string;
+    lastDistributionSolToTreasury: string;
     lastSwapTx: string | null;
     lastDistributionTx: string | null;
     distributionCount: number;
@@ -131,8 +133,9 @@ async function fetchSwapDistributionNotification(
   }
 
   // Format notification message for successful swap + distribution
-  const solToHolders = BigInt(rewards.tax.totalSolDistributed || '0');
-  const solToTreasury = BigInt(rewards.tax.totalSolToTreasury || '0');
+  // Use LAST distribution amounts, not cumulative totals
+  const solToHolders = BigInt(rewards.tax.lastDistributionSolToHolders || '0');
+  const solToTreasury = BigInt(rewards.tax.lastDistributionSolToTreasury || '0');
   
   // Convert from lamports to SOL
   const solToHoldersFormatted = (Number(solToHolders) / 1e9).toFixed(6);

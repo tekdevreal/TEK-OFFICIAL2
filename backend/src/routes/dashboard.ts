@@ -267,6 +267,8 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
         lastDistributionEpochNumber: taxStats.lastDistributionEpoch 
           ? (getAllEpochStates().findIndex(e => e.epoch === taxStats.lastDistributionEpoch) + 1) || null
           : null,
+        lastDistributionSolToHolders: taxStats.lastDistributionSolToHolders,
+        lastDistributionSolToTreasury: taxStats.lastDistributionSolToTreasury,
         lastSwapTx: taxStats.lastSwapTx,
         lastDistributionTx: taxStats.lastDistributionTx,
         distributionCount: taxStats.distributionCount,
