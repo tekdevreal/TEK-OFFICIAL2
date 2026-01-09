@@ -313,7 +313,7 @@ export function RewardSystem() {
           <button
             className="expand-toggle"
             onClick={() => setIsExpanded(!isExpanded)}
-            title={isExpanded ? 'Collapse to show only active rows' : 'Expand to show all rows'}
+            aria-label={isExpanded ? 'Collapse to show only active rows' : 'Expand to show all rows'}
           >
             {isExpanded ? '−' : '+'}
           </button>

@@ -57,65 +57,121 @@ export function AnalyticsPage() {
     return `${sol.toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL`;
   }, [rewardsData]);
 
-  // Real data for Rewards Over Time chart
+  // Real data for Rewards Over Time chart - Last 2 days, grouped by cycle ranges (24 cycles per group)
   const rewardsOverTimeData = useMemo(() => {
     if (!historicalData?.cycles) return [];
     
-    // Get last 30 distributions
-    const recentCycles = historicalData.cycles.slice(0, 30).reverse();
+    // Filter cycles from last 2 days
+    const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
+    const recentCycles = historicalData.cycles
+      .filter(cycle => cycle.timestamp >= twoDaysAgo)
+      .reverse(); // Oldest first
     
-    return recentCycles.map((cycle, index) => {
+    // Group by 24 cycles (2 hours of cycles, since 1 cycle = 5 min, 24 cycles = 120 min = 2 hours)
+    const groupedData: { [key: string]: { solDistributed: number; count: number; minCycle: number; maxCycle: number } } = {};
+    
+    recentCycles.forEach((cycle) => {
       const date = new Date(cycle.timestamp);
-      return {
-        epoch: `#${recentCycles.length - index}`,
-        date: date.toISOString().split('T')[0],
-        solDistributed: cycle.totalSOLDistributed || 0,
-      };
+      const cycleNum = cycle.id ? parseInt(cycle.id.split('T')[1]?.split(':')[0] || '0') : 0;
+      
+      // Group by cycle ranges (e.g., 1-24, 25-48, 49-72, etc.)
+      const groupStart = Math.floor((cycleNum - 1) / 24) * 24 + 1;
+      const groupEnd = groupStart + 23;
+      const groupKey = `Cycles ${groupStart}-${groupEnd}`;
+      
+      if (!groupedData[groupKey]) {
+        groupedData[groupKey] = { solDistributed: 0, count: 0, minCycle: groupStart, maxCycle: groupEnd };
+      }
+      
+      groupedData[groupKey].solDistributed += cycle.totalSOLDistributed || 0;
+      groupedData[groupKey].count += 1;
     });
+    
+    // Convert to array and calculate averages
+    return Object.entries(groupedData)
+      .map(([epoch, data]) => ({
+        epoch,
+        date: epoch,
+        solDistributed: data.count > 0 ? data.solDistributed / data.count : 0, // Average per cycle in group
+      }))
+      .slice(0, 12); // Show max 12 groups (24 hours worth)
   }, [historicalData]);
 
-  // Real data for Volume vs Rewards Correlation chart
+  // Real data for Volume vs Rewards Correlation chart - Last 2 days
   const volumeVsRewardsData = useMemo(() => {
     if (!historicalData?.cycles) return [];
     
-    // Get last 30 distributions
-    const recentCycles = historicalData.cycles.slice(0, 30).reverse();
+    // Filter cycles from last 2 days
+    const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
+    const recentCycles = historicalData.cycles
+      .filter(cycle => cycle.timestamp >= twoDaysAgo)
+      .reverse(); // Oldest first
     
     // Use liquidity data for volume (approximate)
     const volume24h = liquiditySummaryData?.volume24hUSD || 0;
     
-    return recentCycles.map((cycle) => {
+    // Group by hour for better visualization
+    const groupedData: { [key: string]: { solDistributed: number; count: number } } = {};
+    
+    recentCycles.forEach((cycle) => {
       const date = new Date(cycle.timestamp);
-      return {
-        date: date.toISOString().split('T')[0],
-        volume24h: volume24h, // Use current 24h volume as approximation
-        solDistributed: cycle.totalSOLDistributed || 0,
-      };
+      const hourKey = `${date.toISOString().split('T')[0]} ${date.getUTCHours()}:00`;
+      
+      if (!groupedData[hourKey]) {
+        groupedData[hourKey] = { solDistributed: 0, count: 0 };
+      }
+      
+      groupedData[hourKey].solDistributed += cycle.totalSOLDistributed || 0;
+      groupedData[hourKey].count += 1;
     });
+    
+    return Object.entries(groupedData)
+      .map(([date, data]) => ({
+        date,
+        volume24h: volume24h, // Use current 24h volume as approximation
+        solDistributed: data.solDistributed, // Total for the hour
+      }))
+      .slice(0, 48); // Max 48 hours (2 days)
   }, [historicalData, liquiditySummaryData]);
 
-  // Real data for Treasury Balance Over Time chart
+  // Real data for Treasury Balance Over Time chart - Last 2 days
   const treasuryBalanceData = useMemo(() => {
-    if (!historicalData?.cycles) return [];
+    if (!historicalData?.cycles || !rewardsData?.tax) return [];
     
-    // Get last 30 distributions and calculate cumulative treasury
-    const recentCycles = historicalData.cycles.slice(0, 30).reverse();
+    // Filter cycles from last 2 days
+    const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
+    const recentCycles = historicalData.cycles
+      .filter(cycle => cycle.timestamp >= twoDaysAgo)
+      .reverse(); // Oldest first
+    
+    // Get total treasury balance from tax data
+    const totalTreasury = parseFloat(rewardsData.tax.totalSolToTreasury || '0') / 1e9;
+    
+    // Calculate cumulative for the 2-day period
     let cumulativeTreasury = 0;
     
-    return recentCycles.map((cycle) => {
+    // Group by 4-hour periods for better visualization
+    const groupedData: { [key: string]: number } = {};
+    
+    recentCycles.forEach((cycle) => {
       const date = new Date(cycle.timestamp);
+      const hourBlock = Math.floor(date.getUTCHours() / 4) * 4;
+      const dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
+      
       // Approximate: 25% of distributed SOL goes to treasury
       const treasuryAmount = (cycle.totalSOLDistributed || 0) * 0.25;
       cumulativeTreasury += treasuryAmount;
       
-      return {
-        date: date.toISOString().split('T')[0],
-        treasuryBalance: cumulativeTreasury,
-        deployed: cumulativeTreasury * 0.6, // Approximate 60% deployed
-        available: cumulativeTreasury * 0.4, // Approximate 40% available
-      };
+      groupedData[dateKey] = cumulativeTreasury;
     });
-  }, [historicalData]);
+    
+    return Object.entries(groupedData).map(([date, balance]) => ({
+      date,
+      treasuryBalance: balance,
+      deployed: balance * 0.6, // Approximate 60% deployed
+      available: balance * 0.4, // Approximate 40% available
+    }));
+  }, [historicalData, rewardsData]);
 
   // Real Liquidity Pool Performance table data
   const liquidityPoolData: LiquidityPoolPerformance[] = useMemo(() => {
@@ -184,7 +240,7 @@ export function AnalyticsPage() {
       <section className="dashboard-section">
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">Analytics</h2>
-          <p className="section-subtitle">Historical performance metrics and protocol activity trends.</p>
+          <p className="section-subtitle">Historical performance metrics and protocol activity trends from the last two days.</p>
           
           {/* Stats Summary */}
           <div className="analytics-stats">
@@ -209,7 +265,7 @@ export function AnalyticsPage() {
           {/* Section 2: Rewards Over Time */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Rewards Over Time</h3>
-            <p className="chart-section-description">Visualize reward consistency and historical distribution activity</p>
+            <p className="chart-section-description">Average rewards per cycle range from the last two days</p>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={rewardsOverTimeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -245,7 +301,7 @@ export function AnalyticsPage() {
           {/* Section 3: Volume vs Rewards Correlation */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Volume vs Rewards Correlation</h3>
-            <p className="chart-section-description">Show relationship between trading activity and rewards</p>
+            <p className="chart-section-description">Trading volume and rewards relationship from the last two days</p>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={volumeVsRewardsData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -295,7 +351,7 @@ export function AnalyticsPage() {
           {/* Section 4: Treasury Balance Over Time */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Treasury Balance Over Time</h3>
-            <p className="chart-section-description">Show treasury growth and usage over time</p>
+            <p className="chart-section-description">Treasury accumulation from the last two days</p>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={treasuryBalanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -390,21 +446,6 @@ export function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Section 7: Data Access & Transparency */}
-          <div className="analytics-data-access-section">
-            <h3 className="chart-section-title">Data Access & Transparency</h3>
-            <div className="data-access-buttons">
-              <button className="data-access-button" disabled>
-                View Raw Data (Spreadsheet)
-              </button>
-              <button className="data-access-button" disabled>
-                Export Data (CSV)
-              </button>
-              <button className="data-access-button" disabled>
-                View On-Chain References
-              </button>
-            </div>
-          </div>
         </GlassCard>
       </section>
     </div>
