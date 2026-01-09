@@ -109,11 +109,18 @@ interface TooltipProps {
   cycle: CycleResult | null;
   cycleNumber: number;
   currentCycle: number;
+  epoch: string;
   x: number;
   y: number;
 }
 
-function Tooltip({ cycle, cycleNumber, currentCycle, x, y }: TooltipProps) {
+function Tooltip({ cycle, cycleNumber, currentCycle, epoch, x, y }: TooltipProps) {
+  // Format epoch date for display
+  const formatEpochDisplay = (epochStr: string) => {
+    const date = new Date(epochStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   if (!cycle) {
     const isFuture = cycleNumber > currentCycle;
     return (
@@ -125,6 +132,7 @@ function Tooltip({ cycle, cycleNumber, currentCycle, x, y }: TooltipProps) {
           transform: 'translateX(-50%)',
         }}
       >
+        <div className="tooltip-epoch">Epoch: {formatEpochDisplay(epoch)}</div>
         <div className="tooltip-title">Cycle {cycleNumber}</div>
         <div className="tooltip-status">{isFuture ? 'Not executed yet' : 'No data'}</div>
       </div>
@@ -143,14 +151,14 @@ function Tooltip({ cycle, cycleNumber, currentCycle, x, y }: TooltipProps) {
         transform: 'translateX(-50%)',
       }}
     >
+      <div className="tooltip-epoch">Epoch: {formatEpochDisplay(epoch)}</div>
       <div className="tooltip-title">Cycle {cycle.cycleNumber}</div>
       <div className="tooltip-time">{timeLabel}</div>
       <div className="tooltip-status">{statusLabel}</div>
       {cycle.taxResult && (
         <div className="tooltip-details">
-          <div>NUKE: {parseFloat(cycle.taxResult.nukeHarvested).toLocaleString()}</div>
-          <div>SOL to Holders: {cycle.taxResult.solToHolders}</div>
-          <div>Recipients: {cycle.taxResult.distributedCount}</div>
+          <div>Harvest (NUKE): {parseFloat(cycle.taxResult.nukeHarvested).toLocaleString()}</div>
+          <div>Distribute (SOL): {cycle.taxResult.solToHolders}</div>
         </div>
       )}
     </div>
@@ -253,26 +261,6 @@ export function RewardSystem() {
     // Position tooltip directly below the block, centered
     const x = rect.left + rect.width / 2;
     const y = rect.bottom + 8; // 8px below the block
-    
-    // Debug logging
-    console.log('🎯 Tooltip Debug:', {
-      cycleNumber,
-      element: element.className,
-      rect: {
-        left: rect.left,
-        top: rect.top,
-        right: rect.right,
-        bottom: rect.bottom,
-        width: rect.width,
-        height: rect.height,
-      },
-      calculated: { x, y },
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-        scrollY: window.scrollY,
-      }
-    });
     
     setHoveredCycle({
       cycle,
@@ -400,6 +388,7 @@ export function RewardSystem() {
           cycle={hoveredCycle.cycle}
           cycleNumber={hoveredCycle.cycleNumber}
           currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
+          epoch={selectedEpoch}
           x={hoveredCycle.x}
           y={hoveredCycle.y}
         />,
