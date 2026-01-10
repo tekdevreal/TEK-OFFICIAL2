@@ -5,17 +5,12 @@ import './SecondaryNav.css';
 const SecondaryNav: React.FC = () => {
   const location = useLocation();
 
-  // Don't show on landing page
-  if (location.pathname === '/') {
-    return null;
-  }
-
   const links = [
-    { path: '/dashboard', label: 'Main' },
+    { path: '/', label: 'Main' },
     { path: '/harvesting', label: 'Harvesting Data' },
     { path: '/distribution', label: 'Distribution Data' },
-    { path: '/liquidity', label: 'Liquidity Pools' },
-    { path: '/documentation', label: 'Documentation' },
+    { path: '/liquidity-pools', label: 'Liquidity Pools' },
+    { path: '/docs', label: 'Documentation' },
   ];
 
   return (
