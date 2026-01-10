@@ -23,6 +23,8 @@
     --page-section-gap: 1.5rem;
     --font-size-4xl: 1.625rem; /* 26px */
     --font-size-5xl: 2rem; /* 32px */
+    /* Reduce top padding since SecondaryNav is hidden on mobile/tablet */
+    --page-padding-top: 6rem; /* Only TopNav height (~5rem) + spacing */
   }
   
   body {
@@ -41,6 +43,8 @@
     --font-size-5xl: 1.75rem; /* 28px */
     --spacing-md: 1rem;
     --spacing-lg: 1.5rem;
+    /* Reduce top padding even more for mobile - TopNav is smaller */
+    --page-padding-top: 5rem; /* Smaller TopNav on mobile (~4rem) + spacing */
   }
   
   body {
