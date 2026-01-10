@@ -67,7 +67,7 @@
   letter-spacing: normal !important;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .lp-summary-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -106,7 +106,7 @@
   width: 100%;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .liquidity-pools-grid {
     grid-template-columns: repeat(2, 1fr);
   }

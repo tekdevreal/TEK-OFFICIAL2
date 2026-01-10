@@ -7,17 +7,17 @@
    BREAKPOINTS
    =================================================================== */
 /* 
-   - Mobile: < 640px (default, mobile-first)
-   - Tablet: 640px - 1024px
-   - Desktop: > 1024px
+   - Mobile: < 640px (phones)
+   - Tablet: 640px - 768px (small tablets)
+   - Desktop: > 768px (laptops and larger)
 */
 
 /* ===================================================================
    GLOBAL RESPONSIVE ADJUSTMENTS
    =================================================================== */
 
-/* Tablet Adjustments (640px - 1024px) */
-@media (max-width: 1024px) {
+/* Tablet Adjustments (640px - 768px) */
+@media (max-width: 768px) {
   :root {
     --page-padding-horizontal: 1.5rem;
     --page-section-gap: 1.5rem;
@@ -57,7 +57,7 @@
    =================================================================== */
 
 /* Top Navigation */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .top-nav {
     padding: 0.75rem 1rem;
   }
@@ -119,7 +119,7 @@
 }
 
 /* Secondary Navigation */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .secondary-nav {
     padding: 0.75rem 1rem;
   }
@@ -158,7 +158,7 @@
    =================================================================== */
 
 /* Glass Card */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .glass-card {
     padding: 1.25rem;
   }
@@ -172,7 +172,7 @@
 }
 
 /* Stat Cards Grid */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
@@ -187,7 +187,7 @@
 }
 
 /* Dashboard Sections */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .dashboard-section {
     margin-bottom: 1.5rem;
   }
@@ -219,7 +219,7 @@
    TABLE RESPONSIVE - Scrollable Tables
    =================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .table-wrapper {
     padding: 1rem;
     margin: 1rem 0;
@@ -322,7 +322,7 @@
    DISTRIBUTION CARDS RESPONSIVE
    =================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .distribution-grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
@@ -360,7 +360,7 @@
    REWARD SYSTEM / CHARTS RESPONSIVE
    =================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .reward-system-container {
     padding: 1rem;
   }
@@ -408,7 +408,7 @@
    DOCUMENTATION PAGE RESPONSIVE
    =================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .documentation-page {
     padding: 1rem;
   }
@@ -519,7 +519,7 @@
    TABS RESPONSIVE
    =================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .tabs-container {
     margin-top: 1rem;
   }
@@ -602,7 +602,7 @@
    LIQUIDITY POOL CARD RESPONSIVE
    =================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .liquidity-pools-grid {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1rem;
@@ -712,7 +712,7 @@
    CHARTS RESPONSIVE
    =================================================================== */
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .chart-container {
     height: 300px;
   }
@@ -831,7 +831,7 @@
 }
 
 /* Hide on tablet */
-@media (min-width: 641px) and (max-width: 1024px) {
+@media (min-width: 641px) and (max-width: 768px) {
   .hide-tablet {
     display: none !important;
   }
@@ -859,7 +859,7 @@
 }
 
 /* Show only on desktop */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .show-desktop-only {
     display: none !important;
   }

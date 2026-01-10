@@ -44,7 +44,7 @@
    =================================================================== */
 
 /* Make tabs horizontally scrollable on mobile/tablet */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .tabs-header {
     flex-wrap: nowrap;
     overflow-x: auto;

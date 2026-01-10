@@ -66,8 +66,8 @@
      RESPONSIVE: HIDE ON MOBILE/TABLET
      =================================================================== */
   
-  /* Hide SecondaryNav on tablets and mobile - burger menu has all navigation */
-  @media (max-width: 1024px) {
+  /* Hide SecondaryNav on mobile and small tablets - burger menu has all navigation */
+  @media (max-width: 768px) {
     .secondary-nav {
       display: none !important;
     }

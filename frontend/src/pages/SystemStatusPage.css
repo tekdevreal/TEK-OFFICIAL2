@@ -10,7 +10,7 @@
 }
 
 /* Use full width on mobile/tablet for better space utilization */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .system-status-page {
     max-width: 100%;
   }
@@ -63,7 +63,7 @@
   margin-bottom: 2rem;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .system-status-stats {
     grid-template-columns: repeat(2, 1fr);
   }

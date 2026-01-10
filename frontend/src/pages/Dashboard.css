@@ -65,7 +65,7 @@
   width: 100%;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .distribution-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -218,7 +218,7 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .dashboard-page {
     padding: var(--page-padding-top) var(--page-padding-horizontal-mobile) var(--page-padding-bottom);
     gap: var(--page-section-gap-mobile);
@@ -288,7 +288,7 @@
   letter-spacing: normal !important;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .lp-summary-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -314,7 +314,7 @@
   width: 100%;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .liquidity-pools-grid {
     grid-template-columns: repeat(2, 1fr);
   }

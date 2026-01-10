@@ -10,7 +10,7 @@
 }
 
 /* Use full width on mobile/tablet for better space utilization */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
   .documentation-page {
     max-width: 100%;
   }
