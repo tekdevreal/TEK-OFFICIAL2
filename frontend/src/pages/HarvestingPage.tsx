@@ -228,7 +228,7 @@ export function HarvestingPage() {
     },
     {
       key: 'nukeSold',
-      header: 'NUKE SOLD',
+      header: 'NUKE HARVESTED',
       accessor: (row) => row.nukeSold.toLocaleString(undefined, { maximumFractionDigits: 0 }),
       sortable: true,
       sortFn: (a, b) => a.nukeSold - b.nukeSold,

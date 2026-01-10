@@ -172,6 +172,32 @@ export function RewardSystem() {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 
+  // Fetch historical data to get actual SOL distribution values
+  const { data: historicalData } = useHistoricalRewards({ limit: 300 });
+
+  // Create a map of cycle numbers to SOL distribution from historical data
+  const historicalSOLMap = useMemo(() => {
+    const map = new Map<number, number>(); // cycleNumber -> SOL
+    if (historicalData?.cycles && selectedEpoch) {
+      historicalData.cycles.forEach(cycle => {
+        const cycleDate = new Date(cycle.timestamp);
+        const cycleDateStr = `${cycleDate.getUTCFullYear()}-${String(cycleDate.getUTCMonth() + 1).padStart(2, '0')}-${String(cycleDate.getUTCDate()).padStart(2, '0')}`;
+        
+        // Only map cycles from the selected epoch
+        if (cycleDateStr === selectedEpoch) {
+          // Calculate cycle number from timestamp
+          const startOfDay = new Date(cycleDate);
+          startOfDay.setUTCHours(0, 0, 0, 0);
+          const minutesSinceStartOfDay = Math.floor((cycleDate.getTime() - startOfDay.getTime()) / (1000 * 60));
+          const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1;
+          
+          map.set(cycleNumber, cycle.totalSOLDistributed || 0);
+        }
+      });
+    }
+    return map;
+  }, [historicalData, selectedEpoch]);
+
   const currentEpoch = getCurrentEpoch();
   const currentCycle = currentCycleInfo?.cycleNumber || 1;
   
