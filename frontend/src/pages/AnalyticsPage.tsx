@@ -66,7 +66,7 @@ export function AnalyticsPage() {
 
   // Real data for Rewards Over Time chart - Last 2 days, grouped by cycle ranges (24 cycles per group)
   const rewardsOverTimeData = useMemo(() => {
-    if (!historicalData?.cycles) return [];
+    if (!historicalData?.cycles || historicalData.cycles.length === 0) return [];
     
     // Filter cycles from last 2 days
     const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
@@ -75,35 +75,42 @@ export function AnalyticsPage() {
         const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
         return timestamp >= twoDaysAgo;
       })
-      .reverse(); // Oldest first
+      .sort((a, b) => {
+        const timeA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : a.timestamp;
+        const timeB = typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : b.timestamp;
+        return timeA - timeB; // Oldest first
+      });
     
-    // Group by 24 cycles (2 hours of cycles, since 1 cycle = 5 min, 24 cycles = 120 min = 2 hours)
-    const groupedData: { [key: string]: { solDistributed: number; count: number; minCycle: number; maxCycle: number } } = {};
+    if (recentCycles.length === 0) return [];
     
-    recentCycles.forEach((cycle) => {
-      const cycleNum = cycle.id ? parseInt(cycle.id.split('T')[1]?.split(':')[0] || '0') : 0;
-      
-      // Group by cycle ranges (e.g., 1-24, 25-48, 49-72, etc.)
-      const groupStart = Math.floor((cycleNum - 1) / 24) * 24 + 1;
-      const groupEnd = groupStart + 23;
-      const groupKey = `Cycles ${groupStart}-${groupEnd}`;
-      
-      if (!groupedData[groupKey]) {
-        groupedData[groupKey] = { solDistributed: 0, count: 0, minCycle: groupStart, maxCycle: groupEnd };
-      }
-      
-      groupedData[groupKey].solDistributed += cycle.totalSOLDistributed || 0;
-      groupedData[groupKey].count += 1;
-    });
+    // Group by 24-cycle ranges (24 cycles = 2 hours since 1 cycle = 5 minutes)
+    const groupedData: Array<{ epoch: string; solDistributed: number; count: number }> = [];
+    const CYCLES_PER_GROUP = 24;
     
-    // Convert to array and calculate averages
-    return Object.entries(groupedData)
-      .map(([epoch, data]) => ({
-        epoch,
-        date: epoch,
-        solDistributed: data.count > 0 ? parseFloat((data.solDistributed / data.count).toFixed(4)) : 0, // Average per cycle in group (4 decimals)
-      }))
-      .slice(0, 12); // Show max 12 groups (24 hours worth)
+    for (let i = 0; i < recentCycles.length; i += CYCLES_PER_GROUP) {
+      const group = recentCycles.slice(i, i + CYCLES_PER_GROUP);
+      const totalSOL = group.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
+      const avgSOL = group.length > 0 ? totalSOL / group.length : 0;
+      
+      // Calculate cycle range based on position in the day
+      const firstCycleTime = typeof group[0].timestamp === 'string' ? new Date(group[0].timestamp) : new Date(group[0].timestamp);
+      const startOfDay = new Date(firstCycleTime);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const minutesSinceStart = Math.floor((firstCycleTime.getTime() - startOfDay.getTime()) / (1000 * 60));
+      const cycleNumber = Math.floor(minutesSinceStart / 5) + 1; // 1-based cycle number
+      
+      const groupStart = Math.floor((cycleNumber - 1) / CYCLES_PER_GROUP) * CYCLES_PER_GROUP + 1;
+      const groupEnd = Math.min(groupStart + CYCLES_PER_GROUP - 1, 288);
+      
+      groupedData.push({
+        epoch: `Cycles ${groupStart}-${groupEnd}`,
+        solDistributed: parseFloat(avgSOL.toFixed(4)),
+        count: group.length
+      });
+    }
+    
+    return groupedData.slice(0, 12); // Show max 12 groups (24 hours worth)
   }, [historicalData]);
 
   // Real data for Volume vs Rewards Correlation chart - Last 2 days, grouped by 4 hours (12 bars for 48 hours)
