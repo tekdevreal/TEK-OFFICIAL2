@@ -249,10 +249,9 @@
   font-size: 0.875rem;
   pointer-events: none;
   z-index: 1000;
-  /* transform is set inline via JavaScript for adaptive positioning */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   white-space: normal;
-  max-width: 200px;
+  max-width: 220px;
   min-width: 180px;
   line-height: 1.5;
 }
@@ -261,6 +260,12 @@
   background: rgba(255, 255, 255, 0.98);
   color: var(--text-primary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.tooltip-epoch {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-bottom: 0.25rem;
 }
 
 .tooltip-title {
@@ -357,7 +362,26 @@
   }
 
   .reward-system-stats {
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+  
+  .stat-item {
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.625rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+  }
+  
+  .stat-value {
+    font-size: 1.25rem;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
   }
 }
 

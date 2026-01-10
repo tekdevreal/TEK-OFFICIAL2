@@ -275,7 +275,6 @@ export function TopNav() {
 
           {/* Actions Section */}
           <div className="mobile-actions-section">
-            <div className="mobile-nav-label">Actions</div>
             
             <button 
               className={`mobile-action-button wallet-button ${connected ? 'connected' : ''}`}
