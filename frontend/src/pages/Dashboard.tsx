@@ -4,8 +4,17 @@ import { StatCard } from '../components/StatCard';
 import { DistributionCard, type DistributionCardItem } from '../components/DistributionCard';
 import { GlassCard } from '../components/GlassCard';
 import { RewardSystem } from '../components/RewardSystem';
-import { useRewards, useHistoricalRewards, useCurrentCycleInfo, useLiquiditySummary } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useCurrentCycleInfo, useLiquiditySummary, useEpochCycles } from '../hooks/useApiData';
 import './Dashboard.css';
+
+// Helper to get current epoch date
+function getCurrentEpoch(): string {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export function Dashboard() {
   // Use professional data fetching hooks with caching and deduplication
@@ -24,11 +33,16 @@ export function Dashboard() {
     isLoading: isLoadingHistorical,
   } = useHistoricalRewards({ limit: 300 }); // Increased to get full day (288 cycles)
 
-
   const {
     data: currentCycleInfo,
   } = useCurrentCycleInfo({
     refetchInterval: 1 * 60 * 1000, // 1 minute
+  });
+
+  // Fetch epoch data to get actual harvested NUKE amounts
+  const currentEpoch = currentCycleInfo?.epoch || getCurrentEpoch();
+  const { data: epochData } = useEpochCycles(currentEpoch, {
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 
   const {
@@ -47,15 +61,6 @@ export function Dashboard() {
     // Get current epoch date (YYYY-MM-DD format)
     const currentEpochDate = currentCycleInfo?.epoch || null;
     
-    // Get tax statistics to calculate NUKE amounts
-    const tax = rewardsData?.tax || {
-      totalNukeHarvested: '0',
-      totalNukeSold: '0',
-      totalSolDistributed: '0',
-    };
-    const totalNukeSold = parseFloat(tax.totalNukeSold || '0');
-    const totalSolDistributedAllTime = parseFloat(tax.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
-
     // Filter cycles to only include those from the current epoch
     const currentEpochCycles = currentEpochDate
       ? historicalData.cycles.filter((cycle: RewardCycle) => {
@@ -68,6 +73,21 @@ export function Dashboard() {
     // Get up to 108 items (12 pages * 9 cards per page) from current epoch only
     const cycles = currentEpochCycles.slice(0, 108);
     
+    // Create maps of cycle numbers to actual data from epoch data
+    const cycleDataMap = new Map<number, { nukeHarvested: number; solDistributed: number }>();
+    if (epochData?.cycles) {
+      epochData.cycles.forEach(cycle => {
+        if (cycle.taxResult) {
+          const nukeHarvested = parseFloat(cycle.taxResult.nukeHarvested) / 1e6; // Convert to human-readable
+          // Total SOL distributed = holders + treasury (in lamports, convert to SOL)
+          const solToHolders = parseFloat(cycle.taxResult.solToHolders || '0');
+          const solToTreasury = parseFloat(cycle.taxResult.solToTreasury || '0');
+          const solDistributed = (solToHolders + solToTreasury) / 1e9; // Convert lamports to SOL
+          cycleDataMap.set(cycle.cycleNumber, { nukeHarvested, solDistributed });
+        }
+      });
+    }
+    
     return cycles
       .map((cycle: RewardCycle) => {
         const d = new Date(cycle.timestamp);
@@ -77,37 +97,31 @@ export function Dashboard() {
         const displayHours = hours % 12 || 12;
         const displayMinutes = minutes.toString().padStart(2, '0');
         
-        const distributedSOL = cycle.totalSOLDistributed || 0;
-        
-        // Calculate NUKE sold proportionally based on SOL distributed
-        // If this cycle represents X% of total SOL distributed, it represents X% of total NUKE sold
-        const harvestedNUKE = totalSolDistributedAllTime > 0 && distributedSOL > 0
-          ? (totalNukeSold * distributedSOL / totalSolDistributedAllTime) / 1e6 // Convert to human-readable (divide by 1e6 for 6 decimals)
-          : 0;
-        
         // Calculate actual cycle number (1-288) based on timestamp
-        // Each cycle is 5 minutes, cycles reset at 00:00 UTC
         const startOfDay = new Date(d);
         startOfDay.setUTCHours(0, 0, 0, 0);
         const minutesSinceStartOfDay = Math.floor((d.getTime() - startOfDay.getTime()) / (1000 * 60));
-        const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1; // 1-based (1-288)
+        const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1;
+        
+        // Use actual data from epoch if available, fallback to historical API data
+        const cycleData = cycleDataMap.get(cycleNumber);
+        const harvestedNUKE = cycleData?.nukeHarvested || 0;
+        // Fallback to historical API data (already in SOL) if epoch data not available
+        const distributedSOL = cycleData ? cycleData.solDistributed : (cycle.totalSOLDistributed || 0);
         
         return {
           date: d.toLocaleDateString(),
           time: `${displayHours}:${displayMinutes} ${period} EST`,
-          status: 'Completed' as const, // Always Completed - zero amounts are filtered out below
+          status: 'Completed' as const,
           harvestedNUKE,
           distributedSOL,
-          epochNumber: cycleNumber, // This is actually the cycle number (1-288)
+          epochNumber: cycleNumber,
         };
       })
       .filter((item) => {
-        // Filter out cycles with zero harvest and zero distribution
-        // Only show cycles that actually had some activity
         return item.harvestedNUKE > 0 || item.distributedSOL > 0;
       });
-    // Note: cycles are already sorted newest first from the API, so no need to reverse
-  }, [historicalData, rewardsData, currentCycleInfo]);
+  }, [historicalData, currentCycleInfo, epochData]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
