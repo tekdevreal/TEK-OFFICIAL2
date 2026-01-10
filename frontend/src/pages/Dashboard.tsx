@@ -73,17 +73,12 @@ export function Dashboard() {
     // Get up to 108 items (12 pages * 9 cards per page) from current epoch only
     const cycles = currentEpochCycles.slice(0, 108);
     
-    // Create maps of cycle numbers to actual data from epoch data
-    const cycleDataMap = new Map<number, { nukeHarvested: number; solDistributed: number }>();
+    // Create a map of cycle numbers to actual harvested NUKE from epoch data
+    const cycleNukeMap = new Map<number, number>();
     if (epochData?.cycles) {
       epochData.cycles.forEach(cycle => {
-        if (cycle.taxResult) {
-          const nukeHarvested = parseFloat(cycle.taxResult.nukeHarvested) / 1e6; // Convert to human-readable
-          // Total SOL distributed = holders + treasury (in lamports, convert to SOL)
-          const solToHolders = parseFloat(cycle.taxResult.solToHolders || '0');
-          const solToTreasury = parseFloat(cycle.taxResult.solToTreasury || '0');
-          const solDistributed = (solToHolders + solToTreasury) / 1e9; // Convert lamports to SOL
-          cycleDataMap.set(cycle.cycleNumber, { nukeHarvested, solDistributed });
+        if (cycle.taxResult?.nukeHarvested) {
+          cycleNukeMap.set(cycle.cycleNumber, parseFloat(cycle.taxResult.nukeHarvested) / 1e6);
         }
       });
     }
@@ -103,11 +98,10 @@ export function Dashboard() {
         const minutesSinceStartOfDay = Math.floor((d.getTime() - startOfDay.getTime()) / (1000 * 60));
         const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1;
         
-        // Use actual data from epoch if available, fallback to historical API data
-        const cycleData = cycleDataMap.get(cycleNumber);
-        const harvestedNUKE = cycleData?.nukeHarvested || 0;
-        // Fallback to historical API data (already in SOL) if epoch data not available
-        const distributedSOL = cycleData ? cycleData.solDistributed : (cycle.totalSOLDistributed || 0);
+        // Use actual harvested NUKE from epoch data if available, otherwise 0
+        const harvestedNUKE = cycleNukeMap.get(cycleNumber) || 0;
+        // Use SOL from historical API (already in SOL, not lamports)
+        const distributedSOL = cycle.totalSOLDistributed || 0;
         
         return {
           date: d.toLocaleDateString(),
