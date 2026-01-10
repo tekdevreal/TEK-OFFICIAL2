@@ -228,3 +228,77 @@
 .error-message {
   color: var(--accent-danger);
 }
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .distribution-page {
+    padding: var(--page-padding-top) var(--page-padding-horizontal-mobile) var(--page-padding-bottom);
+    gap: var(--page-section-gap-mobile);
+  }
+
+  .dashboard-section-card {
+    padding: 1.75rem;
+  }
+
+  .distribution-filters-row {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .distribution-page {
+    padding: var(--page-padding-top) var(--page-padding-horizontal-mobile) var(--page-padding-bottom-mobile);
+    gap: var(--page-section-gap-mobile);
+  }
+
+  .dashboard-section-card {
+    padding: 1.25rem;
+  }
+
+  .distribution-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.875rem;
+  }
+
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .filter-label {
+    font-size: 0.8125rem;
+  }
+
+  .filter-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .filter-export {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .export-csv-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-section-card {
+    padding: 1rem;
+  }
+
+  .distribution-filters-row {
+    padding: 0.75rem;
+  }
+
+  .filter-button,
+  .export-csv-button {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}

@@ -1,56 +1,38 @@
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './SecondaryNav.css';
 
-interface NavItem {
-  path: string;
-  label: string;
-}
-
-const navItems: NavItem[] = [
-  { path: '/', label: 'Main' },
-  { path: '/harvesting', label: 'Harvesting' },
-  { path: '/distribution', label: 'Distribution' },
-  { path: '/liquidity-pools', label: 'Liquidity Pools' },
-  { path: '/holders', label: 'Treasury' },
-  { path: '/system-status', label: 'System Status' },
-  { path: '/analytics', label: 'Analytics' },
-  { path: '/docs', label: 'Docs' },
-];
-
-export function SecondaryNav() {
+const SecondaryNav: React.FC = () => {
   const location = useLocation();
+
+  // Don't show on landing page
+  if (location.pathname === '/') {
+    return null;
+  }
+
+  const links = [
+    { path: '/dashboard', label: 'Main' },
+    { path: '/harvesting', label: 'Harvesting Data' },
+    { path: '/distribution', label: 'Distribution Data' },
+    { path: '/liquidity', label: 'Liquidity Pools' },
+    { path: '/documentation', label: 'Documentation' },
+  ];
 
   return (
     <nav className="secondary-nav">
       <div className="secondary-nav-container">
-        {navItems.map((item) => {
-          // Special handling for "Holders & Payouts" - active on both /holders and /payouts
-          let isActive = false;
-          if (item.path === '/holders') {
-            isActive = location.pathname === '/holders' || location.pathname === '/payouts';
-          } else if (item.path === '/harvesting') {
-            isActive = location.pathname === '/harvesting';
-          } else if (item.path === '/distribution') {
-            isActive = location.pathname === '/distribution';
-          } else if (item.path === '/liquidity-pools') {
-            isActive = location.pathname === '/liquidity-pools';
-          } else {
-            isActive = location.pathname === item.path || 
-              (item.path !== '/' && location.pathname.startsWith(item.path));
-          }
-          
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`secondary-nav-link ${isActive ? 'active' : ''}`}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
+        {links.map((link) => (
+          <Link
+            key={link.path}
+            to={link.path}
+            className={`secondary-nav-link ${location.pathname === link.path ? 'active' : ''}`}
+          >
+            {link.label}
+          </Link>
+        ))}
       </div>
     </nav>
   );
-}
+};
 
+export default SecondaryNav;

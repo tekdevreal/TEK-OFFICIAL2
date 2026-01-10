@@ -1,64 +1,74 @@
 .secondary-nav {
-  position: fixed;
-  top: 4.85rem;
-  left: 0;
-  right: 0;
-  z-index: 40;
-  width: 100%;
-  background: rgba(0, 0, 0, 0.95); /* match TopNav solid background */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.secondary-nav-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start; /* align under \"Nuke Rewards\" container */
-  gap: 0.5rem;
-  padding: 0 1.5rem; /* match TopNav horizontal padding */
-  height: 4rem;
-}
-
-.secondary-nav-link {
-  position: relative;
-  padding: 0.75rem 1.25rem 0.85rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: color var(--transition-fast);
-}
-
-.secondary-nav-link:first-of-type {
-  padding-left: 0; /* align first menu label directly under Nuke Rewards logo text */
-}
-
-.secondary-nav-link:hover {
-  color: var(--text-primary);
-}
-
-.secondary-nav-link.active {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-/* Light theme adjustments */
-[data-theme='light'] .secondary-nav {
-  background: rgba(255, 255, 255, 0.98); /* match TopNav solid background */
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-[data-theme='light'] .secondary-nav-link {
-  color: var(--text-secondary);
-}
-
-[data-theme='light'] .secondary-nav-link:hover {
-  color: var(--text-primary);
-}
-
-[data-theme='light'] .secondary-nav-link.active {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
+    position: fixed;
+    top: 4.85rem;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .secondary-nav-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding: 0 1.5rem;
+    height: 4rem;
+  }
+  
+  .secondary-nav-link {
+    position: relative;
+    padding: 0.75rem 1.25rem 0.85rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+  }
+  
+  .secondary-nav-link:first-of-type {
+    padding-left: 0;
+  }
+  
+  .secondary-nav-link:hover {
+    color: var(--text-primary);
+  }
+  
+  .secondary-nav-link.active {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  
+  /* Light theme adjustments */
+  [data-theme='light'] .secondary-nav {
+    background: rgba(255, 255, 255, 0.98);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  
+  [data-theme='light'] .secondary-nav-link {
+    color: var(--text-secondary);
+  }
+  
+  [data-theme='light'] .secondary-nav-link:hover {
+    color: var(--text-primary);
+  }
+  
+  [data-theme='light'] .secondary-nav-link.active {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  
+  /* ===================================================================
+     RESPONSIVE: HIDE ON MOBILE/TABLET
+     =================================================================== */
+  
+  /* Hide SecondaryNav on tablets and mobile - burger menu has all navigation */
+  @media (max-width: 1024px) {
+    .secondary-nav {
+      display: none !important;
+    }
+  }
