@@ -10,6 +10,7 @@ import type {
   LiquidityPoolsResponse,
   LiquiditySummaryResponse,
   TreasuryBalanceResponse,
+  SolPriceResponse,
   CurrentCycleInfo,
   EpochCycleResponse,
   EpochsResponse,
@@ -689,6 +690,28 @@ export async function fetchTreasuryBalance(address?: string): Promise<TreasuryBa
       address: address || '',
       balanceSOL: 0,
       balanceLamports: '0',
+    };
+  }
+}
+
+/**
+ * Fetch current SOL price in USD
+ */
+export async function fetchSolPrice(): Promise<SolPriceResponse> {
+  try {
+    const response = await retryRequest(() =>
+      apiClient.get<SolPriceResponse>('/dashboard/sol-price')
+    );
+    return response.data;
+  } catch (error: any) {
+    if (isDevelopment) {
+      console.error('[API] Error fetching SOL price:', error);
+    }
+    // Return fallback
+    return {
+      price: 100,
+      source: 'fallback',
+      updatedAt: new Date().toISOString(),
     };
   }
 }

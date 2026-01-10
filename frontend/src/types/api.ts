@@ -179,6 +179,12 @@ export interface TreasuryBalanceResponse {
   balanceLamports: string;
 }
 
+export interface SolPriceResponse {
+  price: number; // USD price
+  source: 'jupiter' | 'fallback';
+  updatedAt: string;
+}
+
 // Cycle/Epoch Types
 export type CycleState = 'DISTRIBUTED' | 'ROLLED_OVER' | 'FAILED';
 

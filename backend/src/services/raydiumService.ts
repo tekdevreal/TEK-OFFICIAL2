@@ -43,7 +43,7 @@ const DEFAULT_SOL_PRICE_USD = 100;
  * This hybrid model is intentional and correct for devnet tokens.
  * The same logic will work seamlessly on mainnet without code changes.
  */
-async function getSOLPriceUSD(): Promise<number> {
+export async function getSOLPriceUSD(): Promise<number> {
   try {
     // Fetch SOL/USD from Jupiter (mainnet reference price)
     // This is a mainnet price oracle, not devnet

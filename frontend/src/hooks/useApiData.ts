@@ -13,6 +13,7 @@ import {
   fetchLiquidityPools,
   fetchLiquiditySummary,
   fetchTreasuryBalance,
+  fetchSolPrice,
   fetchCurrentCycleInfo,
   fetchEpochCycles,
   fetchEpochs,
@@ -26,6 +27,7 @@ import type {
   LiquidityPoolsResponse,
   LiquiditySummaryResponse,
   TreasuryBalanceResponse,
+  SolPriceResponse,
   CurrentCycleInfo,
   EpochCycleResponse,
   EpochsResponse,
@@ -191,6 +193,22 @@ export function useTreasuryBalance(address?: string, options?: { enabled?: boole
       ttl: 2 * 60 * 1000, // 2 minutes (balance changes more frequently)
       staleTime: 1 * 60 * 1000, // 1 minute
       refetchInterval: options?.refetchInterval ?? 2 * 60 * 1000, // 2 minutes
+      enabled: options?.enabled !== false,
+    }
+  );
+}
+
+/**
+ * Hook for fetching SOL price in USD
+ */
+export function useSolPrice(options?: { enabled?: boolean; refetchInterval?: number }) {
+  return useQuery<SolPriceResponse>(
+    'sol-price',
+    () => fetchSolPrice(),
+    {
+      ttl: 5 * 60 * 1000, // 5 minutes
+      staleTime: 1 * 60 * 1000, // 1 minute
+      refetchInterval: options?.refetchInterval ?? 5 * 60 * 1000, // 5 minutes
       enabled: options?.enabled !== false,
     }
   );

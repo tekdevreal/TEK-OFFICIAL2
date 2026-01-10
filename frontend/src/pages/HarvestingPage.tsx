@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
-import { useRewards, useHistoricalRewards } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useSolPrice } from '../hooks/useApiData';
 import type { RewardCycle } from '../types/api';
 import './HarvestingPage.css';
 
@@ -28,6 +28,12 @@ export function HarvestingPage() {
     data: historicalData,
     isLoading: isLoadingHistorical,
   } = useHistoricalRewards({ limit: 1000 }); // Get enough data for filtering
+
+  const {
+    data: solPriceData,
+  } = useSolPrice({
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
 
   // Year filter state
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -157,25 +163,30 @@ export function HarvestingPage() {
     return harvestingData.reduce((sum, item) => sum + item.nukeSold, 0);
   }, [harvestingData, rewardsData]);
 
+  // Allocated SOL: total SOL allocated to holders in filtered period
+  const allocatedSOL = useMemo(() => {
+    return harvestingData.reduce((sum, item) => sum + item.allocatedSOL, 0);
+  }, [harvestingData]);
+
+  // Allocated USD: allocated SOL × SOL price
+  const allocatedUSD = useMemo(() => {
+    const solPrice = solPriceData?.price || 0;
+    return allocatedSOL * solPrice;
+  }, [allocatedSOL, solPriceData]);
+
+  // Last Harvesting: time only from most recent harvest
   const lastHarvesting = useMemo(() => {
     if (allHarvestingData.length > 0) {
       // Sort by date descending to get most recent
       const sorted = [...allHarvestingData].sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
+        new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime()
       );
-      return sorted[0].date;
+      // Extract just the time portion (HH:MM)
+      const timeMatch = sorted[0].time.match(/(\d{1,2}:\d{2})/);
+      return timeMatch ? timeMatch[1] : 'N/A';
     }
     return 'N/A';
   }, [allHarvestingData]);
-
-  const nextHarvesting = rewardsData?.nextRun 
-    ? new Date(rewardsData.nextRun).toLocaleDateString()
-    : 'N/A';
-
-  const estimatedSOL = useMemo(() => {
-    const totalRewardPool = harvestingData.reduce((sum, item) => sum + item.rewardPoolSOL, 0);
-    return totalRewardPool.toFixed(6);
-  }, [harvestingData]);
 
   // Table columns
   const columns: TableColumn<HarvestingData>[] = useMemo(() => [
@@ -290,16 +301,16 @@ export function HarvestingPage() {
               value={totalNukeHarvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             />
             <StatCard
-              label="Next Harvesting"
-              value={nextHarvesting}
+              label="Allocated SOL"
+              value={`${allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`}
+            />
+            <StatCard
+              label="Allocated USD"
+              value={`$${allocatedUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
             />
             <StatCard
               label="Last Harvesting"
               value={lastHarvesting}
-            />
-            <StatCard
-              label="Estimated SOL"
-              value={`${estimatedSOL} SOL`}
             />
           </div>
 

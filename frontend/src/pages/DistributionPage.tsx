@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
-import { useRewards, useHistoricalRewards } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useSolPrice } from '../hooks/useApiData';
 import type { RewardCycle } from '../types/api';
 import './DistributionPage.css';
 
@@ -18,7 +18,6 @@ export interface DistributionData {
 
 export function DistributionPage() {
   const {
-    data: rewardsData,
     isLoading: isLoadingRewards,
   } = useRewards(undefined, {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
@@ -28,6 +27,12 @@ export function DistributionPage() {
     data: historicalData,
     isLoading: isLoadingHistorical,
   } = useHistoricalRewards({ limit: 1000 }); // Get enough data for filtering
+
+  const {
+    data: solPriceData,
+  } = useSolPrice({
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
+  });
 
   // Year filter state
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -133,25 +138,25 @@ export function DistributionPage() {
     return distributionData.reduce((sum, item) => sum + item.distributedSOL, 0);
   }, [distributionData]);
 
+  // Distribution USD Value: total SOL × SOL price
+  const distributionUSDValue = useMemo(() => {
+    const solPrice = solPriceData?.price || 0;
+    return totalSOLDistributed * solPrice;
+  }, [totalSOLDistributed, solPriceData]);
+
+  // Last Distribution: time only from most recent distribution
   const lastDistribution = useMemo(() => {
     if (allDistributionData.length > 0) {
       // Sort by date descending to get most recent
       const sorted = [...allDistributionData].sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
+        new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime()
       );
-      return sorted[0].date;
+      // Extract just the time portion (HH:MM)
+      const timeMatch = sorted[0].time.match(/(\d{1,2}:\d{2})/);
+      return timeMatch ? timeMatch[1] : 'N/A';
     }
     return 'N/A';
   }, [allDistributionData]);
-
-  const nextDistribution = rewardsData?.nextRun 
-    ? new Date(rewardsData.nextRun).toLocaleDateString()
-    : 'N/A';
-
-  const estimatedSOL = useMemo(() => {
-    const totalDistributed = distributionData.reduce((sum, item) => sum + item.distributedSOL, 0);
-    return totalDistributed.toFixed(6);
-  }, [distributionData]);
 
   // Table columns
   const columns: TableColumn<DistributionData>[] = useMemo(() => [
@@ -266,16 +271,16 @@ export function DistributionPage() {
               value={`${totalSOLDistributed.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`}
             />
             <StatCard
+              label="Distribution USD Value"
+              value={`$${distributionUSDValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+            />
+            <StatCard
               label="Next Distribution"
-              value={nextDistribution}
+              value="5 Minutes"
             />
             <StatCard
               label="Last Distribution"
               value={lastDistribution}
-            />
-            <StatCard
-              label="Estimated SOL"
-              value={`${estimatedSOL} SOL`}
             />
           </div>
 

@@ -6,7 +6,7 @@ import {
 } from '../services/rewardService';
 import { getSchedulerStatus } from '../scheduler/rewardScheduler';
 import { getNUKEPriceSOL, getNUKEPriceUSD, getPriceDiagnostics } from '../services/priceService';
-import { getRaydiumData } from '../services/raydiumService';
+import { getRaydiumData, getSOLPriceUSD } from '../services/raydiumService';
 import { isBlacklisted } from '../config/blacklist';
 import { REWARD_CONFIG } from '../config/constants';
 import { logger } from '../utils/logger';
@@ -996,6 +996,42 @@ router.get('/cycles/epochs', async (req: Request, res: Response): Promise<void> 
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Unknown error',
       epochs: [],
+    });
+  }
+});
+
+/**
+ * GET /dashboard/sol-price
+ * Returns current SOL price in USD from Jupiter/CoinGecko
+ */
+router.get('/sol-price', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const startTime = Date.now();
+    logger.debug('Dashboard API: GET /dashboard/sol-price');
+
+    const solPriceUSD = await getSOLPriceUSD();
+
+    const response = {
+      price: solPriceUSD,
+      source: 'jupiter',
+      updatedAt: new Date().toISOString(),
+    };
+
+    const duration = Date.now() - startTime;
+    logger.debug('Dashboard API: GET /dashboard/sol-price completed', {
+      duration: `${duration}ms`,
+      price: solPriceUSD,
+    });
+
+    res.status(200).json(response);
+  } catch (error) {
+    logger.error('Error fetching SOL price', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      price: 100, // Fallback price
+      source: 'fallback',
     });
   }
 });
