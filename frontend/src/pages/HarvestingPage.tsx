@@ -48,11 +48,14 @@ export function HarvestingPage() {
       .filter((cycle: RewardCycle) => cycle.totalSOLDistributed > 0) // Only show cycles with distributions
       .map((cycle: RewardCycle) => {
         const d = new Date(cycle.timestamp);
-        const hours = d.getHours();
-        const minutes = d.getMinutes();
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const displayHours = hours % 12 || 12;
-        const displayMinutes = minutes.toString().padStart(2, '0');
+        
+        // Convert to CET timezone and format as 24-hour time
+        const cetTime = d.toLocaleString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: 'Europe/Paris', // CET timezone
+        });
 
         // Calculate NUKE sold proportionally based on tax statistics
         // Use the total NUKE sold and total SOL distributed to calculate proportion per cycle
@@ -84,7 +87,7 @@ export function HarvestingPage() {
         return {
           id: cycle.id,
           date: dateStr,
-          time: `${displayHours}:${displayMinutes} ${period} EST`,
+          time: cetTime,
           nukeSold, // Already converted to human-readable format above
           rewardPoolSOL,
           allocatedSOL,
@@ -174,16 +177,35 @@ export function HarvestingPage() {
     return allocatedSOL * solPrice;
   }, [allocatedSOL, solPriceData]);
 
-  // Last Harvesting: time only from most recent harvest
+  // Last Harvesting: time only from most recent harvest with CET timezone
   const lastHarvesting = useMemo(() => {
     if (allHarvestingData.length > 0) {
       // Sort by date descending to get most recent
       const sorted = [...allHarvestingData].sort((a, b) => 
         new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime()
       );
-      // Extract just the time portion (HH:MM)
-      const timeMatch = sorted[0].time.match(/(\d{1,2}:\d{2})/);
-      return timeMatch ? timeMatch[1] : 'N/A';
+      // Get the most recent harvest timestamp
+      const mostRecentDate = new Date(sorted[0].date + 'T00:00:00Z');
+      const timeMatch = sorted[0].time.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        const hours = parseInt(timeMatch[1]);
+        const minutes = parseInt(timeMatch[2]);
+        const period = sorted[0].time.includes('PM') ? 'PM' : 'AM';
+        // Convert 12-hour to 24-hour
+        let hours24 = hours;
+        if (period === 'PM' && hours !== 12) hours24 += 12;
+        if (period === 'AM' && hours === 12) hours24 = 0;
+        
+        // Create date with correct time and convert to CET
+        mostRecentDate.setUTCHours(hours24, minutes, 0, 0);
+        const cetTime = mostRecentDate.toLocaleString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: 'Europe/Paris', // CET timezone
+        });
+        return `${cetTime} CET`;
+      }
     }
     return 'N/A';
   }, [allHarvestingData]);
@@ -302,7 +324,7 @@ export function HarvestingPage() {
             />
             <StatCard
               label="Allocated SOL"
-              value={`${allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`}
+              value={`${allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 })} SOL`}
             />
             <StatCard
               label="Allocated USD"

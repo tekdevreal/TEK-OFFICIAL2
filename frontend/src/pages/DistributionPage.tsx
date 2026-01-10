@@ -18,6 +18,7 @@ export interface DistributionData {
 
 export function DistributionPage() {
   const {
+    data: rewardsData,
     isLoading: isLoadingRewards,
   } = useRewards(undefined, {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
@@ -47,11 +48,14 @@ export function DistributionPage() {
       .filter((cycle: RewardCycle) => cycle.totalSOLDistributed > 0) // Only show cycles with distributions
       .map((cycle: RewardCycle) => {
         const d = new Date(cycle.timestamp);
-        const hours = d.getHours();
-        const minutes = d.getMinutes();
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const displayHours = hours % 12 || 12;
-        const displayMinutes = minutes.toString().padStart(2, '0');
+        
+        // Convert to CET timezone and format as 24-hour time
+        const cetTime = d.toLocaleString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: 'Europe/Paris', // CET timezone
+        });
 
         // Format date as YYYY-MM-DD for consistency
         const year = d.getFullYear();
@@ -62,7 +66,7 @@ export function DistributionPage() {
         return {
           id: cycle.id,
           date: dateStr,
-          time: `${displayHours}:${displayMinutes} ${period} EST`,
+          time: cetTime,
           recipients: cycle.eligibleHoldersCount || 0,
           transactions: cycle.eligibleHoldersCount || 0, // Assume 1 transaction per recipient
           distributedSOL: cycle.totalSOLDistributed || 0,
@@ -144,19 +148,30 @@ export function DistributionPage() {
     return totalSOLDistributed * solPrice;
   }, [totalSOLDistributed, solPriceData]);
 
-  // Last Distribution: time only from most recent distribution
+  // Last Distribution: time only from most recent distribution with CET timezone
   const lastDistribution = useMemo(() => {
     if (allDistributionData.length > 0) {
       // Sort by date descending to get most recent
       const sorted = [...allDistributionData].sort((a, b) => 
         new Date(b.date + ' ' + b.time).getTime() - new Date(a.date + ' ' + a.time).getTime()
       );
-      // Extract just the time portion (HH:MM)
-      const timeMatch = sorted[0].time.match(/(\d{1,2}:\d{2})/);
-      return timeMatch ? timeMatch[1] : 'N/A';
+      // Time is already in CET 24-hour format from the map function
+      return `${sorted[0].time} CET`;
     }
     return 'N/A';
   }, [allDistributionData]);
+
+  // Next Distribution: fetch from rewardsData (Processing section)
+  const nextDistribution = useMemo(() => {
+    if (rewardsData?.nextRun) {
+      const nextRun = new Date(rewardsData.nextRun);
+      const now = new Date();
+      const diffMs = nextRun.getTime() - now.getTime();
+      const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+      return diffMinutes <= 5 ? '5 Minutes' : `${diffMinutes} Minutes`;
+    }
+    return '5 Minutes';
+  }, [rewardsData]);
 
   // Table columns
   const columns: TableColumn<DistributionData>[] = useMemo(() => [
@@ -268,7 +283,7 @@ export function DistributionPage() {
           <div className="distribution-stats">
             <StatCard
               label="Total SOL Distributed"
-              value={`${totalSOLDistributed.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`}
+              value={`${totalSOLDistributed.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 })} SOL`}
             />
             <StatCard
               label="Distribution USD Value"
@@ -276,7 +291,7 @@ export function DistributionPage() {
             />
             <StatCard
               label="Next Distribution"
-              value="5 Minutes"
+              value={nextDistribution}
             />
             <StatCard
               label="Last Distribution"
