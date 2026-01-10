@@ -69,7 +69,7 @@ export function Dashboard() {
     const cycles = currentEpochCycles.slice(0, 108);
     
     return cycles
-      .map((cycle: RewardCycle, index: number) => {
+      .map((cycle: RewardCycle) => {
         const d = new Date(cycle.timestamp);
         const hours = d.getHours();
         const minutes = d.getMinutes();
