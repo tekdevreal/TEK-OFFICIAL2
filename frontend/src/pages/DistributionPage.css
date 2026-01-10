@@ -82,11 +82,11 @@
   }
 }
 
-/* Distribution Filters Row - Two row layout: Year+Month, then Export CSV */
+/* Distribution Filters Row - Responsive layout */
 .distribution-filters-row {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  align-items: center;
+  gap: 1.5rem;
   margin-bottom: 0.5rem;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.02);
@@ -99,12 +99,43 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* First row: Year and Month filters side by side */
+/* Desktop: Year and Month on left, Export CSV on right */
 .distribution-filters-row > div:first-child {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  flex-wrap: wrap;
+  flex: 1;
+}
+
+/* Export CSV on the right side */
+.filter-export {
+  margin-left: auto;
+}
+
+/* Mobile/Tablet: Stack layout with 50/50 buttons */
+@media (max-width: 768px) {
+  .distribution-filters-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .distribution-filters-row > div:first-child {
+    width: 100%;
+    gap: 0.75rem;
+  }
+  
+  .filter-group {
+    flex: 1;
+  }
+  
+  .filter-button {
+    width: 100%;
+  }
+  
+  .filter-export {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 .filter-group {
@@ -159,11 +190,7 @@
   color: #6366f1;
 }
 
-/* Export CSV Button - Full width on second row */
-.filter-export {
-  width: 100%;
-}
-
+/* Export CSV Button */
 .export-csv-button {
   padding: 0.5rem 1rem;
   background-color: rgba(99, 102, 241, 0.1);
@@ -174,7 +201,13 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  width: 100%;
+}
+
+/* Mobile: Full width */
+@media (max-width: 768px) {
+  .export-csv-button {
+    width: 100%;
+  }
 }
 
 .export-csv-button:hover {
