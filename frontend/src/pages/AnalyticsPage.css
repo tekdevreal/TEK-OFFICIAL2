@@ -9,6 +9,13 @@
   gap: var(--page-section-gap);
 }
 
+/* Use full width on mobile/tablet for better space utilization */
+@media (max-width: 1024px) {
+  .analytics-page {
+    max-width: 100%;
+  }
+}
+
 .dashboard-section {
   width: 100%;
   display: flex;
