@@ -79,24 +79,30 @@
   .analytics-metrics-section {
     padding: 1.25rem;
     margin-bottom: 1.5rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible !important; /* Don't clip charts */
   }
   
-  /* Make charts properly responsive - don't squeeze them */
+  /* Force charts to be visible on mobile */
+  .analytics-chart-section .recharts-responsive-container {
+    min-height: 320px !important;
+    height: 320px !important;
+    width: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  /* Make sure recharts wrapper is visible */
   .recharts-wrapper {
     width: 100% !important;
     min-width: 100% !important;
+    display: block !important;
+    visibility: visible !important;
   }
   
   .recharts-surface {
     width: 100% !important;
-  }
-  
-  /* Ensure ResponsiveContainer works on mobile */
-  .recharts-responsive-container {
-    min-height: 300px !important;
-    width: 100% !important;
+    display: block !important;
   }
   
   /* Make chart text readable */
@@ -160,10 +166,20 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+/* Ensure chart container has proper dimensions on ALL devices */
+.analytics-chart-section .recharts-responsive-container {
+  min-height: 300px !important;
+  height: 300px !important;
+  width: 100% !important;
+  display: block !important;
+  position: relative !important;
+}
+
 /* Chart wrapper to ensure proper dimensions */
 .analytics-chart-section > div[style*="position: relative"] {
   min-height: 300px;
   width: 100%;
+  display: block;
 }
 
 .chart-section-title {

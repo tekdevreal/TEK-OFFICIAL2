@@ -210,6 +210,7 @@
   .analytics-metrics-section {
     padding: 1rem !important;
     margin-bottom: 1.5rem !important;
+    overflow: visible !important; /* Critical: Don't clip charts */
   }
   
   .chart-section-title {
@@ -220,9 +221,13 @@
     font-size: 0.8125rem !important;
   }
   
-  /* Make charts responsive */
+  /* Make charts responsive - FORCE VISIBILITY */
   .recharts-responsive-container {
     min-height: 300px !important;
+    height: auto !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   
   /* Reliability metrics grid */
@@ -238,7 +243,7 @@
 
 @media (max-width: 640px) {
   .recharts-responsive-container {
-    min-height: 250px !important;
+    min-height: 280px !important;
   }
   
   /* Smaller chart text */
