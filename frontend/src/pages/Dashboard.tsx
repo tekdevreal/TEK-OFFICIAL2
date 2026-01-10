@@ -278,44 +278,9 @@ export function Dashboard() {
                 value={(() => {
                   // Epoch = 1 calendar day (UTC-based), starts at 00:00 UTC
                   // After Cycle #288, Epoch closes and next cycle starts Epoch +1, Cycle #1
-                  // Calculate epoch number: days since a reference start date + 1
-                  if (currentCycleInfo?.epoch) {
-                    // Use a reference start date (e.g., when reward system started)
-                    // For now, we'll use the first epoch date from historical data if available,
-                    // otherwise calculate from a fixed start date
-                    const currentEpochDate = new Date(currentCycleInfo.epoch + 'T00:00:00Z');
-                    
-                    // Try to get the first epoch from historical data
-                    let firstEpochDate: Date | null = null;
-                    if (historicalData?.cycles && historicalData.cycles.length > 0) {
-                      // Get the oldest cycle timestamp
-                      const oldestCycle = historicalData.cycles[historicalData.cycles.length - 1];
-                      if (oldestCycle?.timestamp) {
-                        const oldestDate = new Date(oldestCycle.timestamp);
-                        // Get the epoch date (00:00 UTC of that day)
-                        firstEpochDate = new Date(Date.UTC(
-                          oldestDate.getUTCFullYear(),
-                          oldestDate.getUTCMonth(),
-                          oldestDate.getUTCDate(),
-                          0, 0, 0, 0
-                        ));
-                      }
-                    }
-                    
-                    // If no historical data, use a default start date (e.g., Dec 1, 2024)
-                    // You can adjust this to match when your reward system actually started
-                    if (!firstEpochDate) {
-                      firstEpochDate = new Date(Date.UTC(2024, 11, 1, 0, 0, 0, 0)); // Dec 1, 2024
-                    }
-                    
-                    // Calculate days difference
-                    const timeDiff = currentEpochDate.getTime() - firstEpochDate.getTime();
-                    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-                    
-                    // Epoch number = days since start + 1
-                    const epochNumber = daysDiff + 1;
-                    
-                    return epochNumber.toString();
+                  // Use epochNumber from API which counts all epochs since the system started
+                  if (currentCycleInfo?.epochNumber) {
+                    return currentCycleInfo.epochNumber.toString();
                   }
                   return 'N/A';
                 })()}
@@ -352,32 +317,9 @@ export function Dashboard() {
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">
             Distributions Epoch: {(() => {
-              if (currentCycleInfo?.epoch) {
-                const currentEpochDate = new Date(currentCycleInfo.epoch + 'T00:00:00Z');
-                let firstEpochDate: Date | null = null;
-                
-                if (historicalData?.cycles && historicalData.cycles.length > 0) {
-                  const oldestCycle = historicalData.cycles[historicalData.cycles.length - 1];
-                  if (oldestCycle?.timestamp) {
-                    const oldestDate = new Date(oldestCycle.timestamp);
-                    firstEpochDate = new Date(Date.UTC(
-                      oldestDate.getUTCFullYear(),
-                      oldestDate.getUTCMonth(),
-                      oldestDate.getUTCDate(),
-                      0, 0, 0, 0
-                    ));
-                  }
-                }
-                
-                if (!firstEpochDate) {
-                  firstEpochDate = new Date(Date.UTC(2024, 11, 1, 0, 0, 0, 0));
-                }
-                
-                const timeDiff = currentEpochDate.getTime() - firstEpochDate.getTime();
-                const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-                const epochNumber = daysDiff + 1;
-                
-                return epochNumber;
+              // Use epochNumber from API which correctly counts all epochs
+              if (currentCycleInfo?.epochNumber) {
+                return currentCycleInfo.epochNumber;
               }
               return 'N/A';
             })()}

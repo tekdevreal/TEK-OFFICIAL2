@@ -154,17 +154,17 @@ async function fetchSwapDistributionNotification(
     console.error('[Notification] Failed to fetch cycle info:', err);
   }
   
-  // Format distribution timestamp
+  // Format distribution timestamp in CET without seconds
   const distributionTime = rewards.tax.lastTaxDistribution 
     ? new Date(rewards.tax.lastTaxDistribution).toLocaleString('en-US', { 
         year: 'numeric', 
         month: '2-digit', 
         day: '2-digit', 
         hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Paris', // CET timezone
         hour12: false 
-      })
+      }) + ' CET'
     : 'N/A';
   
   // Build message with bold titles using Telegram markdown
@@ -224,7 +224,15 @@ async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl
       : '0';
 
     const lastDistribution = rewards.tax.lastTaxDistribution 
-      ? new Date(rewards.tax.lastTaxDistribution).toLocaleString()
+      ? new Date(rewards.tax.lastTaxDistribution).toLocaleString('en-US', { 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit', 
+          hour: '2-digit', 
+          minute: '2-digit',
+          timeZone: 'Europe/Paris', // CET timezone
+          hour12: false 
+        }) + ' CET'
       : 'N/A';
 
     const messageLines = [

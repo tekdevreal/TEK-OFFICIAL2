@@ -128,10 +128,9 @@ export function DistributionPage() {
   }, [allDistributionData, selectedYear, selectedMonth]);
 
   // Calculate stats from data
-  const totalNukeSold = useMemo(() => {
-    // Estimate NUKE sold from SOL distributed (rough estimate: 1 SOL ≈ 13,333 NUKE)
-    // In production, this would come from actual harvest records
-    return distributionData.reduce((sum, item) => sum + item.distributedSOL * 13333, 0);
+  const totalSOLDistributed = useMemo(() => {
+    // Sum all SOL distributed in the filtered period
+    return distributionData.reduce((sum, item) => sum + item.distributedSOL, 0);
   }, [distributionData]);
 
   const lastDistribution = useMemo(() => {
@@ -263,8 +262,8 @@ export function DistributionPage() {
           {/* Stats Summary */}
           <div className="distribution-stats">
             <StatCard
-              label="Total NUKE Sold"
-              value={totalNukeSold.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              label="Total SOL Distributed"
+              value={`${totalSOLDistributed.toLocaleString(undefined, { maximumFractionDigits: 6 })} SOL`}
             />
             <StatCard
               label="Next Distribution"

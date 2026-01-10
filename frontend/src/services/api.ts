@@ -711,6 +711,7 @@ export async function fetchCurrentCycleInfo(): Promise<CurrentCycleInfo> {
     const epoch = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
     return {
       epoch,
+      epochNumber: 1, // Fallback to epoch 1
       cycleNumber: 1,
       nextCycleIn: 5 * 60 * 1000,
       nextCycleInSeconds: 300,

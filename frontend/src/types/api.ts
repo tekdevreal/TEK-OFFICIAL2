@@ -206,6 +206,7 @@ export interface EpochState {
 
 export interface CurrentCycleInfo {
   epoch: string;
+  epochNumber: number; // Sequential epoch counter
   cycleNumber: number;
   nextCycleIn: number; // Milliseconds until next cycle
   nextCycleInSeconds: number;
