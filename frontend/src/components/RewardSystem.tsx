@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useEpochCycles, useCurrentCycleInfo } from '../hooks/useApiData';
+import { useEpochCycles, useCurrentCycleInfo, useHistoricalRewards } from '../hooks/useApiData';
 import type { CycleResult, CycleState } from '../types/api';
 import './RewardSystem.css';
 
@@ -112,9 +112,10 @@ interface TooltipProps {
   epochNumber: number;
   x: number;
   y: number;
+  historicalSOL?: number; // Add historical SOL value
 }
 
-function Tooltip({ cycle, cycleNumber, currentCycle, epochNumber, x, y }: TooltipProps) {
+function Tooltip({ cycle, cycleNumber, currentCycle, epochNumber, x, y, historicalSOL }: TooltipProps) {
   if (!cycle) {
     const isFuture = cycleNumber > currentCycle;
     return (
@@ -152,7 +153,7 @@ function Tooltip({ cycle, cycleNumber, currentCycle, epochNumber, x, y }: Toolti
       {cycle.taxResult && (
         <div className="tooltip-details">
           <div>Harvest (NUKE): {(parseFloat(cycle.taxResult.nukeHarvested) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}</div>
-          <div>Distribute (SOL): {(parseFloat(cycle.taxResult.solToHolders) + parseFloat(cycle.taxResult.solToTreasury || '0')).toFixed(6)}</div>
+          <div>Distributed (SOL): {historicalSOL !== undefined ? historicalSOL.toFixed(6) : ((parseFloat(cycle.taxResult.solToHolders) + parseFloat(cycle.taxResult.solToTreasury || '0')) / 1e9).toFixed(6)}</div>
         </div>
       )}
     </div>
@@ -391,6 +392,7 @@ export function RewardSystem() {
           epochNumber={selectedEpochNumber}
           x={hoveredCycle.x}
           y={hoveredCycle.y}
+          historicalSOL={historicalSOLMap.get(hoveredCycle.cycleNumber)}
         />,
         document.body
       )}
