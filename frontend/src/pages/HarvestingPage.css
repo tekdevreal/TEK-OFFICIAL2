@@ -235,6 +235,24 @@
   .filter-group {
     gap: 0;
   }
+  
+  /* Harvesting Table - Better mobile experience */
+  .harvesting-table-container table {
+    min-width: 900px; /* Wider for comfortable scrolling */
+  }
+  
+  .harvesting-table-container th,
+  .harvesting-table-container td {
+    padding: 1rem 1.25rem !important; /* More spacious cells */
+    font-size: 0.9375rem !important; /* Readable text size */
+  }
+  
+  /* Ensure table header is readable */
+  .harvesting-table-container th {
+    font-weight: 600;
+    font-size: 0.875rem !important;
+    letter-spacing: 0.025em;
+  }
 }
 
 /* Harvesting Table Container */

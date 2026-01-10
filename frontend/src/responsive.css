@@ -255,19 +255,24 @@
   .table-container,
   .analytics-table-container,
   .distribution-table-container,
-  .harvesting-table-container {
+  .harvesting-table-container,
+  .treasury-table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 8px;
   }
   
+  /* Give tables proper width for horizontal scrolling */
   table {
-    min-width: 600px;
+    min-width: 800px; /* Increased from 600px for better spacing */
+    width: auto; /* Allow natural table width */
   }
   
+  /* Better cell spacing for mobile */
   th, td {
-    padding: 0.625rem 0.75rem !important;
-    font-size: 0.8125rem !important;
+    padding: 0.875rem 1rem !important; /* Increased padding */
+    font-size: 0.875rem !important; /* Slightly larger text */
+    white-space: nowrap; /* Prevent text wrapping */
   }
 }
 

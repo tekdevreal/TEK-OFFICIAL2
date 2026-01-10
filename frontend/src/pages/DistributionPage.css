@@ -235,6 +235,24 @@
   .filter-group {
     gap: 0;
   }
+  
+  /* Distribution Table - Better mobile experience */
+  .distribution-table-container table {
+    min-width: 900px; /* Wider for comfortable scrolling */
+  }
+  
+  .distribution-table-container th,
+  .distribution-table-container td {
+    padding: 1rem 1.25rem !important; /* More spacious cells */
+    font-size: 0.9375rem !important; /* Readable text size */
+  }
+  
+  /* Ensure table header is readable */
+  .distribution-table-container th {
+    font-weight: 600;
+    font-size: 0.875rem !important;
+    letter-spacing: 0.025em;
+  }
 }
 
 /* Distribution Table Container */

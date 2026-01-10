@@ -361,6 +361,24 @@
   .filter-group {
     gap: 0;
   }
+  
+  /* Treasury Table - Better mobile experience */
+  .treasury-table-container table {
+    min-width: 900px; /* Wider for comfortable scrolling */
+  }
+  
+  .treasury-table-container th,
+  .treasury-table-container td {
+    padding: 1rem 1.25rem !important; /* More spacious cells */
+    font-size: 0.9375rem !important; /* Readable text size */
+  }
+  
+  /* Ensure table header is readable */
+  .treasury-table-container th {
+    font-weight: 600;
+    font-size: 0.875rem !important;
+    letter-spacing: 0.025em;
+  }
 }
 
 /* Treasury Table Container */
