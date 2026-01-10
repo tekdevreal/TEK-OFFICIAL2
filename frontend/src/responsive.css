@@ -24,7 +24,7 @@
     --font-size-4xl: 1.625rem; /* 26px */
     --font-size-5xl: 2rem; /* 32px */
     /* Reduce top padding since SecondaryNav is hidden on mobile/tablet */
-    --page-padding-top: 5.5rem; /* TopNav is ~5rem, add minimal spacing */
+    --page-padding-top: 5rem; /* TopNav is 4rem + minimal 1rem spacing */
   }
   
   body {
@@ -44,11 +44,19 @@
     --spacing-md: 1rem;
     --spacing-lg: 1.5rem;
     /* Reduce top padding for mobile - TopNav is 4rem on mobile */
-    --page-padding-top: 4.5rem; /* TopNav height (4rem) + minimal spacing */
+    --page-padding-top: 4.75rem; /* TopNav height (4rem) + 0.75rem spacing */
   }
   
   body {
     font-size: var(--font-size-sm);
+  }
+}
+
+/* Extra Small Mobile (< 480px) */
+@media (max-width: 480px) {
+  :root {
+    /* TopNav is even smaller at 3.75rem */
+    --page-padding-top: 4.5rem; /* TopNav height (3.75rem) + 0.75rem spacing */
   }
 }
 

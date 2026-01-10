@@ -7,10 +7,13 @@ const SecondaryNav: React.FC = () => {
 
   const links = [
     { path: '/', label: 'Main' },
-    { path: '/harvesting', label: 'Harvesting Data' },
-    { path: '/distribution', label: 'Distribution Data' },
+    { path: '/harvesting', label: 'Harvesting' },
+    { path: '/distribution', label: 'Distribution' },
     { path: '/liquidity-pools', label: 'Liquidity Pools' },
-    { path: '/docs', label: 'Documentation' },
+    { path: '/holders', label: 'Treasury' },
+    { path: '/system-status', label: 'System Status' },
+    { path: '/analytics', label: 'Analytics' },
+    { path: '/docs', label: 'Doc' },
   ];
 
   return (
