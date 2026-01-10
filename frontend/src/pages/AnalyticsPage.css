@@ -79,29 +79,44 @@
   .analytics-metrics-section {
     padding: 1.25rem;
     margin-bottom: 1.5rem;
-    overflow: visible !important; /* Don't clip charts */
+    overflow: visible !important;
+    width: 100% !important; /* Critical for Recharts */
   }
   
-  /* Force charts to be visible on mobile */
+  /* Force charts to be visible on mobile - EXPLICIT DIMENSIONS */
   .analytics-chart-section .recharts-responsive-container {
     min-height: 320px !important;
     height: 320px !important;
     width: 100% !important;
+    max-width: 100% !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
   }
   
-  /* Make sure recharts wrapper is visible */
-  .recharts-wrapper {
+  /* CRITICAL: Force recharts wrapper to take full width on mobile */
+  .analytics-chart-section .recharts-wrapper {
     width: 100% !important;
     min-width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
     display: block !important;
     visibility: visible !important;
+    position: relative !important;
   }
   
-  .recharts-surface {
+  /* Force SVG to render with proper dimensions */
+  .analytics-chart-section .recharts-surface {
     width: 100% !important;
+    min-width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+  }
+  
+  .analytics-chart-section svg {
+    width: 100% !important;
+    min-width: 300px !important; /* Minimum width for chart */
+    height: 100% !important;
     display: block !important;
   }
   
@@ -129,12 +144,18 @@
   .analytics-chart-section,
   .analytics-metrics-section {
     padding: 1rem;
-    overflow-x: auto;
+    overflow: visible !important;
+    width: 100% !important;
   }
   
-  /* Smaller devices - give charts more room */
+  /* Smaller devices - maintain chart visibility */
   .recharts-responsive-container {
     min-height: 280px !important;
+    height: 280px !important;
+  }
+  
+  .analytics-chart-section svg {
+    min-width: 280px !important;
   }
   
   /* Smaller text for compact view */
@@ -158,7 +179,8 @@
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  position: relative; /* For proper chart rendering */
+  position: relative;
+  width: 100%; /* Ensure full width */
 }
 
 [data-theme='light'] .analytics-chart-section {
@@ -175,11 +197,24 @@
   position: relative !important;
 }
 
-/* Chart wrapper to ensure proper dimensions */
-.analytics-chart-section > div[style*="position: relative"] {
-  min-height: 300px;
-  width: 100%;
-  display: block;
+/* CRITICAL: Force SVG and wrapper to have width */
+.analytics-chart-section .recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.analytics-chart-section .recharts-surface {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+/* Force SVG elements to render */
+.analytics-chart-section svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
 }
 
 .chart-section-title {
