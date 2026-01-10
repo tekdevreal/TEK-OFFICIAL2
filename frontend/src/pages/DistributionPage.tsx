@@ -173,77 +173,82 @@ export function DistributionPage() {
     return '5 Minutes';
   }, [rewardsData]);
 
-  // Table columns
-  const columns: TableColumn<DistributionData>[] = useMemo(() => [
-    {
-      key: 'date',
-      header: 'DATE',
-      accessor: (row) => row.date,
-      sortable: true,
-      sortFn: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    },
-    {
-      key: 'time',
-      header: 'TIME',
-      accessor: (row) => row.time,
-      sortable: true,
-      sortFn: (a, b) => a.time.localeCompare(b.time),
-    },
-    {
-      key: 'recipients',
-      header: 'RECIPIENTS',
-      accessor: (row) => row.recipients.toLocaleString(undefined, { maximumFractionDigits: 0 }),
-      sortable: true,
-      sortFn: (a, b) => a.recipients - b.recipients,
-    },
-    {
-      key: 'transactions',
-      header: 'TRANSACTIONS',
-      accessor: (row) => row.transactions.toLocaleString(undefined, { maximumFractionDigits: 0 }),
-      sortable: true,
-      sortFn: (a, b) => a.transactions - b.transactions,
-    },
-    {
-      key: 'distributedSOL',
-      header: 'DISTRIBUTED (SOL)',
-      accessor: (row) => row.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 6 }),
-      sortable: true,
-      sortFn: (a, b) => a.distributedSOL - b.distributedSOL,
-    },
-    {
-      key: 'status',
-      header: 'STATUS',
-      accessor: (row) => (
-        <a 
-          href="#" 
-          className="distribution-status-link"
-          onClick={(e) => {
-            e.preventDefault();
-            // TODO: Open detailed table/view
-          }}
-          style={{ 
-            color: row.status === 'Complete' ? 'var(--accent-success)' : 'var(--accent-danger)',
-            fontWeight: 600,
-            textDecoration: 'none'
-          }}
-        >
-          {row.status}
-        </a>
-      ),
-      sortable: true,
-      sortFn: (a, b) => a.status.localeCompare(b.status),
-    },
-  ], []);
+  // Table columns with new order: DATE, TIME, DISTRIBUTED (SOL), VALUE $, TRX, STATUS
+  const columns: TableColumn<DistributionData>[] = useMemo(() => {
+    const solPrice = solPriceData?.price || 0;
+    
+    return [
+      {
+        key: 'date',
+        header: 'DATE',
+        accessor: (row) => row.date,
+        sortable: true,
+        sortFn: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      },
+      {
+        key: 'time',
+        header: 'TIME',
+        accessor: (row) => row.time,
+        sortable: true,
+        sortFn: (a, b) => a.time.localeCompare(b.time),
+      },
+      {
+        key: 'distributedSOL',
+        header: 'DISTRIBUTED (SOL)',
+        accessor: (row) => row.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 }),
+        sortable: true,
+        sortFn: (a, b) => a.distributedSOL - b.distributedSOL,
+      },
+      {
+        key: 'usdValue',
+        header: 'VALUE $',
+        accessor: (row) => `$${(row.distributedSOL * solPrice).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`,
+        sortable: true,
+        sortFn: (a, b) => (a.distributedSOL * solPrice) - (b.distributedSOL * solPrice),
+      },
+      {
+        key: 'transactions',
+        header: 'TRX',
+        accessor: (row) => row.transactions.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+        sortable: true,
+        sortFn: (a, b) => a.transactions - b.transactions,
+      },
+      {
+        key: 'status',
+        header: 'STATUS',
+        accessor: (row) => (
+          <a 
+            href="#" 
+            className="distribution-status-link"
+            onClick={(e) => {
+              e.preventDefault();
+              // TODO: Open detailed table/view
+            }}
+            style={{ 
+              color: row.status === 'Complete' ? 'var(--accent-success)' : 'var(--accent-danger)',
+              fontWeight: 600,
+              textDecoration: 'none'
+            }}
+          >
+            {row.status}
+          </a>
+        ),
+        sortable: true,
+        sortFn: (a, b) => a.status.localeCompare(b.status),
+      },
+    ];
+  }, [solPriceData]);
 
   // Export CSV handler
   const handleExportCSV = () => {
-    const headers = ['DATE', 'TIME', 'RECIPIENTS', 'TRANSACTIONS', 'DISTRIBUTED (SOL)', 'STATUS'];
+    const solPrice = solPriceData?.price || 0;
+    const headers = ['DATE', 'TIME', 'DISTRIBUTED (SOL)', 'VALUE $', 'TRX', 'STATUS'];
     const rows = distributionData.map((row) => [
       row.date,
       row.time,
-      row.recipients.toString(),
+      row.distributedSOL.toFixed(4),
+      (row.distributedSOL * solPrice).toFixed(2),
       row.transactions.toString(),
-      row.distributedSOL.toString(),
       row.status,
     ]);
 
@@ -302,28 +307,28 @@ export function DistributionPage() {
           {/* Year and Month Filters with Export */}
           <div className="distribution-filters-row">
             <div>
+            <div className="filter-group">
+              <label className="filter-label">Year:</label>
+              <button
+                className="filter-button active"
+                onClick={() => {
+                  setSelectedYear(selectedYear);
+                }}
+              >
+                {selectedYear}
+              </button>
+            </div>
+            
+            {availableMonths.length > 0 && (
               <div className="filter-group">
-                <label className="filter-label">Year:</label>
+                <label className="filter-label">Month:</label>
                 <button
                   className="filter-button active"
-                  onClick={() => {
-                    setSelectedYear(selectedYear);
-                  }}
                 >
-                  {selectedYear}
+                  {selectedMonth !== null ? monthNames[selectedMonth - 1] : monthNames[availableMonths[0] - 1]}
                 </button>
               </div>
-              
-              {availableMonths.length > 0 && (
-                <div className="filter-group">
-                  <label className="filter-label">Month:</label>
-                  <button
-                    className="filter-button active"
-                  >
-                    {selectedMonth !== null ? monthNames[selectedMonth - 1] : monthNames[availableMonths[0] - 1]}
-                  </button>
-                </div>
-              )}
+            )}
             </div>
 
             <div className="filter-export">
