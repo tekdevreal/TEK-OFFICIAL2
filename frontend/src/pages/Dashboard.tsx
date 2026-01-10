@@ -22,7 +22,7 @@ export function Dashboard() {
     data: historicalData,
     error: historicalError,
     isLoading: isLoadingHistorical,
-  } = useHistoricalRewards({ limit: 20 });
+  } = useHistoricalRewards({ limit: 300 }); // Increased to get full day (288 cycles)
 
 
   const {
@@ -85,10 +85,12 @@ export function Dashboard() {
           ? (totalNukeSold * distributedSOL / totalSolDistributedAllTime) / 1e6 // Convert to human-readable (divide by 1e6 for 6 decimals)
           : 0;
         
-        // Epoch number: cycles are already sorted newest first from API
-        // So index 0 = newest, index (length-1) = oldest
-        // Most recent gets highest epoch number
-        const epochNumber = cycles.length - index; // Index 0 (newest) gets highest number
+        // Calculate actual cycle number (1-288) based on timestamp
+        // Each cycle is 5 minutes, cycles reset at 00:00 UTC
+        const startOfDay = new Date(d);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const minutesSinceStartOfDay = Math.floor((d.getTime() - startOfDay.getTime()) / (1000 * 60));
+        const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1; // 1-based (1-288)
         
         return {
           date: d.toLocaleDateString(),
@@ -96,7 +98,7 @@ export function Dashboard() {
           status: 'Completed' as const, // Always Completed - zero amounts are filtered out below
           harvestedNUKE,
           distributedSOL,
-          epochNumber,
+          epochNumber: cycleNumber, // This is actually the cycle number (1-288)
         };
       })
       .filter((item) => {
