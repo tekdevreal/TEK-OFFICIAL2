@@ -30,8 +30,8 @@ export function DistributionCard({ item, rewardWalletAddress }: DistributionCard
           <span className="status-label">Cycle:</span>
           <span className="epoch-number">
             {item.epochNumber !== undefined 
-              ? String(item.epochNumber).padStart(4, '0')
-              : '0001'}
+              ? item.epochNumber
+              : 1}
           </span>
         </div>
         <span className={`distribution-status distribution-status-${item.status.toLowerCase()}`}>
