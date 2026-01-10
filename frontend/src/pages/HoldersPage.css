@@ -319,6 +319,17 @@
   border-color: rgba(99, 102, 241, 0.35);
 }
 
+/* Responsive: Hide labels on mobile/tablet to save space */
+@media (max-width: 768px) {
+  .filter-label {
+    display: none;
+  }
+  
+  .filter-group {
+    gap: 0;
+  }
+}
+
 /* Treasury Table Container */
 .treasury-table-container {
   width: 100%;
