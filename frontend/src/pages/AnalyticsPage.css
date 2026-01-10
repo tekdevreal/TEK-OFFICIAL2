@@ -77,17 +77,40 @@
   
   .analytics-chart-section,
   .analytics-metrics-section {
-    padding: 1rem;
+    padding: 1.25rem;
     margin-bottom: 1.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   /* Make charts properly responsive - don't squeeze them */
   .recharts-wrapper {
     width: 100% !important;
+    min-width: 100% !important;
   }
   
   .recharts-surface {
     width: 100% !important;
+  }
+  
+  /* Ensure ResponsiveContainer works on mobile */
+  .recharts-responsive-container {
+    min-height: 300px !important;
+    width: 100% !important;
+  }
+  
+  /* Make chart text readable */
+  .recharts-text {
+    font-size: 0.75rem !important;
+  }
+  
+  .recharts-cartesian-axis-tick-value {
+    font-size: 0.7rem !important;
+  }
+  
+  /* Chart legend */
+  .recharts-legend-wrapper {
+    font-size: 0.8rem !important;
   }
 }
 
@@ -99,7 +122,26 @@
   
   .analytics-chart-section,
   .analytics-metrics-section {
-    padding: 0.875rem;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  
+  /* Smaller devices - give charts more room */
+  .recharts-responsive-container {
+    min-height: 280px !important;
+  }
+  
+  /* Smaller text for compact view */
+  .recharts-text {
+    font-size: 0.7rem !important;
+  }
+  
+  .chart-section-title {
+    font-size: 1rem;
+  }
+  
+  .chart-section-description {
+    font-size: 0.8125rem;
   }
 }
 
@@ -110,11 +152,18 @@
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative; /* For proper chart rendering */
 }
 
 [data-theme='light'] .analytics-chart-section {
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Chart wrapper to ensure proper dimensions */
+.analytics-chart-section > div[style*="position: relative"] {
+  min-height: 300px;
+  width: 100%;
 }
 
 .chart-section-title {
