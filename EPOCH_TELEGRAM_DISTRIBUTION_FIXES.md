@@ -204,8 +204,9 @@ Time: 01/10/2026, 08:17 CET  ← CET timezone, no seconds
 ## Files Changed Summary
 1. ✅ `frontend/src/pages/Dashboard.tsx` - Fixed 2 epoch calculations
 2. ✅ `frontend/src/pages/DistributionPage.tsx` - Fixed label and calculation
-3. ✅ `frontend/src/types/api.ts` - Added `epochNumber` to `CurrentCycleInfo` type
-4. ✅ `frontend/src/services/api.ts` - Added `epochNumber` to API fallback
-5. ✅ `telegram-bot/src/index.ts` - Fixed time format for CET with no seconds
+3. ✅ `frontend/src/components/RewardSystem.tsx` - Fixed tooltip epoch to use API value
+4. ✅ `frontend/src/types/api.ts` - Added `epochNumber` to `CurrentCycleInfo` type
+5. ✅ `frontend/src/services/api.ts` - Added `epochNumber` to API fallback
+6. ✅ `telegram-bot/src/index.ts` - Fixed time format for CET with no seconds
 
 All changes compile without errors and maintain backward compatibility.

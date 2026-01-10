@@ -33,16 +33,6 @@ function formatEpochDate(epoch: string): string {
   });
 }
 
-function getEpochNumber(epoch: string): number {
-  // Calculate epoch number from epoch date
-  const currentEpochDate = new Date(epoch + 'T00:00:00Z');
-  // Use Dec 1, 2024 as reference start date (adjust if needed)
-  const firstEpochDate = new Date(Date.UTC(2024, 11, 1, 0, 0, 0, 0));
-  const timeDiff = currentEpochDate.getTime() - firstEpochDate.getTime();
-  const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-  return daysDiff + 1; // Epoch 1 is the first day
-}
-
 function getCycleStateColor(state: CycleState | 'PENDING' | 'NOT_EXECUTED'): string {
   switch (state) {
     case 'DISTRIBUTED':
@@ -183,6 +173,19 @@ export function RewardSystem() {
 
   const currentEpoch = getCurrentEpoch();
   const currentCycle = currentCycleInfo?.cycleNumber || 1;
+  
+  // For selected epochs, we need to determine the epoch number
+  // If it's the current epoch, use the API value
+  // If it's a past epoch, we need to calculate (but ideally should come from backend)
+  const selectedEpochNumber = useMemo(() => {
+    if (selectedEpoch === currentEpoch && currentCycleInfo?.epochNumber) {
+      return currentCycleInfo.epochNumber;
+    }
+    // For non-current epochs, we can't reliably calculate the epoch number
+    // without knowing the full history. Use a placeholder for now.
+    // Ideally, the backend should provide epoch numbers for all epochs.
+    return 1; // Fallback - would need backend support for historical epoch numbers
+  }, [selectedEpoch, currentEpoch, currentCycleInfo]);
 
   // Create a map of cycle number to cycle result for quick lookup
   const cyclesMap = useMemo(() => {
@@ -385,7 +388,7 @@ export function RewardSystem() {
           cycle={hoveredCycle.cycle}
           cycleNumber={hoveredCycle.cycleNumber}
           currentCycle={selectedEpoch === currentEpoch ? currentCycle : CYCLES_PER_EPOCH}
-          epochNumber={getEpochNumber(selectedEpoch)}
+          epochNumber={selectedEpochNumber}
           x={hoveredCycle.x}
           y={hoveredCycle.y}
         />,
