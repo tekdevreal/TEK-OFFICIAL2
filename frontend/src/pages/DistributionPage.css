@@ -82,22 +82,29 @@
   }
 }
 
-/* Distribution Filters Row - Single row layout */
+/* Distribution Filters Row - Two row layout: Year+Month, then Export CSV */
 .distribution-filters-row {
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
+  flex-direction: column;
+  gap: 1rem;
   margin-bottom: 0.5rem;
   padding: 1rem;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  flex-wrap: wrap;
 }
 
 [data-theme='light'] .distribution-filters-row {
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* First row: Year and Month filters side by side */
+.distribution-filters-row > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .filter-group {
@@ -152,9 +159,9 @@
   color: #6366f1;
 }
 
-/* Export CSV Button */
+/* Export CSV Button - Full width on second row */
 .filter-export {
-  margin-left: auto;
+  width: 100%;
 }
 
 .export-csv-button {
@@ -167,6 +174,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  width: 100%;
 }
 
 .export-csv-button:hover {

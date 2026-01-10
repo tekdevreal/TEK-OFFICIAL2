@@ -301,28 +301,30 @@ export function DistributionPage() {
 
           {/* Year and Month Filters with Export */}
           <div className="distribution-filters-row">
-            <div className="filter-group">
-              <label className="filter-label">Year:</label>
-              <button
-                className="filter-button active"
-                onClick={() => {
-                  setSelectedYear(selectedYear);
-                }}
-              >
-                {selectedYear}
-              </button>
-            </div>
-            
-            {availableMonths.length > 0 && (
+            <div>
               <div className="filter-group">
-                <label className="filter-label">Month:</label>
+                <label className="filter-label">Year:</label>
                 <button
                   className="filter-button active"
+                  onClick={() => {
+                    setSelectedYear(selectedYear);
+                  }}
                 >
-                  {selectedMonth !== null ? monthNames[selectedMonth - 1] : monthNames[availableMonths[0] - 1]}
+                  {selectedYear}
                 </button>
               </div>
-            )}
+              
+              {availableMonths.length > 0 && (
+                <div className="filter-group">
+                  <label className="filter-label">Month:</label>
+                  <button
+                    className="filter-button active"
+                  >
+                    {selectedMonth !== null ? monthNames[selectedMonth - 1] : monthNames[availableMonths[0] - 1]}
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="filter-export">
               <button

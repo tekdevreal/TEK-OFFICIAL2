@@ -274,28 +274,30 @@ export function HoldersPage() {
 
           {/* Year and Month Filters with Export */}
           <div className="treasury-filters-row">
-            <div className="filter-group">
-              <label className="filter-label">Year:</label>
-              <button
-                className="filter-button active"
-                onClick={() => {
-                  setSelectedYear(2025);
-                }}
-              >
-                2025
-              </button>
-            </div>
-            
-            {availableMonths.length > 0 && selectedMonth !== null && (
+            <div>
               <div className="filter-group">
-                <label className="filter-label">Month:</label>
+                <label className="filter-label">Year:</label>
                 <button
                   className="filter-button active"
+                  onClick={() => {
+                    setSelectedYear(2025);
+                  }}
                 >
-                  {monthNames[selectedMonth - 1]}
+                  2025
                 </button>
               </div>
-            )}
+              
+              {availableMonths.length > 0 && selectedMonth !== null && (
+                <div className="filter-group">
+                  <label className="filter-label">Month:</label>
+                  <button
+                    className="filter-button active"
+                  >
+                    {monthNames[selectedMonth - 1]}
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="filter-export">
               <button
