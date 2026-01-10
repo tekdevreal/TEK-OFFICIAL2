@@ -1,6 +1,6 @@
 /* ===================================================================
-   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM
-   Mobile-First Approach for Tablets and Mobile Devices
+   COMPREHENSIVE RESPONSIVE DESIGN - OPTIMIZED FOR MOBILE/TABLET
+   Mobile-First Approach with Proper Spacing
    =================================================================== */
 
 /* ===================================================================
@@ -13,50 +13,95 @@
 */
 
 /* ===================================================================
-   GLOBAL RESPONSIVE ADJUSTMENTS
+   CRITICAL: PAGE SPACING FIX FOR MOBILE/TABLET
    =================================================================== */
 
-/* Tablet Adjustments (640px - 768px) */
+/* Tablet (≤768px) - Remove extra spacing, SecondaryNav is hidden */
 @media (max-width: 768px) {
   :root {
-    --page-padding-horizontal: 1.5rem;
-    --page-section-gap: 1.5rem;
-    --font-size-4xl: 1.625rem; /* 26px */
-    --font-size-5xl: 2rem; /* 32px */
-    /* Reduce top padding since SecondaryNav is hidden on mobile/tablet */
-    --page-padding-top: 5rem; /* TopNav is 4rem + minimal 1rem spacing */
+    --page-padding-horizontal: 1rem;
+    --page-section-gap: 1.25rem;
+    --font-size-4xl: 1.625rem;
+    --font-size-5xl: 2rem;
+    /* CRITICAL: TopNav on mobile/tablet is 4rem, add minimal spacing */
+    --page-padding-top: 4.75rem !important;
   }
   
   body {
-    font-size: var(--font-size-sm);
+    font-size: 0.9375rem;
+  }
+  
+  /* Force all page containers to use minimal top padding */
+  .dashboard-page,
+  .harvesting-page,
+  .distribution-page,
+  .liquidity-pools-page,
+  .holders-page,
+  .payouts-page,
+  .system-status-page,
+  .analytics-page,
+  .documentation-page {
+    padding-top: 4.75rem !important;
+    max-width: 100% !important;
   }
 }
 
-/* Mobile Adjustments (< 640px) */
+/* Small Mobile (≤640px) */
 @media (max-width: 640px) {
   :root {
-    --page-padding-horizontal: 1rem;
+    --page-padding-horizontal: 0.875rem;
     --page-section-gap: 1rem;
-    --font-size-2xl: 1.25rem; /* 20px */
-    --font-size-3xl: 1.5rem; /* 24px */
-    --font-size-4xl: 1.5rem; /* 24px */
-    --font-size-5xl: 1.75rem; /* 28px */
+    --font-size-2xl: 1.25rem;
+    --font-size-3xl: 1.5rem;
+    --font-size-4xl: 1.5rem;
+    --font-size-5xl: 1.75rem;
     --spacing-md: 1rem;
     --spacing-lg: 1.5rem;
-    /* Reduce top padding for mobile - TopNav is 4rem on mobile */
-    --page-padding-top: 4.75rem; /* TopNav height (4rem) + 0.75rem spacing */
+    --page-padding-top: 4.75rem !important;
   }
   
   body {
-    font-size: var(--font-size-sm);
+    font-size: 0.875rem;
   }
 }
 
-/* Extra Small Mobile (< 480px) */
+/* Extra Small Mobile (≤480px) - TopNav is 3.75rem */
 @media (max-width: 480px) {
   :root {
-    /* TopNav is even smaller at 3.75rem */
-    --page-padding-top: 4.5rem; /* TopNav height (3.75rem) + 0.75rem spacing */
+    --page-padding-top: 4.5rem !important;
+  }
+  
+  .dashboard-page,
+  .harvesting-page,
+  .distribution-page,
+  .liquidity-pools-page,
+  .holders-page,
+  .payouts-page,
+  .system-status-page,
+  .analytics-page,
+  .documentation-page {
+    padding-top: 4.5rem !important;
+  }
+}
+
+/* ===================================================================
+   PAGE CONTAINERS - FULL WIDTH ON MOBILE
+   =================================================================== */
+
+@media (max-width: 768px) {
+  .page-container,
+  .page-container-narrow {
+    max-width: 100% !important;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-container,
+  .page-container-narrow {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
   }
 }
 
@@ -64,12 +109,7 @@
    NAVIGATION RESPONSIVE
    =================================================================== */
 
-/* Top Navigation */
 @media (max-width: 768px) {
-  .top-nav {
-    padding: 0.75rem 1rem;
-  }
-  
   .top-nav-content {
     flex-wrap: wrap;
     gap: 0.75rem;
@@ -78,478 +118,223 @@
   .top-nav-logo {
     font-size: 1.25rem;
   }
-  
-  .top-nav-links {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  
-  .top-nav-link {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8125rem;
-  }
 }
 
-@media (max-width: 640px) {
-  .top-nav {
-    padding: 0.5rem 0.75rem;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  
-  .top-nav-content {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .top-nav-links {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  
-  .top-nav-links::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .top-nav-link {
-    white-space: nowrap;
-    padding: 0.5rem 1rem;
-  }
-  
-  .top-nav-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-}
+/* ===================================================================
+   LAYOUT COMPONENTS
+   =================================================================== */
 
-/* Secondary Navigation */
+/* Section Titles */
 @media (max-width: 768px) {
-  .secondary-nav {
-    padding: 0.75rem 1rem;
+  .section-title,
+  .dashboard-title {
+    font-size: 1.5rem !important;
+    margin-bottom: 1rem !important;
   }
   
-  .secondary-nav-links {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  
-  .secondary-nav-link {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.8125rem;
+  .section-subtitle {
+    font-size: 0.875rem !important;
   }
 }
 
 @media (max-width: 640px) {
-  .secondary-nav {
-    padding: 0.5rem 0.75rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .section-title,
+  .dashboard-title {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.75rem !important;
   }
-  
-  .secondary-nav-links {
-    flex-wrap: nowrap;
-    min-width: min-content;
+}
+
+/* Dashboard Section Cards */
+@media (max-width: 768px) {
+  .dashboard-section-card {
+    padding: 1.25rem !important;
   }
-  
-  .secondary-nav-link {
-    white-space: nowrap;
-    flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .dashboard-section-card {
+    padding: 1rem !important;
   }
 }
 
 /* ===================================================================
-   LAYOUT RESPONSIVE - Cards, Grids, and Containers
+   STATS GRIDS - RESPONSIVE LAYOUTS
    =================================================================== */
 
-/* Glass Card */
 @media (max-width: 768px) {
-  .glass-card {
-    padding: 1.25rem;
+  .stats-grid,
+  .analytics-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.875rem !important;
+  }
+  
+  .stats-grid-2x2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .stats-two-column {
+    grid-template-columns: 1fr !important;
   }
 }
 
 @media (max-width: 640px) {
-  .glass-card {
-    padding: 1rem;
-    border-radius: var(--radius-md);
+  .stats-grid,
+  .analytics-stats {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
   }
 }
 
-/* Stat Cards Grid */
+/* Distribution & Harvesting specific grids */
 @media (max-width: 768px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+  .distribution-grid,
+  .harvesting-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 }
 
 @media (max-width: 640px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-}
-
-/* Dashboard Sections */
-@media (max-width: 768px) {
-  .dashboard-section {
-    margin-bottom: 1.5rem;
-  }
-  
-  .section-title {
-    font-size: 1.5rem;
-  }
-  
-  .section-subtitle {
-    font-size: 0.875rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .dashboard-section {
-    margin-bottom: 1rem;
-  }
-  
-  .section-title {
-    font-size: 1.25rem;
-  }
-  
-  .section-subtitle {
-    font-size: 0.8125rem;
+  .distribution-grid,
+  .harvesting-stats {
+    grid-template-columns: 1fr !important;
   }
 }
 
 /* ===================================================================
-   TABLE RESPONSIVE - Scrollable Tables
+   CHARTS & ANALYTICS - PROPER RESPONSIVE HANDLING
    =================================================================== */
 
 @media (max-width: 768px) {
-  .table-wrapper {
-    padding: 1rem;
-    margin: 1rem 0;
+  .analytics-chart-section,
+  .analytics-metrics-section {
+    padding: 1rem !important;
+    margin-bottom: 1.5rem !important;
   }
   
-  .table-toolbar {
-    gap: 0.75rem;
+  .chart-section-title {
+    font-size: 1rem !important;
   }
   
-  .table-container {
+  .chart-section-description {
+    font-size: 0.8125rem !important;
+  }
+  
+  /* Make charts responsive */
+  .recharts-responsive-container {
+    min-height: 300px !important;
+  }
+  
+  /* Reliability metrics grid */
+  .reliability-metrics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .metric-item {
+    padding: 0.75rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .recharts-responsive-container {
+    min-height: 250px !important;
+  }
+  
+  /* Smaller chart text */
+  .recharts-text {
+    font-size: 0.75rem !important;
+  }
+}
+
+/* ===================================================================
+   TABLES - HORIZONTAL SCROLLING
+   =================================================================== */
+
+@media (max-width: 768px) {
+  .table-container,
+  .analytics-table-container,
+  .distribution-table-container,
+  .harvesting-table-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    border-radius: 8px;
   }
   
-  .data-table {
+  table {
     min-width: 600px;
   }
   
-  .data-table th,
-  .data-table td {
-    padding: 0.75rem 0.5rem;
-    font-size: 0.8125rem;
-  }
-  
-  .table-pagination {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: center;
-  }
-  
-  .pagination-info {
-    order: -1;
-    text-align: center;
+  th, td {
+    padding: 0.625rem 0.75rem !important;
+    font-size: 0.8125rem !important;
   }
 }
 
 @media (max-width: 640px) {
-  .table-wrapper {
-    padding: 0.75rem;
-    margin: 0.75rem 0;
-    border-radius: var(--radius-sm);
-  }
-  
-  .table-toolbar {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .table-search {
-    width: 100%;
-    min-width: auto;
-    font-size: 0.875rem;
-  }
-  
-  .table-filters {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-  
-  .table-filter {
-    flex: 1;
-    min-width: calc(50% - 0.25rem);
-    font-size: 0.8125rem;
-  }
-  
-  .table-export-btn {
-    width: 100%;
-    padding: 0.75rem 1rem;
-  }
-  
-  .table-container {
-    margin: 0 -0.75rem;
-    padding: 0 0.75rem;
-    border-radius: 0;
-  }
-  
-  .data-table {
-    min-width: 500px;
-    font-size: 0.75rem;
-  }
-  
-  .data-table th,
-  .data-table td {
-    padding: 0.5rem 0.375rem;
-    font-size: 0.75rem;
-  }
-  
-  .data-table th {
-    white-space: nowrap;
-  }
-  
-  .pagination-btn {
-    padding: 0.625rem 1rem;
-    font-size: 0.8125rem;
+  th, td {
+    padding: 0.5rem 0.625rem !important;
+    font-size: 0.75rem !important;
   }
 }
 
 /* ===================================================================
-   DISTRIBUTION CARDS RESPONSIVE
+   FILTERS & CONTROLS
    =================================================================== */
 
 @media (max-width: 768px) {
-  .distribution-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1rem;
+  .filters-row,
+  .distribution-filters-row,
+  .harvesting-filters-row {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
   }
   
-  .distribution-card {
-    padding: 1rem;
+  .filter-group,
+  .filters-left,
+  .filters-right {
+    width: 100% !important;
+    flex-direction: column !important;
+  }
+  
+  select, input {
+    width: 100% !important;
+    font-size: 0.875rem !important;
+  }
+}
+
+/* ===================================================================
+   LIQUIDITY POOLS RESPONSIVE
+   =================================================================== */
+
+@media (max-width: 768px) {
+  .lp-summary-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .pool-card {
+    padding: 1rem !important;
   }
 }
 
 @media (max-width: 640px) {
-  .distribution-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.75rem;
-  }
-  
-  .distribution-card {
-    padding: 0.75rem;
-  }
-  
-  .distribution-card-header {
-    font-size: 0.75rem;
-  }
-  
-  .distribution-card-value {
-    font-size: 1rem;
-  }
-  
-  .distribution-card-label {
-    font-size: 0.6875rem;
+  .lp-summary-stats {
+    grid-template-columns: 1fr !important;
   }
 }
 
 /* ===================================================================
-   REWARD SYSTEM / CHARTS RESPONSIVE
+   DOCUMENTATION PAGE - TABS SCROLLING
    =================================================================== */
 
 @media (max-width: 768px) {
-  .reward-system-container {
-    padding: 1rem;
-  }
-  
-  .reward-system-header {
-    font-size: 1.25rem;
-  }
-  
-  .cycle-grid {
-    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-    gap: 0.5rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .reward-system-container {
-    padding: 0.75rem;
-  }
-  
-  .reward-system-header {
-    font-size: 1.125rem;
-  }
-  
-  .cycle-grid {
-    grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
-    gap: 0.375rem;
-  }
-  
-  .cycle-box {
-    height: 32px;
-    font-size: 0.625rem;
-  }
-  
-  .cycle-legend {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .cycle-legend-item {
-    font-size: 0.75rem;
-  }
-}
-
-/* ===================================================================
-   DOCUMENTATION PAGE RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 768px) {
-  .documentation-page {
-    padding: 1rem;
-  }
-  
-  .doc-tab-content {
-    padding: 1rem 0;
-  }
-  
-  .doc-section {
-    margin-bottom: 1.5rem;
-  }
-  
-  .tax-boxes {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-  }
-  
-  .flow-diagram {
-    padding: 1.5rem;
-  }
-  
-  .steps-layout {
-    gap: 1rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .documentation-page {
-    padding: 0.75rem;
-  }
-  
-  .doc-tab-content {
-    padding: 0.75rem 0;
-  }
-  
-  .doc-section-title {
-    font-size: 1.125rem;
-  }
-  
-  .tax-boxes {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-  
-  .tax-box {
-    padding: 1rem;
-  }
-  
-  .tax-box-value {
-    font-size: 1.5rem;
-  }
-  
-  .flow-diagram {
-    padding: 1rem;
-  }
-  
-  .flow-step {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 0.75rem;
-  }
-  
-  .steps-layout {
-    gap: 0.75rem;
-  }
-  
-  .step-item {
-    flex-direction: column;
-    padding: 0.75rem;
-  }
-  
-  .step-number {
-    min-width: 2rem;
-    height: 2rem;
-    font-size: 0.875rem;
-  }
-  
-  .treasury-feature-item,
-  .liquidity-char-item {
-    flex-direction: column;
-    padding: 0.75rem;
-  }
-  
-  .treasury-feature-icon,
-  .liquidity-char-icon {
-    font-size: 1.5rem;
-  }
-  
-  .multipool-component {
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
-  }
-  
-  .pool-type-item,
-  .arbitrage-step,
-  .flywheel-step,
-  .ecosystem-benefit-item {
-    padding: 0.75rem;
-  }
-  
-  .faq-intro,
-  .faq-footer {
-    padding: 1rem;
-  }
-}
-
-/* ===================================================================
-   TABS RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 768px) {
-  .tabs-container {
-    margin-top: 1rem;
-  }
-  
   .tabs-header {
-    gap: 0.5rem;
-    padding-bottom: 0.75rem;
-  }
-  
-  .tab-button {
-    padding: 0.625rem 1rem;
-    font-size: 0.8125rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .tabs-header {
+    flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    flex-wrap: nowrap;
   }
   
   .tabs-header::-webkit-scrollbar {
@@ -557,388 +342,136 @@
   }
   
   .tab-button {
-    white-space: nowrap;
     flex-shrink: 0;
-    padding: 0.5rem 0.875rem;
-    font-size: 0.75rem;
-  }
-}
-
-/* ===================================================================
-   ACCORDION RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  .accordion-item {
-    border-radius: var(--radius-sm);
-  }
-  
-  .accordion-header {
-    padding: 0.875rem 1rem;
+    white-space: nowrap;
+    padding: 0.75rem 1rem;
     font-size: 0.875rem;
   }
   
-  .accordion-content {
-    padding: 0.875rem 1rem;
+  .doc-tab-content {
+    padding: 0 !important;
   }
   
-  .accordion-content p,
-  .accordion-content li {
-    font-size: 0.8125rem;
-  }
-}
-
-/* ===================================================================
-   STAT CARD RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  .stat-card {
-    padding: 0.875rem;
+  .doc-section {
+    margin-bottom: 1.5rem !important;
   }
   
-  .stat-card .text-stat-label {
-    font-size: 0.6875rem !important;
+  .doc-section-title {
+    font-size: 1.125rem !important;
   }
   
-  .stat-card .text-stat-value {
+  .doc-subsection-title {
     font-size: 1rem !important;
   }
 }
 
+@media (max-width: 640px) {
+  .tab-button {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}
+
 /* ===================================================================
-   LIQUIDITY POOL CARD RESPONSIVE
+   BUTTONS & INTERACTIVE ELEMENTS
    =================================================================== */
 
 @media (max-width: 768px) {
-  .liquidity-pools-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .liquidity-pools-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
+  .connect-wallet-button,
+  .icon-button {
+    padding: 0.625rem 1rem !important;
+    font-size: 0.875rem !important;
   }
   
-  .liquidity-pool-card {
-    padding: 1rem;
+  .icon-button {
+    width: 2.5rem !important;
+    height: 2.5rem !important;
   }
 }
 
 /* ===================================================================
-   PAGINATION RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  .pagination-controls {
-    flex-direction: column;
-    gap: 0.75rem;
-    width: 100%;
-  }
-  
-  .pagination-buttons {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .pagination-button {
-    flex: 1;
-    padding: 0.625rem;
-  }
-  
-  .pagination-dots {
-    font-size: 0.75rem;
-  }
-}
-
-/* ===================================================================
-   MODALS / DIALOGS RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  .modal-overlay {
-    padding: 1rem;
-  }
-  
-  .modal-content {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    border-radius: var(--radius-md);
-  }
-  
-  .modal-header {
-    padding: 1rem;
-  }
-  
-  .modal-body {
-    padding: 1rem;
-  }
-  
-  .modal-footer {
-    padding: 1rem;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .modal-button {
-    width: 100%;
-  }
-}
-
-/* ===================================================================
-   FORM ELEMENTS RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  .form-group {
-    margin-bottom: 1rem;
-  }
-  
-  .form-label {
-    font-size: 0.8125rem;
-    margin-bottom: 0.375rem;
-  }
-  
-  .form-input,
-  .form-select,
-  .form-textarea {
-    font-size: 1rem; /* Prevent zoom on iOS */
-    padding: 0.75rem;
-  }
-  
-  .form-button {
-    width: 100%;
-    padding: 0.875rem;
-  }
-}
-
-/* ===================================================================
-   CHARTS RESPONSIVE
+   UTILITY CLASSES
    =================================================================== */
 
 @media (max-width: 768px) {
-  .chart-container {
-    height: 300px;
-  }
-}
-
-@media (max-width: 640px) {
-  .chart-container {
-    height: 250px;
-  }
-  
-  .chart-legend {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .chart-legend-item {
-    font-size: 0.75rem;
-  }
-}
-
-/* ===================================================================
-   SEARCH RESULTS RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  .search-results {
-    max-height: calc(100vh - 200px);
-  }
-  
-  .search-result-item {
-    padding: 0.75rem;
-  }
-  
-  .search-result-title {
-    font-size: 0.875rem;
-  }
-  
-  .search-result-meta {
-    font-size: 0.6875rem;
-  }
-}
-
-/* ===================================================================
-   WALLET ADAPTER RESPONSIVE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  .wallet-adapter-button {
-    font-size: 0.8125rem;
-    padding: 0.5rem 0.875rem;
-  }
-  
-  .wallet-adapter-dropdown {
-    width: calc(100vw - 2rem);
-    max-width: 400px;
-    right: 1rem;
-  }
-  
-  .wallet-adapter-modal {
-    width: calc(100vw - 2rem);
-    max-width: 400px;
-    margin: 0 1rem;
-  }
-}
-
-/* ===================================================================
-   TOUCH IMPROVEMENTS FOR MOBILE
-   =================================================================== */
-
-@media (max-width: 640px) {
-  /* Increase touch targets */
-  button,
-  a,
-  .clickable {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  /* Better scrolling for horizontal scroll containers */
-  .horizontal-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  
-  .horizontal-scroll::-webkit-scrollbar {
-    display: none;
-  }
-  
-  /* Prevent text selection on interactive elements */
-  .no-select {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  
-  /* Smooth momentum scrolling */
-  .smooth-scroll {
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-  }
-}
-
-/* ===================================================================
-   UTILITY CLASSES FOR RESPONSIVE VISIBILITY
-   =================================================================== */
-
-/* Hide on mobile */
-@media (max-width: 640px) {
   .hide-mobile {
     display: none !important;
   }
-}
-
-/* Hide on tablet */
-@media (min-width: 641px) and (max-width: 768px) {
-  .hide-tablet {
-    display: none !important;
+  
+  .show-mobile-only {
+    display: block !important;
   }
 }
 
-/* Hide on desktop */
-@media (min-width: 1025px) {
+@media (min-width: 769px) {
   .hide-desktop {
     display: none !important;
   }
-}
-
-/* Show only on mobile */
-@media (min-width: 641px) {
+  
   .show-mobile-only {
     display: none !important;
   }
 }
 
-/* Show only on tablet */
-@media (max-width: 640px), (min-width: 1025px) {
-  .show-tablet-only {
-    display: none !important;
-  }
-}
+/* ===================================================================
+   REWARD SYSTEM VISUALIZATION
+   =================================================================== */
 
-/* Show only on desktop */
 @media (max-width: 768px) {
-  .show-desktop-only {
-    display: none !important;
+  .reward-system-container {
+    padding: 1rem !important;
+  }
+  
+  .cycle-box {
+    font-size: 0.625rem !important;
+    padding: 0.25rem !important;
   }
 }
 
 /* ===================================================================
-   OVERFLOW AND SCROLLBAR STYLING FOR MOBILE
+   SAFE AREA INSETS (for devices with notches)
    =================================================================== */
 
-@media (max-width: 640px) {
-  /* Custom scrollbar for webkit browsers on mobile */
-  *::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+@media (max-width: 768px) {
+  .safe-area-top {
+    padding-top: calc(var(--page-padding-top) + env(safe-area-inset-top));
   }
   
-  *::-webkit-scrollbar-track {
-    background: transparent;
+  .safe-area-left {
+    padding-left: calc(var(--page-padding-horizontal) + env(safe-area-inset-left));
   }
   
-  *::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 2px;
+  .safe-area-right {
+    padding-right: calc(var(--page-padding-horizontal) + env(safe-area-inset-right));
   }
   
-  *::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary);
+  .safe-area-bottom {
+    padding-bottom: calc(var(--page-padding-bottom) + env(safe-area-inset-bottom));
   }
 }
 
 /* ===================================================================
-   SAFE AREA INSETS FOR NOTCHED DEVICES (iPhone X, etc.)
+   TOUCH OPTIMIZATION
    =================================================================== */
 
-@supports (padding: env(safe-area-inset-bottom)) {
-  @media (max-width: 640px) {
-    .safe-area-bottom {
-      padding-bottom: calc(var(--page-padding-bottom-mobile) + env(safe-area-inset-bottom));
-    }
-    
-    .safe-area-top {
-      padding-top: calc(var(--page-padding-top) + env(safe-area-inset-top));
-    }
-    
-    .safe-area-left {
-      padding-left: calc(var(--page-padding-horizontal-mobile) + env(safe-area-inset-left));
-    }
-    
-    .safe-area-right {
-      padding-right: calc(var(--page-padding-horizontal-mobile) + env(safe-area-inset-right));
-    }
-  }
-}
-
-/* ===================================================================
-   PRINT STYLES (BONUS)
-   =================================================================== */
-
-@media print {
-  .no-print {
-    display: none !important;
+@media (max-width: 768px) {
+  /* Increase tap target sizes */
+  button,
+  a,
+  input,
+  select {
+    min-height: 44px;
+    touch-action: manipulation;
   }
   
-  .glass-card,
-  .table-wrapper {
-    border: 1px solid #000;
-    box-shadow: none;
-    page-break-inside: avoid;
+  /* Smooth scrolling */
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
   
-  a[href]:after {
-    content: " (" attr(href) ")";
+  /* Prevent text resize on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 }

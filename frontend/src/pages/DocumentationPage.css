@@ -9,10 +9,17 @@
   gap: var(--page-section-gap);
 }
 
-/* Use full width on mobile/tablet for better space utilization */
+/* MOBILE/TABLET: Use full width and reduce padding - FIX THE SPACING! */
 @media (max-width: 768px) {
   .documentation-page {
-    max-width: 100%;
+    max-width: 100% !important;
+    padding: 4.75rem 1rem 2rem 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .documentation-page {
+    padding: 4.5rem 0.875rem 2rem 0.875rem !important;
   }
 }
 

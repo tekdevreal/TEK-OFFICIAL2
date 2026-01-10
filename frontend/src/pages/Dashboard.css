@@ -9,6 +9,20 @@
   gap: var(--page-section-gap);
 }
 
+/* MOBILE/TABLET: Use full width and reduce padding */
+@media (max-width: 768px) {
+  .dashboard-page {
+    max-width: 100% !important;
+    padding: 4.75rem 1rem 2rem 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-page {
+    padding: 4.5rem 0.875rem 2rem 0.875rem !important;
+  }
+}
+
 /* Dashboard section - consistent spacing */
 .dashboard-section {
   width: 100%;
