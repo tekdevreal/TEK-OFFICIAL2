@@ -202,44 +202,10 @@
 }
 
 /* ===================================================================
-   CHARTS & ANALYTICS - MOBILE ONLY FIXES
+   CHARTS & ANALYTICS - REMOVED (handled in AnalyticsPage.css)
    =================================================================== */
 
-@media (max-width: 768px) {
-  .analytics-chart-section,
-  .analytics-metrics-section {
-    padding: 1rem !important;
-    margin-bottom: 1.5rem !important;
-    overflow: hidden !important; /* Contain charts properly on mobile */
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  .chart-section-title {
-    font-size: 1rem !important;
-  }
-  
-  .chart-section-description {
-    font-size: 0.8125rem !important;
-  }
-  
-  /* Reliability metrics grid */
-  .reliability-metrics-grid {
-    grid-template-columns: 1fr !important;
-    gap: 1rem !important;
-  }
-  
-  .metric-item {
-    padding: 0.75rem !important;
-  }
-}
-
-@media (max-width: 640px) {
-  /* Smaller chart text */
-  .recharts-text {
-    font-size: 0.75rem !important;
-  }
-}
+/* No chart-specific overrides here - all handled in AnalyticsPage.css */
 
 /* ===================================================================
    TABLES - HORIZONTAL SCROLLING

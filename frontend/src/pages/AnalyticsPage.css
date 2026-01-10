@@ -45,7 +45,7 @@
   margin-top: 0 !important;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 769px) {
   .analytics-page .dashboard-section-card .section-title {
     font-size: 1.5rem;
     margin-bottom: 0 !important;
@@ -71,178 +71,30 @@
 
 @media (max-width: 768px) {
   .analytics-stats {
-    grid-template-columns: repeat(2, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.875rem;
-  }
-  
-  .analytics-chart-section,
-  .analytics-metrics-section {
-    padding: 1rem !important;
-    margin-bottom: 1.5rem !important;
-    overflow: hidden !important; /* Contain chart properly */
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  /* Mobile: Adjust chart container */
-  .analytics-chart-section .recharts-responsive-container {
-    min-height: 300px !important;
-    height: 300px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  
-  /* CRITICAL: Contain recharts wrapper on mobile */
-  .analytics-chart-section .recharts-wrapper {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 100% !important;
-    height: 100% !important;
-    position: relative !important;
-    left: 0 !important;
-    right: 0 !important;
-    top: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  
-  /* Force SVG to stay within bounds */
-  .analytics-chart-section .recharts-surface,
-  .analytics-chart-section svg {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: auto !important; /* Remove min-width that causes overflow */
-    height: 100% !important;
-    position: relative !important;
-    left: 0 !important;
-    margin: 0 !important;
-    transform: none !important; /* Remove any transforms */
-  }
-  
-  /* Make chart text readable */
-  .recharts-text {
-    font-size: 0.75rem !important;
-  }
-  
-  .recharts-cartesian-axis-tick-value {
-    font-size: 0.7rem !important;
-  }
-  
-  /* Chart legend - keep it contained */
-  .recharts-legend-wrapper {
-    font-size: 0.8rem !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    position: relative !important;
-    left: 0 !important;
   }
 }
 
 @media (max-width: 640px) {
   .analytics-stats {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
     gap: 0.75rem;
-  }
-  
-  .analytics-chart-section,
-  .analytics-metrics-section {
-    padding: 0.875rem !important;
-    overflow: hidden !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  /* Smaller devices - maintain proper containment */
-  .analytics-chart-section .recharts-responsive-container {
-    min-height: 280px !important;
-    height: 280px !important;
-  }
-  
-  .analytics-chart-section svg {
-    min-width: auto !important; /* Remove min-width */
-    max-width: 100% !important;
-  }
-  
-  /* Smaller text for compact view */
-  .recharts-text {
-    font-size: 0.7rem !important;
-  }
-  
-  .chart-section-title {
-    font-size: 1rem;
-  }
-  
-  .chart-section-description {
-    font-size: 0.8125rem;
   }
 }
 
-/* Chart Sections */
+/* Chart Sections - CLEAN APPROACH */
 .analytics-chart-section {
   margin-bottom: 3rem;
   padding: 1.5rem;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  position: relative;
-  width: 100%;
-  overflow: hidden; /* Contain children properly */
 }
 
 [data-theme='light'] .analytics-chart-section {
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-/* Chart container wrapper */
-.analytics-chart-section > div {
-  width: 100%;
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-/* Ensure chart container has proper dimensions on ALL devices */
-.analytics-chart-section .recharts-responsive-container {
-  min-height: 300px !important;
-  height: 300px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  display: block !important;
-  position: relative !important;
-  margin: 0 auto !important;
-}
-
-/* CRITICAL: Force SVG and wrapper to have proper containment */
-.analytics-chart-section .recharts-wrapper {
-  width: 100% !important;
-  max-width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-  position: relative !important;
-  margin: 0 !important;
-  left: 0 !important;
-  top: 0 !important;
-}
-
-.analytics-chart-section .recharts-surface {
-  width: 100% !important;
-  max-width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-  position: relative !important;
-}
-
-/* Force SVG elements to stay contained */
-.analytics-chart-section svg {
-  width: 100% !important;
-  max-width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-  position: relative !important;
-  left: 0 !important;
-  top: 0 !important;
 }
 
 .chart-section-title {
@@ -260,21 +112,35 @@
   margin-top: 0;
 }
 
-/* Table Section */
-.analytics-table-section {
-  margin-bottom: 3rem;
+/* Let Recharts ResponsiveContainer work naturally */
+.analytics-chart-section .recharts-responsive-container {
+  /* No forced dimensions - let it calculate naturally */
 }
 
-.analytics-table-container {
-  width: 100%;
-  margin-top: 1rem;
+/* Mobile adjustments only */
+@media (max-width: 768px) {
+  .analytics-chart-section {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .chart-section-title {
+    font-size: 1rem;
+  }
+  
+  .chart-section-description {
+    font-size: 0.8125rem;
+    margin-bottom: 1rem;
+  }
 }
 
-.analytics-table-container .table-info {
-  display: none; /* Hide "Showing X of X entries" */
+@media (max-width: 640px) {
+  .analytics-chart-section {
+    padding: 0.875rem;
+  }
 }
 
-/* Reliability Metrics Section */
+/* Metrics Section */
 .analytics-metrics-section {
   margin-bottom: 3rem;
   padding: 1.5rem;
@@ -288,6 +154,21 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.metrics-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  margin-top: 0;
+}
+
+.metrics-section-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  margin-top: 0;
+}
+
 .reliability-metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -296,8 +177,14 @@
 }
 
 @media (max-width: 768px) {
+  .analytics-metrics-section {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
   .reliability-metrics-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 
@@ -314,61 +201,119 @@
 }
 
 .metric-value {
-  font-size: 1.125rem;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: var(--text-primary);
-  font-weight: 600;
 }
 
-/* Data Access Section */
-.analytics-data-access-section {
-  margin-bottom: 2rem;
-  padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.metric-subtext {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 0.25rem;
 }
 
-[data-theme='light'] .analytics-data-access-section {
-  background: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+/* Table Section */
+.analytics-table-section {
+  margin-bottom: 3rem;
 }
 
-.data-access-buttons {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 1rem;
+.analytics-table-section .chart-section-title {
+  margin-bottom: 1rem;
 }
 
-.data-access-button {
-  padding: 0.75rem 1.5rem;
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 6px;
+.analytics-table-section .chart-section-description {
+  margin-bottom: 1.5rem;
+}
+
+/* Pool performance table */
+.pool-performance-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 0.875rem;
+}
+
+.pool-performance-table thead {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='light'] .pool-performance-table thead {
+  background: rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.pool-performance-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
   font-weight: 600;
-  cursor: not-allowed;
-  transition: all 0.2s ease;
-  opacity: 0.6;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.data-access-button:hover:not(:disabled) {
-  background-color: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.3);
+.pool-performance-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
 }
 
-.data-access-button:disabled {
-  cursor: not-allowed;
+[data-theme='light'] .pool-performance-table td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-[data-theme='light'] .data-access-button {
-  background-color: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
-  border-color: rgba(99, 102, 241, 0.25);
+.pool-performance-table tr:last-child td {
+  border-bottom: none;
 }
 
-[data-theme='light'] .data-access-button:hover:not(:disabled) {
-  background-color: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.35);
+.pool-performance-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme='light'] .pool-performance-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* Pool name styling */
+.pool-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pool-address {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 0.25rem;
+  font-family: 'Courier New', monospace;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-active {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.status-inactive {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Loading and error states */
+.loading, .error-message {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.error-message {
+  color: var(--accent-danger);
 }
