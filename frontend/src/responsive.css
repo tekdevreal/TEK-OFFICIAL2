@@ -202,7 +202,7 @@
 }
 
 /* ===================================================================
-   CHARTS & ANALYTICS - PROPER RESPONSIVE HANDLING
+   CHARTS & ANALYTICS - MOBILE ONLY FIXES
    =================================================================== */
 
 @media (max-width: 768px) {
@@ -210,8 +210,9 @@
   .analytics-metrics-section {
     padding: 1rem !important;
     margin-bottom: 1.5rem !important;
-    overflow: visible !important; /* Critical: Don't clip charts */
+    overflow: hidden !important; /* Contain charts properly on mobile */
     width: 100% !important;
+    max-width: 100% !important;
   }
   
   .chart-section-title {
@@ -220,32 +221,6 @@
   
   .chart-section-description {
     font-size: 0.8125rem !important;
-  }
-  
-  /* Make charts responsive - FORCE VISIBILITY AND WIDTH */
-  .recharts-responsive-container {
-    min-height: 300px !important;
-    height: auto !important;
-    width: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-  
-  /* Critical: Force all recharts elements to have proper width */
-  .recharts-wrapper,
-  .recharts-surface {
-    width: 100% !important;
-    display: block !important;
-  }
-  
-  /* Force SVG to render */
-  .analytics-chart-section svg,
-  .recharts-surface svg {
-    width: 100% !important;
-    min-width: 300px !important;
-    height: 100% !important;
-    display: block !important;
   }
   
   /* Reliability metrics grid */
@@ -260,14 +235,6 @@
 }
 
 @media (max-width: 640px) {
-  .recharts-responsive-container {
-    min-height: 280px !important;
-  }
-  
-  .analytics-chart-section svg {
-    min-width: 280px !important;
-  }
-  
   /* Smaller chart text */
   .recharts-text {
     font-size: 0.75rem !important;

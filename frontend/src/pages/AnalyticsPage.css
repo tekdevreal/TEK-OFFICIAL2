@@ -77,47 +77,48 @@
   
   .analytics-chart-section,
   .analytics-metrics-section {
-    padding: 1.25rem;
-    margin-bottom: 1.5rem;
-    overflow: visible !important;
-    width: 100% !important; /* Critical for Recharts */
-  }
-  
-  /* Force charts to be visible on mobile - EXPLICIT DIMENSIONS */
-  .analytics-chart-section .recharts-responsive-container {
-    min-height: 320px !important;
-    height: 320px !important;
+    padding: 1rem !important;
+    margin-bottom: 1.5rem !important;
+    overflow: hidden !important; /* Contain chart properly */
     width: 100% !important;
     max-width: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
   }
   
-  /* CRITICAL: Force recharts wrapper to take full width on mobile */
+  /* Mobile: Adjust chart container */
+  .analytics-chart-section .recharts-responsive-container {
+    min-height: 300px !important;
+    height: 300px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* CRITICAL: Contain recharts wrapper on mobile */
   .analytics-chart-section .recharts-wrapper {
     width: 100% !important;
-    min-width: 100% !important;
     max-width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-    position: relative !important;
-  }
-  
-  /* Force SVG to render with proper dimensions */
-  .analytics-chart-section .recharts-surface {
-    width: 100% !important;
     min-width: 100% !important;
     height: 100% !important;
-    display: block !important;
+    position: relative !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
+  /* Force SVG to stay within bounds */
+  .analytics-chart-section .recharts-surface,
   .analytics-chart-section svg {
     width: 100% !important;
-    min-width: 300px !important; /* Minimum width for chart */
+    max-width: 100% !important;
+    min-width: auto !important; /* Remove min-width that causes overflow */
     height: 100% !important;
-    display: block !important;
+    position: relative !important;
+    left: 0 !important;
+    margin: 0 !important;
+    transform: none !important; /* Remove any transforms */
   }
   
   /* Make chart text readable */
@@ -129,9 +130,13 @@
     font-size: 0.7rem !important;
   }
   
-  /* Chart legend */
+  /* Chart legend - keep it contained */
   .recharts-legend-wrapper {
     font-size: 0.8rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: relative !important;
+    left: 0 !important;
   }
 }
 
@@ -143,19 +148,21 @@
   
   .analytics-chart-section,
   .analytics-metrics-section {
-    padding: 1rem;
-    overflow: visible !important;
+    padding: 0.875rem !important;
+    overflow: hidden !important;
     width: 100% !important;
+    max-width: 100% !important;
   }
   
-  /* Smaller devices - maintain chart visibility */
-  .recharts-responsive-container {
+  /* Smaller devices - maintain proper containment */
+  .analytics-chart-section .recharts-responsive-container {
     min-height: 280px !important;
     height: 280px !important;
   }
   
   .analytics-chart-section svg {
-    min-width: 280px !important;
+    min-width: auto !important; /* Remove min-width */
+    max-width: 100% !important;
   }
   
   /* Smaller text for compact view */
@@ -180,7 +187,8 @@
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   position: relative;
-  width: 100%; /* Ensure full width */
+  width: 100%;
+  overflow: hidden; /* Contain children properly */
 }
 
 [data-theme='light'] .analytics-chart-section {
@@ -188,33 +196,53 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+/* Chart container wrapper */
+.analytics-chart-section > div {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
 /* Ensure chart container has proper dimensions on ALL devices */
 .analytics-chart-section .recharts-responsive-container {
   min-height: 300px !important;
   height: 300px !important;
   width: 100% !important;
+  max-width: 100% !important;
   display: block !important;
   position: relative !important;
+  margin: 0 auto !important;
 }
 
-/* CRITICAL: Force SVG and wrapper to have width */
+/* CRITICAL: Force SVG and wrapper to have proper containment */
 .analytics-chart-section .recharts-wrapper {
   width: 100% !important;
+  max-width: 100% !important;
   height: 100% !important;
   display: block !important;
+  position: relative !important;
+  margin: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
 }
 
 .analytics-chart-section .recharts-surface {
   width: 100% !important;
+  max-width: 100% !important;
   height: 100% !important;
   display: block !important;
+  position: relative !important;
 }
 
-/* Force SVG elements to render */
+/* Force SVG elements to stay contained */
 .analytics-chart-section svg {
   width: 100% !important;
+  max-width: 100% !important;
   height: 100% !important;
   display: block !important;
+  position: relative !important;
+  left: 0 !important;
+  top: 0 !important;
 }
 
 .chart-section-title {

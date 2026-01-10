@@ -155,12 +155,12 @@ export function TopNav() {
 
   return (
     <>
-      <header className="top-nav">
-        <div className="top-nav-container">
+    <header className="top-nav">
+      <div className="top-nav-container">
           {/* Left: Logo (always visible) */}
           <div className="top-nav-logo">
             <Link to="/" className="logo-link">
-              <span className="logo-text">Nuke Rewards</span>
+            <span className="logo-text">Nuke Rewards</span>
             </Link>
           </div>
 
@@ -188,30 +188,30 @@ export function TopNav() {
                 onClose={() => setShowResults(false)}
               />
             )}
-          </div>
+        </div>
 
           {/* Right: Desktop Actions */}
           <div className="top-nav-actions desktop-only">
-            <button 
-              className="icon-button" 
-              aria-label="Refresh Page"
-              onClick={() => window.location.reload()}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-            </button>
-            
-            <ThemeToggle />
-            
-            <button 
-              className={`connect-wallet-button ${connected ? 'connected' : ''}`}
-              onClick={handleWalletClick}
-            >
-              {getWalletButtonText()}
-            </button>
+          <button 
+            className="icon-button" 
+            aria-label="Refresh Page"
+            onClick={() => window.location.reload()}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+          
+          <ThemeToggle />
+          
+          <button 
+            className={`connect-wallet-button ${connected ? 'connected' : ''}`}
+            onClick={handleWalletClick}
+          >
+            {getWalletButtonText()}
+          </button>
           </div>
 
           {/* Right: Mobile Burger Menu Button */}
