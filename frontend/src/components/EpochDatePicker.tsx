@@ -25,7 +25,7 @@ function formatMonthYear(dateStr: string): string {
   });
 }
 
-function getDateRange(currentDate: string, maxDays: number): string[] {
+function getDateRange(currentDate: string): string[] {
   const dates: string[] = [];
   const current = new Date(currentDate + 'T00:00:00Z');
   
@@ -101,8 +101,8 @@ export function EpochDatePicker({
   const now = new Date();
   const currentDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`;
   
-  // Get date range (last 30 days)
-  const dateRange = getDateRange(currentDate, maxDays);
+  // Get date range (current month only)
+  const dateRange = getDateRange(currentDate);
   
   // Group dates by month for calendar display
   const monthGroups = dateRange.reduce((groups, date) => {
@@ -117,15 +117,7 @@ export function EpochDatePicker({
   // Check if date has data (is in availableEpochs)
   const hasData = (date: string) => availableEpochs.includes(date);
   
-  // Check if date is in future
-  const isFuture = (date: string) => {
-    const checkDate = new Date(date + 'T00:00:00Z');
-    const now = new Date();
-    now.setUTCHours(0, 0, 0, 0);
-    return checkDate > now;
-  };
-  
-  // Check if date is disabled (no data or in future)
+  // Check if date is disabled (no data)
   const isDisabled = (date: string) => !hasData(date);
   
   const handleDateClick = (date: string) => {
