@@ -16,24 +16,6 @@ function getCurrentEpoch(): string {
   return `${year}-${month}-${day}`;
 }
 
-function getYesterdayEpoch(): string {
-  const yesterday = new Date();
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const year = yesterday.getUTCFullYear();
-  const month = String(yesterday.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(yesterday.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatEpochDate(epoch: string): string {
-  const date = new Date(epoch + 'T00:00:00Z');
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
-
 function getCycleStateColor(state: CycleState | 'PENDING' | 'NOT_EXECUTED'): string {
   switch (state) {
     case 'DISTRIBUTED':
