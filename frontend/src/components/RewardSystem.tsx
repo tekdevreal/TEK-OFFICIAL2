@@ -143,9 +143,27 @@ function Tooltip({ cycle, cycleNumber, currentCycle, epochNumber, x, y, historic
   );
 }
 
-export function RewardSystem() {
-  const [selectedEpoch, setSelectedEpoch] = useState<string>(getCurrentEpoch());
+interface RewardSystemProps {
+  selectedEpoch?: string;
+  onEpochChange?: (epoch: string) => void;
+}
+
+export function RewardSystem({ selectedEpoch: externalSelectedEpoch, onEpochChange }: RewardSystemProps = {}) {
+  const [internalSelectedEpoch, setInternalSelectedEpoch] = useState<string>(getCurrentEpoch());
   const [hoveredCycle, setHoveredCycle] = useState<{ cycle: CycleResult | null; cycleNumber: number; x: number; y: number } | null>(null);
+
+  // Use external epoch if provided, otherwise use internal state
+  const selectedEpoch = externalSelectedEpoch || internalSelectedEpoch;
+  
+  // Handle epoch selection
+  const handleEpochChange = (epoch: string) => {
+    setHoveredCycle(null); // Clear tooltip when changing epoch
+    if (onEpochChange) {
+      onEpochChange(epoch);
+    } else {
+      setInternalSelectedEpoch(epoch);
+    }
+  };
 
   const { data: currentCycleInfo } = useCurrentCycleInfo({
     refetchInterval: 1 * 60 * 1000, // 1 minute
@@ -297,11 +315,6 @@ export function RewardSystem() {
   };
 
   const handleBlockLeave = () => {
-    setHoveredCycle(null);
-  };
-
-  const handleEpochChange = (epoch: string) => {
-    setSelectedEpoch(epoch);
     setHoveredCycle(null);
   };
 

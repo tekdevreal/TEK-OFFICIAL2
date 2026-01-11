@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { RewardCycle } from '../types/api';
 import { StatCard } from '../components/StatCard';
 import { DistributionCard, type DistributionCardItem } from '../components/DistributionCard';
@@ -17,6 +17,9 @@ function getCurrentEpoch(): string {
 }
 
 export function Dashboard() {
+  // Track selected epoch for filtering distributions
+  const [selectedEpoch, setSelectedEpoch] = useState<string>(getCurrentEpoch());
+  
   // Use professional data fetching hooks with caching and deduplication
   const {
     data: rewardsData,
@@ -39,9 +42,9 @@ export function Dashboard() {
     refetchInterval: 1 * 60 * 1000, // 1 minute
   });
 
-  // Fetch epoch data to get actual harvested NUKE amounts
+  // Fetch epoch data to get actual harvested NUKE amounts for the selected epoch
   const currentEpoch = currentCycleInfo?.epoch || getCurrentEpoch();
-  const { data: epochData } = useEpochCycles(currentEpoch, {
+  const { data: selectedEpochData } = useEpochCycles(selectedEpoch, {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 
@@ -58,25 +61,20 @@ export function Dashboard() {
       return [];
     }
 
-    // Get current epoch date (YYYY-MM-DD format)
-    const currentEpochDate = currentCycleInfo?.epoch || null;
-    
-    // Filter cycles to only include those from the current epoch
-    const currentEpochCycles = currentEpochDate
-      ? historicalData.cycles.filter((cycle: RewardCycle) => {
-          const cycleDate = new Date(cycle.timestamp);
-          const cycleDateStr = `${cycleDate.getUTCFullYear()}-${String(cycleDate.getUTCMonth() + 1).padStart(2, '0')}-${String(cycleDate.getUTCDate()).padStart(2, '0')}`;
-          return cycleDateStr === currentEpochDate;
-        })
-      : historicalData.cycles;
+    // Filter cycles to only include those from the selected epoch
+    const selectedEpochCycles = historicalData.cycles.filter((cycle: RewardCycle) => {
+      const cycleDate = new Date(cycle.timestamp);
+      const cycleDateStr = `${cycleDate.getUTCFullYear()}-${String(cycleDate.getUTCMonth() + 1).padStart(2, '0')}-${String(cycleDate.getUTCDate()).padStart(2, '0')}`;
+      return cycleDateStr === selectedEpoch;
+    });
 
-    // Get up to 108 items (12 pages * 9 cards per page) from current epoch only
-    const cycles = currentEpochCycles.slice(0, 108);
+    // Get up to 108 items (12 pages * 9 cards per page) from selected epoch only
+    const cycles = selectedEpochCycles.slice(0, 108);
     
     // Create a map of cycle numbers to actual harvested NUKE from epoch data
     const cycleNukeMap = new Map<number, number>();
-    if (epochData?.cycles) {
-      epochData.cycles.forEach(cycle => {
+    if (selectedEpochData?.cycles) {
+      selectedEpochData.cycles.forEach(cycle => {
         if (cycle.taxResult?.nukeHarvested) {
           cycleNukeMap.set(cycle.cycleNumber, parseFloat(cycle.taxResult.nukeHarvested) / 1e6);
         }
@@ -115,12 +113,17 @@ export function Dashboard() {
       .filter((item) => {
         return item.harvestedNUKE > 0 || item.distributedSOL > 0;
       });
-  }, [historicalData, currentCycleInfo, epochData]);
+  }, [historicalData, selectedEpoch, selectedEpochData]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const cardsPerPage = 9;
   const maxPages = 12;
+  
+  // Reset pagination when epoch changes
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [selectedEpoch]);
   
   // Calculate pagination
   const totalCards = distributionHistory.length;
@@ -318,7 +321,10 @@ export function Dashboard() {
       {/* Section 2: Reward System Visualization */}
       <section className="dashboard-section">
         <GlassCard className="dashboard-section-card">
-          <RewardSystem />
+          <RewardSystem 
+            selectedEpoch={selectedEpoch}
+            onEpochChange={setSelectedEpoch}
+          />
         </GlassCard>
       </section>
 
@@ -327,9 +333,14 @@ export function Dashboard() {
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">
             Distributions Epoch: {(() => {
-              // Use epochNumber from API which correctly counts all epochs
-              if (currentCycleInfo?.epochNumber) {
-                return currentCycleInfo.epochNumber;
+              // Use epoch number from the selected epoch data
+              if (selectedEpochData?.epochNumber) {
+                return selectedEpochData.epochNumber;
+              }
+              // Fallback: show formatted date if no epoch number
+              if (selectedEpoch) {
+                const date = new Date(selectedEpoch + 'T00:00:00Z');
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
               }
               return 'N/A';
             })()}
