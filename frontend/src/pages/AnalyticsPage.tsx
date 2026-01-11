@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
@@ -24,6 +24,9 @@ export interface LiquidityPoolPerformance {
 }
 
 export function AnalyticsPage() {
+  // Time filter state: '24H' | 'Week' | 'Month' | 'All Time'
+  const [timeFilter, setTimeFilter] = useState<'24H' | 'Week' | 'Month' | 'All Time'>('24H');
+  
   // Treasury wallet address
   const treasuryWalletAddress = import.meta.env.VITE_TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
 
@@ -41,6 +44,39 @@ export function AnalyticsPage() {
   const { data: treasuryBalanceData } = useTreasuryBalance(treasuryWalletAddress, {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
+
+  // Helper function to get time range in milliseconds based on filter
+  const getTimeRange = (filter: typeof timeFilter): number => {
+    const now = Date.now();
+    switch (filter) {
+      case '24H':
+        return now - (24 * 60 * 60 * 1000); // 24 hours
+      case 'Week':
+        return now - (7 * 24 * 60 * 60 * 1000); // 7 days
+      case 'Month':
+        return now - (30 * 24 * 60 * 60 * 1000); // 30 days
+      case 'All Time':
+        return 0; // No filter
+      default:
+        return now - (24 * 60 * 60 * 1000);
+    }
+  };
+
+  // Get grouping size based on time filter (for X-axis labels)
+  const getGroupingInfo = (filter: typeof timeFilter): { cyclesPerGroup: number; maxGroups: number; label: string } => {
+    switch (filter) {
+      case '24H':
+        return { cyclesPerGroup: 24, maxGroups: 12, label: 'Cycles' }; // 2-hour groups, 12 groups = 24 hours
+      case 'Week':
+        return { cyclesPerGroup: 288, maxGroups: 7, label: 'Day' }; // Daily groups, 7 groups = 1 week
+      case 'Month':
+        return { cyclesPerGroup: 288, maxGroups: 30, label: 'Day' }; // Daily groups, 30 groups = 1 month
+      case 'All Time':
+        return { cyclesPerGroup: 288 * 7, maxGroups: 52, label: 'Week' }; // Weekly groups, up to 1 year
+      default:
+        return { cyclesPerGroup: 24, maxGroups: 12, label: 'Cycles' };
+    }
+  };
 
   // Calculate stats from real data
   const totalSOLDistributed = useMemo(() => {
@@ -64,16 +100,18 @@ export function AnalyticsPage() {
     return `${sol.toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL`;
   }, [rewardsData]);
 
-  // Real data for Rewards Over Time chart - Last 2 days, grouped by cycle ranges (24 cycles per group)
+  // Real data for Rewards Over Time chart - Filtered by selected time range
   const rewardsOverTimeData = useMemo(() => {
     if (!historicalData?.cycles || historicalData.cycles.length === 0) return [];
     
-    // Filter cycles from last 2 days
-    const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
-    const recentCycles = historicalData.cycles
+    const timeRangeStart = getTimeRange(timeFilter);
+    const { cyclesPerGroup, maxGroups, label } = getGroupingInfo(timeFilter);
+    
+    // Filter cycles by time range
+    const filteredCycles = historicalData.cycles
       .filter(cycle => {
         const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
-        return timestamp >= twoDaysAgo;
+        return timestamp >= timeRangeStart;
       })
       .sort((a, b) => {
         const timeA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : a.timestamp;
@@ -81,62 +119,88 @@ export function AnalyticsPage() {
         return timeA - timeB; // Oldest first
       });
     
-    if (recentCycles.length === 0) return [];
+    if (filteredCycles.length === 0) return [];
     
-    // Group by 24-cycle ranges (24 cycles = 2 hours since 1 cycle = 5 minutes)
+    // Group cycles based on the time filter
     const groupedData: Array<{ epoch: string; solDistributed: number; count: number }> = [];
-    const CYCLES_PER_GROUP = 24;
     
-    for (let i = 0; i < recentCycles.length; i += CYCLES_PER_GROUP) {
-      const group = recentCycles.slice(i, i + CYCLES_PER_GROUP);
+    for (let i = 0; i < filteredCycles.length; i += cyclesPerGroup) {
+      const group = filteredCycles.slice(i, i + cyclesPerGroup);
       const totalSOL = group.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
       const avgSOL = group.length > 0 ? totalSOL / group.length : 0;
       
-      // Calculate cycle range based on position in the day
+      // Create label based on grouping type
+      let groupLabel = '';
       const firstCycleTime = typeof group[0].timestamp === 'string' ? new Date(group[0].timestamp) : new Date(group[0].timestamp);
-      const startOfDay = new Date(firstCycleTime);
-      startOfDay.setHours(0, 0, 0, 0);
       
-      const minutesSinceStart = Math.floor((firstCycleTime.getTime() - startOfDay.getTime()) / (1000 * 60));
-      const cycleNumber = Math.floor(minutesSinceStart / 5) + 1; // 1-based cycle number
-      
-      const groupStart = Math.floor((cycleNumber - 1) / CYCLES_PER_GROUP) * CYCLES_PER_GROUP + 1;
-      const groupEnd = Math.min(groupStart + CYCLES_PER_GROUP - 1, 288);
+      if (timeFilter === '24H') {
+        // For 24H: show cycle ranges
+        const startOfDay = new Date(firstCycleTime);
+        startOfDay.setHours(0, 0, 0, 0);
+        const minutesSinceStart = Math.floor((firstCycleTime.getTime() - startOfDay.getTime()) / (1000 * 60));
+        const cycleNumber = Math.floor(minutesSinceStart / 5) + 1;
+        const groupStart = Math.floor((cycleNumber - 1) / cyclesPerGroup) * cyclesPerGroup + 1;
+        const groupEnd = Math.min(groupStart + cyclesPerGroup - 1, 288);
+        groupLabel = `${label} ${groupStart}-${groupEnd}`;
+      } else {
+        // For Week, Month, All Time: show date
+        groupLabel = firstCycleTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
       
       groupedData.push({
-        epoch: `Cycles ${groupStart}-${groupEnd}`,
+        epoch: groupLabel,
         solDistributed: parseFloat(avgSOL.toFixed(4)),
         count: group.length
       });
     }
     
-    return groupedData.slice(0, 12); // Show max 12 groups (24 hours worth)
-  }, [historicalData]);
+    return groupedData.slice(0, maxGroups);
+  }, [historicalData, timeFilter]);
 
-  // Real data for Volume vs Rewards Correlation chart - Last 2 days, grouped by 4 hours (12 bars for 48 hours)
+  // Real data for Volume vs Rewards Correlation chart - Filtered by selected time range
   const volumeVsRewardsData = useMemo(() => {
     if (!historicalData?.cycles) return [];
     
-    // Filter cycles from last 2 days
-    const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
-    const recentCycles = historicalData.cycles
+    const timeRangeStart = getTimeRange(timeFilter);
+    const { maxGroups } = getGroupingInfo(timeFilter);
+    
+    // Filter cycles by time range
+    const filteredCycles = historicalData.cycles
       .filter(cycle => {
         const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
-        return timestamp >= twoDaysAgo;
+        return timestamp >= timeRangeStart;
       })
       .reverse(); // Oldest first
     
     // Use liquidity data for volume (approximate)
     const volume24h = liquiditySummaryData?.volume24hUSD || 0;
     
-    // Group by 4-hour blocks for better visualization (48 hours / 4 = 12 bars)
+    // Determine grouping period based on time filter
+    let groupingHours = 4; // Default for 24H
+    if (timeFilter === 'Week') groupingHours = 24; // Daily for week
+    if (timeFilter === 'Month') groupingHours = 24; // Daily for month
+    if (timeFilter === 'All Time') groupingHours = 24 * 7; // Weekly for all time
+    
+    // Group by time blocks
     const groupedData: { [key: string]: { solDistributed: number; count: number } } = {};
     
-    recentCycles.forEach((cycle) => {
+    filteredCycles.forEach((cycle) => {
       const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
       const date = new Date(timestamp);
-      const hourBlock = Math.floor(date.getUTCHours() / 4) * 4; // 0, 4, 8, 12, 16, 20
-      const dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
+      
+      let dateKey = '';
+      if (groupingHours < 24) {
+        // For sub-daily grouping
+        const hourBlock = Math.floor(date.getUTCHours() / groupingHours) * groupingHours;
+        dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
+      } else if (groupingHours === 24) {
+        // Daily grouping
+        dateKey = date.toISOString().split('T')[0];
+      } else {
+        // Weekly grouping
+        const weekNumber = Math.floor(date.getTime() / (1000 * 60 * 60 * 24 * 7));
+        dateKey = `Week ${weekNumber}`;
+      }
       
       if (!groupedData[dateKey]) {
         groupedData[dateKey] = { solDistributed: 0, count: 0 };
@@ -146,29 +210,35 @@ export function AnalyticsPage() {
       groupedData[dateKey].count += 1;
     });
     
+    // Calculate volume per period (approximate)
+    const periodsPerDay = 24 / groupingHours;
+    const volumePerPeriod = volume24h / periodsPerDay;
+    
     return Object.entries(groupedData)
       .map(([date, data]) => ({
         date,
-        volume24h: parseFloat((volume24h / 6).toFixed(4)), // Approximate volume per 4-hour period (4 decimals)
-        solDistributed: parseFloat(data.solDistributed.toFixed(4)), // Total for the 4-hour period (4 decimals)
+        volume24h: parseFloat(volumePerPeriod.toFixed(4)),
+        solDistributed: parseFloat(data.solDistributed.toFixed(4)),
       }))
-      .slice(0, 12); // Max 12 bars (2 days in 4-hour blocks)
-  }, [historicalData, liquiditySummaryData]);
+      .slice(0, maxGroups);
+  }, [historicalData, liquiditySummaryData, timeFilter]);
 
-  // Real data for Treasury Balance Over Time chart - Last 2 days
+  // Real data for Treasury Balance Over Time chart - Filtered by selected time range
   const treasuryBalanceChartData = useMemo(() => {
     if (!historicalData?.cycles || !treasuryBalanceData) return [];
     
-    // Filter cycles from last 2 days
-    const twoDaysAgo = Date.now() - (2 * 24 * 60 * 60 * 1000);
-    const recentCycles = historicalData.cycles
+    const timeRangeStart = getTimeRange(timeFilter);
+    const { maxGroups } = getGroupingInfo(timeFilter);
+    
+    // Filter cycles by time range
+    const filteredCycles = historicalData.cycles
       .filter(cycle => {
         const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
-        return timestamp >= twoDaysAgo;
+        return timestamp >= timeRangeStart;
       })
       .reverse(); // Oldest first
     
-    // Calculate cumulative received for the 2-day period
+    // Calculate cumulative received for the period
     let cumulativeReceived = 0;
     
     // Get current treasury balance from API
@@ -177,14 +247,29 @@ export function AnalyticsPage() {
     // Pending allocation (placeholder - would need API endpoint)
     const pendingAllocation = 0; // TODO: Get from API when available
     
-    // Group by 4-hour periods for better visualization
+    // Determine grouping period based on time filter
+    let groupingHours = 4; // Default for 24H
+    if (timeFilter === 'Week') groupingHours = 24; // Daily for week
+    if (timeFilter === 'Month') groupingHours = 24; // Daily for month
+    if (timeFilter === 'All Time') groupingHours = 24 * 7; // Weekly for all time
+    
+    // Group by time periods
     const groupedData: { [key: string]: number } = {};
     
-    recentCycles.forEach((cycle) => {
+    filteredCycles.forEach((cycle) => {
       const timestamp = typeof cycle.timestamp === 'string' ? new Date(cycle.timestamp).getTime() : cycle.timestamp;
       const date = new Date(timestamp);
-      const hourBlock = Math.floor(date.getUTCHours() / 4) * 4;
-      const dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
+      
+      let dateKey = '';
+      if (groupingHours < 24) {
+        const hourBlock = Math.floor(date.getUTCHours() / groupingHours) * groupingHours;
+        dateKey = `${date.toISOString().split('T')[0]} ${hourBlock}:00`;
+      } else if (groupingHours === 24) {
+        dateKey = date.toISOString().split('T')[0];
+      } else {
+        const weekNumber = Math.floor(date.getTime() / (1000 * 60 * 60 * 24 * 7));
+        dateKey = `Week ${weekNumber}`;
+      }
       
       // 25% of distributed SOL goes to treasury
       const treasuryAmount = (cycle.totalSOLDistributed || 0) * 0.25;
@@ -193,13 +278,13 @@ export function AnalyticsPage() {
       groupedData[dateKey] = cumulativeReceived;
     });
     
-    return Object.entries(groupedData).map(([date, receivedIn2Days]) => ({
+    return Object.entries(groupedData).map(([date, receivedInPeriod]) => ({
       date,
-      treasuryBalance: parseFloat(currentBalance.toFixed(4)), // Current balance from wallet (4 decimals)
-      deployed: parseFloat(pendingAllocation.toFixed(4)), // Pending allocation (4 decimals)
-      receivedIn2Days: parseFloat(receivedIn2Days.toFixed(4)), // Total received in last 2 days (4 decimals)
-    }));
-  }, [historicalData, treasuryBalanceData]);
+      treasuryBalance: parseFloat(currentBalance.toFixed(4)),
+      deployed: parseFloat(pendingAllocation.toFixed(4)),
+      receivedIn2Days: parseFloat(receivedInPeriod.toFixed(4)), // Keep same key for compatibility
+    })).slice(0, maxGroups);
+  }, [historicalData, treasuryBalanceData, timeFilter]);
 
   // Real Liquidity Pool Performance table data
   const liquidityPoolData: LiquidityPoolPerformance[] = useMemo(() => {
@@ -288,6 +373,21 @@ export function AnalyticsPage() {
               label="Total Treasury Deployed"
               value={totalTreasuryDeployed}
             />
+          </div>
+
+          {/* Time Filter Controls */}
+          <div className="analytics-filters-row">
+            <div className="filter-group">
+              {(['24H', 'Week', 'Month', 'All Time'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  className={`filter-button ${timeFilter === filter ? 'active' : ''}`}
+                  onClick={() => setTimeFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Section 2: Rewards Over Time */}
