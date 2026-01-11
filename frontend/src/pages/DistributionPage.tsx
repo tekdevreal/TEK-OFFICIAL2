@@ -280,7 +280,6 @@ export function DistributionPage() {
           {/* Calendar Filter and Export */}
           <div className="distribution-filters-row">
             <div className="filter-group">
-              <label className="filter-label">Select Date (Last 30 days):</label>
               <EpochDatePicker
                 selectedDate={selectedEpoch}
                 availableEpochs={availableEpochs}

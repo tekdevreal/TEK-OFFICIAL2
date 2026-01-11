@@ -2,6 +2,7 @@
 .epoch-date-picker {
   position: relative;
   display: inline-block;
+  width: auto; /* PC: auto width */
 }
 
 .epoch-date-picker-button {
@@ -66,25 +67,24 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  animation: slideDown 0.2s ease;
+  animation: slideDownDesktop 0.2s ease;
   
   /* Ensure it stays within viewport */
   max-width: min(320px, calc(100vw - 2rem));
-  
-  /* Prevent horizontal overflow */
-  transform: translateX(0);
+  transform-origin: top right;
 }
 
-/* On small screens, align dropdown to screen edge if needed */
+/* On small screens, center dropdown and prevent position jump */
 @media (max-width: 768px) {
   .epoch-date-picker-dropdown {
     right: auto;
     left: 50%;
-    transform: translateX(-50%);
+    animation: slideDownMobile 0.2s ease;
+    transform-origin: top center;
   }
 }
 
-@keyframes slideDown {
+@keyframes slideDownDesktop {
   from {
     opacity: 0;
     transform: translateY(-10px);
@@ -92,6 +92,17 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideDownMobile {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
   }
 }
 
@@ -270,19 +281,24 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .epoch-date-picker {
+    width: 100%; /* Full width on mobile */
+  }
+  
   .epoch-date-picker-button {
-    min-width: 120px;
-    padding: 0.4rem 0.625rem;
-    font-size: 0.75rem;
+    width: 100%; /* Full width button on mobile */
+    min-width: unset;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
   }
   
   .calendar-icon {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
   }
   
   .selected-date-text {
-    font-size: 0.75rem;
+    font-size: 0.875rem;
   }
   
   .epoch-date-picker-dropdown {
