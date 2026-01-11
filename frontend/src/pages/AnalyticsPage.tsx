@@ -353,7 +353,7 @@ export function AnalyticsPage() {
       <section className="dashboard-section">
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">Analytics</h2>
-          <p className="section-subtitle">Historical performance metrics and protocol activity trends from the last two days.</p>
+          <p className="section-subtitle">Historical performance metrics and protocol activity trends.</p>
           
           {/* Stats Summary */}
           <div className="analytics-stats">
@@ -393,7 +393,7 @@ export function AnalyticsPage() {
           {/* Section 2: Rewards Over Time */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Rewards Over Time</h3>
-            <p className="chart-section-description">Average rewards per cycle range from the last two days</p>
+            <p className="chart-section-description">Average rewards per cycle range</p>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={rewardsOverTimeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -435,7 +435,7 @@ export function AnalyticsPage() {
           {/* Section 3: Volume vs Rewards Correlation */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Volume vs Rewards Correlation</h3>
-            <p className="chart-section-description">Trading volume and rewards per 4-hour period from the last two days</p>
+            <p className="chart-section-description">Trading volume and rewards per period</p>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={volumeVsRewardsData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -491,7 +491,7 @@ export function AnalyticsPage() {
           {/* Section 4: Treasury Balance Over Time */}
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Treasury Balance Over Time</h3>
-            <p className="chart-section-description">Treasury accumulation from the last two days</p>
+            <p className="chart-section-description">Treasury accumulation over time</p>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={treasuryBalanceChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
@@ -523,7 +523,7 @@ export function AnalyticsPage() {
                   dataKey="receivedIn2Days" 
                   stroke="#3b82f6" 
                   strokeWidth={2}
-                  name="Received in 2 Days (SOL)"
+                  name="Treasury Received (SOL)"
                   dot={{ fill: '#3b82f6' }}
                 />
               </LineChart>
