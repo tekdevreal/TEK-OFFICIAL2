@@ -173,7 +173,7 @@ function initializeEpoch(state: CycleServiceState): void {
 
     // Initialize new epoch
     state.currentEpoch = currentEpoch;
-    state.currentCycleNumber = 1; // Reset to cycle 1 at epoch start
+    state.currentCycleNumber = currentCycleNumber; // Use calculated cycle from current time
 
     // Create new epoch state if it doesn't exist
     if (!state.epochs[currentEpoch]) {
