@@ -265,7 +265,11 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
         lastDistributionCycleNumber: taxStats.lastDistributionCycleNumber,
         lastDistributionEpoch: taxStats.lastDistributionEpoch,
         lastDistributionEpochNumber: taxStats.lastDistributionEpoch 
-          ? (getAllEpochStates().findIndex(e => e.epoch === taxStats.lastDistributionEpoch) + 1) || null
+          ? (() => {
+              const allEpochs = getAllEpochStates();
+              const sortedOldestFirst = allEpochs.sort((a, b) => a.epoch.localeCompare(b.epoch));
+              return sortedOldestFirst.findIndex(e => e.epoch === taxStats.lastDistributionEpoch) + 1;
+            })() || null
           : null,
         lastDistributionSolToHolders: taxStats.lastDistributionSolToHolders,
         lastDistributionSolToTreasury: taxStats.lastDistributionSolToTreasury,
@@ -879,8 +883,10 @@ router.get('/cycles/current', async (req: Request, res: Response): Promise<void>
     const epochInfo = getCurrentEpochInfo();
     
     // Calculate epoch number (count of all epochs in state)
+    // getAllEpochStates() returns epochs sorted newest first, but we need to count from oldest
     const allEpochs = getAllEpochStates();
-    const epochNumber = allEpochs.findIndex(e => e.epoch === epochInfo.epoch) + 1;
+    const sortedOldestFirst = allEpochs.sort((a, b) => a.epoch.localeCompare(b.epoch));
+    const epochNumber = sortedOldestFirst.findIndex(e => e.epoch === epochInfo.epoch) + 1;
 
     const response = {
       epoch: epochInfo.epoch, // Date string (YYYY-MM-DD)
