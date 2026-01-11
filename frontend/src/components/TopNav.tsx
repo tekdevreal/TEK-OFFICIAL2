@@ -1,11 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { ThemeToggle } from './ThemeToggle';
-import { SearchResults } from './SearchResults';
-import { search } from '../services/searchService';
-import type { SearchResult } from '../services/searchService';
 import './TopNav.css';
 
 interface NavItem {
@@ -27,13 +24,7 @@ export function TopNav() {
   const { connected, publicKey, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
   const location = useLocation();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchTimeoutRef = useRef<number | null>(null);
 
   const handleWalletClick = () => {
     if (connected) {
@@ -51,51 +42,6 @@ export function TopNav() {
       return `${address.slice(0, 4)}...${address.slice(-4)}`;
     }
     return 'Connect Wallet';
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    setShowResults(false);
-    setSearchResult(null);
-
-    // Clear existing timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    // Only search if query is long enough (at least 8 characters)
-    if (query.trim().length >= 8) {
-      setIsSearching(true);
-      searchTimeoutRef.current = window.setTimeout(async () => {
-        try {
-          const result = await search(query.trim());
-          setSearchResult(result);
-          setShowResults(true);
-        } catch (error) {
-          console.error('Search error:', error);
-          setSearchResult(null);
-          setShowResults(true);
-        } finally {
-          setIsSearching(false);
-        }
-      }, 500); // Debounce search by 500ms
-    } else {
-      setIsSearching(false);
-    }
-  };
-
-  const handleSearchFocus = () => {
-    if (searchResult && searchQuery.trim().length >= 8) {
-      setShowResults(true);
-    }
-  };
-
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setShowResults(false);
-      searchInputRef.current?.blur();
-    }
   };
 
   const toggleMobileMenu = () => {
@@ -133,14 +79,6 @@ export function TopNav() {
       document.body.style.overflow = '';
     };
   }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const isNavItemActive = (item: NavItem) => {
     if (item.path === '/holders') {
