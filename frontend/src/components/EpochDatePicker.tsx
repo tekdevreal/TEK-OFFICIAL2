@@ -29,7 +29,14 @@ function getDateRange(currentDate: string, maxDays: number): string[] {
   const dates: string[] = [];
   const current = new Date(currentDate + 'T00:00:00Z');
   
-  for (let i = 0; i < maxDays; i++) {
+  // Only show dates in the current month, up to today
+  const startOfMonth = new Date(current);
+  startOfMonth.setUTCDate(1);
+  
+  // Generate dates from start of month to today
+  const daysInRange = current.getUTCDate(); // Days from 1st to today
+  
+  for (let i = 0; i < daysInRange; i++) {
     const date = new Date(current);
     date.setUTCDate(date.getUTCDate() - i);
     
@@ -119,7 +126,7 @@ export function EpochDatePicker({
   };
   
   // Check if date is disabled (no data or in future)
-  const isDisabled = (date: string) => !hasData(date) || isFuture(date);
+  const isDisabled = (date: string) => !hasData(date);
   
   const handleDateClick = (date: string) => {
     if (!isDisabled(date)) {
@@ -172,7 +179,6 @@ export function EpochDatePicker({
         <div className="epoch-date-picker-dropdown">
           <div className="date-picker-header">
             <span className="date-picker-title">Select Date</span>
-            <span className="date-picker-subtitle">Last {maxDays} days</span>
           </div>
           
           {Object.entries(monthGroups).map(([monthKey, dates]) => (
@@ -190,32 +196,16 @@ export function EpochDatePicker({
                       className={`calendar-day ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${today ? 'today' : ''}`}
                       onClick={() => handleDateClick(date)}
                       disabled={disabled}
-                      title={disabled ? (isFuture(date) ? 'Future date' : 'No data available') : formatDisplayDate(date)}
+                      title={disabled ? 'No data available' : formatDisplayDate(date)}
                     >
                       <span className="day-name">{getDayName(date)}</span>
                       <span className="day-number">{getDayNumber(date)}</span>
-                      {hasData(date) && !isFuture(date) && (
-                        <span className="data-indicator"></span>
-                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
           ))}
-          
-          <div className="date-picker-footer">
-            <div className="legend">
-              <div className="legend-item">
-                <span className="legend-dot has-data"></span>
-                <span>Has data</span>
-              </div>
-              <div className="legend-item">
-                <span className="legend-dot no-data"></span>
-                <span>No data</span>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
