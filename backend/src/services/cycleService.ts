@@ -52,9 +52,21 @@ interface CycleServiceState {
   lastCycleTimestamp: number | null; // Last cycle execution timestamp
 }
 
-const STATE_FILE_PATH = path.join(process.cwd(), 'cycle-state.json');
+// Use persistent storage in production (Render/Railway volumes)
+// Development: Use local file in project directory
+const STATE_FILE_PATH = process.env.NODE_ENV === 'production' && process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'cycle-state.json')
+  : path.join(process.cwd(), 'cycle-state.json');
+
 const CYCLE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const CYCLES_PER_EPOCH = 288; // 24 hours * 60 minutes / 5 minutes
+
+// Log the state file path on startup
+logger.info('Cycle Service initialized', {
+  stateFilePath: STATE_FILE_PATH,
+  nodeEnv: process.env.NODE_ENV,
+  dataDir: process.env.DATA_DIR || 'not set (using project root)',
+});
 
 /**
  * Get current UTC date string (YYYY-MM-DD)
