@@ -330,7 +330,6 @@ export function RewardSystem() {
           selectedDate={selectedEpoch}
           availableEpochs={availableEpochs}
           onDateSelect={handleEpochChange}
-          maxDays={30}
         />
         <div className="reward-system-controls-right">
           {selectedEpoch && (
