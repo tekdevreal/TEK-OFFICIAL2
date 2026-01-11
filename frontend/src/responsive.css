@@ -16,7 +16,7 @@
    CRITICAL: PAGE SPACING FIX FOR MOBILE/TABLET
    =================================================================== */
 
-/* Tablet (≤768px) - Remove extra spacing, SecondaryNav is hidden */
+/* Tablet (≤768px) - Reduced spacing for mobile */
 @media (max-width: 768px) {
   :root {
     --page-padding-horizontal: 1rem;

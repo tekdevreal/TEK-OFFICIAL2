@@ -141,7 +141,7 @@
   --spacing-xl: 3rem;
   
   /* Page Layout Spacing - Global Configuration */
-  --page-padding-top: 10rem;          /* Space below top toolbar/navbar (increased for better spacing) */
+  --page-padding-top: 5rem;          /* Space below top nav (4rem nav + 1rem spacing) */
   --page-padding-horizontal: 2rem;     /* Horizontal padding for page content */
   --page-padding-horizontal-mobile: 1rem; /* Horizontal padding on mobile */
   --page-padding-bottom: 3rem;        /* Bottom padding for page */
