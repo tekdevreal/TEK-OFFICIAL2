@@ -30,6 +30,29 @@
   gap: 2rem;
 }
 
+/* On large screens, ensure proper spacing */
+@media (min-width: 1025px) {
+  .top-nav-container {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+  
+  .top-nav-logo {
+    grid-column: 1;
+  }
+  
+  .desktop-nav-menu {
+    grid-column: 2;
+    justify-self: center;
+  }
+  
+  .top-nav-icons {
+    grid-column: 3;
+    justify-self: end;
+  }
+}
+
 /* ===================================================================
    LOGO - LEFT
    =================================================================== */
@@ -205,20 +228,20 @@
    =================================================================== */
 
 .desktop-only {
-  display: flex;
+  display: flex !important;
 }
 
 .mobile-tablet-only {
-  display: none;
+  display: none !important;
 }
 
 @media (max-width: 1024px) {
   .desktop-only {
-    display: none;
+    display: none !important;
   }
   
   .mobile-tablet-only {
-    display: flex;
+    display: flex !important;
   }
   
   .top-nav-container {
@@ -228,11 +251,11 @@
 }
 
 /* ===================================================================
-   MOBILE BURGER BUTTON
+   MOBILE BURGER BUTTON - Only visible on mobile/tablet
    =================================================================== */
 
 .mobile-menu-button {
-  display: flex;
+  display: none; /* Always hidden by default */
   align-items: center;
   justify-content: center;
   width: 2.5rem;
@@ -241,6 +264,13 @@
   border: none;
   cursor: pointer;
   padding: 0;
+}
+
+/* Only show on mobile/tablet */
+@media (max-width: 1024px) {
+  .mobile-menu-button {
+    display: flex;
+  }
 }
 
 .burger-icon {
