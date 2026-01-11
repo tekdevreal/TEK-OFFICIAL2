@@ -304,7 +304,7 @@ export function DistributionPage() {
               columns={columns}
               searchable={false}
               pagination={true}
-              pageSize={10}
+              pageSize={15}
               exportable={false}
               exportFilename="distribution-data"
               loading={false}

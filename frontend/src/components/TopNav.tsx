@@ -240,24 +240,9 @@ export function TopNav() {
       {/* Mobile/Tablet Menu Panel */}
       <div className={`mobile-menu-panel ${mobileMenuOpen ? 'open' : ''}`}>
         <div className="mobile-menu-content">
-          {/* Mobile Search */}
-          <div className="mobile-search-section">
-            <input
-              type="text"
-              className="search-input mobile-search-input"
-              placeholder="Search wallet or transaction"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onFocus={handleSearchFocus}
-              onKeyDown={handleSearchKeyDown}
-            />
-            {isSearching && (
-              <div className="search-loading">
-                <div className="search-spinner"></div>
-              </div>
-            )}
-          </div>
-
+          {/* Mobile Search - Hidden on mobile/tablet */}
+          {/* Keeping code for potential future use, but hidden via CSS */}
+          
           {/* Navigation Links */}
           <nav className="mobile-nav-links">
             <div className="mobile-nav-label">Navigation</div>
