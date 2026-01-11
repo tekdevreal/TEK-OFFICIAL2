@@ -4,7 +4,7 @@ import { StatCard } from '../components/StatCard';
 import { DistributionCard, type DistributionCardItem } from '../components/DistributionCard';
 import { GlassCard } from '../components/GlassCard';
 import { RewardSystem } from '../components/RewardSystem';
-import { useRewards, useHistoricalRewards, useCurrentCycleInfo, useLiquiditySummary, useEpochCycles } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useCurrentCycleInfo, useLiquiditySummary, useEpochCycles, useEpochs } from '../hooks/useApiData';
 import './Dashboard.css';
 
 // Helper to get current epoch date
@@ -43,10 +43,20 @@ export function Dashboard() {
   });
 
   // Fetch epoch data to get actual harvested NUKE amounts for the selected epoch
-  const currentEpoch = currentCycleInfo?.epoch || getCurrentEpoch();
   const { data: selectedEpochData } = useEpochCycles(selectedEpoch, {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
+
+  // Fetch all epochs to calculate epoch numbers
+  const { data: epochsData } = useEpochs(365, {}); // Get up to a year of epochs
+  
+  // Calculate the epoch number for the selected epoch
+  const selectedEpochNumber = useMemo(() => {
+    if (!epochsData?.epochs || !selectedEpoch) return null;
+    // Epochs are sorted oldest-first, so find the index + 1
+    const epochIndex = epochsData.epochs.findIndex(e => e.epoch === selectedEpoch);
+    return epochIndex >= 0 ? epochIndex + 1 : null;
+  }, [epochsData, selectedEpoch]);
 
   const {
     data: liquiditySummaryData,
@@ -333,9 +343,9 @@ export function Dashboard() {
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">
             Distributions Epoch: {(() => {
-              // Use epoch number from the selected epoch data
-              if (selectedEpochData?.epochNumber) {
-                return selectedEpochData.epochNumber;
+              // Use calculated epoch number
+              if (selectedEpochNumber !== null) {
+                return selectedEpochNumber;
               }
               // Fallback: show formatted date if no epoch number
               if (selectedEpoch) {
