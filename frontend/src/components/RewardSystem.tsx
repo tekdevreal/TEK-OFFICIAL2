@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useEpochCycles, useCurrentCycleInfo, useHistoricalRewards } from '../hooks/useApiData';
+import { useEpochCycles, useCurrentCycleInfo, useHistoricalRewards, useEpochs } from '../hooks/useApiData';
 import type { CycleResult, CycleState } from '../types/api';
+import { EpochDatePicker } from './EpochDatePicker';
 import './RewardSystem.css';
 
 const CYCLES_PER_EPOCH = 288;
@@ -171,6 +172,9 @@ export function RewardSystem() {
   const { data: epochData, isLoading } = useEpochCycles(selectedEpoch, {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
+  
+  // Fetch available epochs (last 30 days)
+  const { data: epochsData } = useEpochs(30, {});
 
   // Fetch historical data to get actual SOL distribution values
   const { data: historicalData } = useHistoricalRewards({ limit: 300 });
@@ -200,6 +204,12 @@ export function RewardSystem() {
 
   const currentEpoch = getCurrentEpoch();
   const currentCycle = currentCycleInfo?.cycleNumber || 1;
+  
+  // Get list of available epochs
+  const availableEpochs = useMemo(() => {
+    if (!epochsData?.epochs) return [currentEpoch];
+    return epochsData.epochs.map(e => e.epoch);
+  }, [epochsData, currentEpoch]);
   
   // For selected epochs, we need to determine the epoch number
   // If it's the current epoch, use the API value
@@ -334,27 +344,18 @@ export function RewardSystem() {
       </div>
 
       <div className="reward-system-controls">
-        <div className="epoch-selector">
-          <button
-            className={`epoch-button ${selectedEpoch === currentEpoch ? 'active' : ''}`}
-            onClick={() => handleEpochChange(currentEpoch)}
-          >
-            Today
-          </button>
-          <button
-            className={`epoch-button ${selectedEpoch === getYesterdayEpoch() ? 'active' : ''}`}
-            onClick={() => handleEpochChange(getYesterdayEpoch())}
-          >
-            Yesterday
-          </button>
-        </div>
+        <EpochDatePicker
+          selectedDate={selectedEpoch}
+          availableEpochs={availableEpochs}
+          onDateSelect={handleEpochChange}
+          maxDays={30}
+        />
         <div className="reward-system-controls-right">
           {selectedEpoch && (
             <div className="epoch-info">
-              {formatEpochDate(selectedEpoch)}
               {selectedEpoch === currentEpoch && currentCycleInfo && (
                 <span className="current-cycle-info">
-                  {' '}• Cycle {currentCycle} of {CYCLES_PER_EPOCH}
+                  Cycle {currentCycle} of {CYCLES_PER_EPOCH}
                 </span>
               )}
             </div>
