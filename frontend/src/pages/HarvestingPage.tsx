@@ -2,9 +2,19 @@ import { useMemo, useState, useEffect } from 'react';
 import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
-import { useRewards, useHistoricalRewards, useSolPrice } from '../hooks/useApiData';
+import { EpochDatePicker } from '../components/EpochDatePicker';
+import { useRewards, useHistoricalRewards, useSolPrice, useEpochs } from '../hooks/useApiData';
 import type { RewardCycle } from '../types/api';
 import './HarvestingPage.css';
+
+// Helper to get current epoch date
+function getCurrentEpoch(): string {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export interface HarvestingData {
   id: string;
@@ -17,6 +27,9 @@ export interface HarvestingData {
 }
 
 export function HarvestingPage() {
+  // Selected epoch for table filtering (defaults to today)
+  const [selectedEpoch, setSelectedEpoch] = useState<string>(getCurrentEpoch());
+  
   const {
     data: rewardsData,
     isLoading: isLoadingRewards,
@@ -35,8 +48,14 @@ export function HarvestingPage() {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Year filter state
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  // Fetch available epochs (last 30 days) for the calendar
+  const { data: epochsData } = useEpochs(30, {});
+
+  // Get available epoch dates for the calendar picker
+  const availableEpochs = useMemo(() => {
+    if (!epochsData?.epochs) return [];
+    return epochsData.epochs.map(e => e.epoch);
+  }, [epochsData]);
 
   // Transform historical reward cycles to harvesting data
   const allHarvestingData: HarvestingData[] = useMemo(() => {
@@ -96,66 +115,20 @@ export function HarvestingPage() {
       });
   }, [historicalData, rewardsData]);
 
-  // Get available years and months from actual data
-  const availableYears = useMemo(() => {
-    const years = new Set<number>();
-    allHarvestingData.forEach((item) => {
-      const itemDate = new Date(item.date);
-      years.add(itemDate.getFullYear());
-    });
-    return Array.from(years).sort((a, b) => b - a); // Most recent first
-  }, [allHarvestingData]);
-
-  // Initialize selected year to most recent year
-  useEffect(() => {
-    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
-      setSelectedYear(availableYears[0]);
-      setSelectedMonth(null); // Reset month when year changes
-    }
-  }, [availableYears, selectedYear]);
-
-  // Get available months for selected year
-  const availableMonths = useMemo(() => {
-    const months = new Set<number>();
-    allHarvestingData.forEach((item) => {
-      const itemDate = new Date(item.date);
-      if (itemDate.getFullYear() === selectedYear) {
-        months.add(itemDate.getMonth() + 1);
-      }
-    });
-    return Array.from(months).sort((a, b) => b - a); // Most recent first
-  }, [allHarvestingData, selectedYear]);
-
-  // Month names
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-    'July', 'August', 'September', 'October', 'November', 'December'];
-
-  // Initialize selected month to the latest available month
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-
-  // Update selected month when available months change
-  useEffect(() => {
-    if (availableMonths.length > 0) {
-      if (selectedMonth === null || !availableMonths.includes(selectedMonth)) {
-        setSelectedMonth(availableMonths[0]); // Most recent month (first in descending sorted array)
-      }
-    } else {
-      setSelectedMonth(null); // Reset if no months available
-    }
-  }, [availableMonths, selectedMonth]);
-
-  // Filter data by year and month
+  // Filter data by last 30 days from selected epoch
   const harvestingData: HarvestingData[] = useMemo(() => {
+    if (!selectedEpoch) return allHarvestingData;
+    
+    // Calculate date 30 days before selected epoch
+    const selectedDate = new Date(selectedEpoch + 'T00:00:00Z');
+    const startDate = new Date(selectedDate);
+    startDate.setUTCDate(startDate.getUTCDate() - 29); // 30 days including selected day
+    
     return allHarvestingData.filter((item) => {
-      const itemDate = new Date(item.date);
-      const itemYear = itemDate.getFullYear();
-      const itemMonth = itemDate.getMonth() + 1; // getMonth() returns 0-11
-      
-      if (itemYear !== selectedYear) return false;
-      if (selectedMonth !== null && itemMonth !== selectedMonth) return false;
-      return true;
+      const itemDate = new Date(item.date + 'T00:00:00Z');
+      return itemDate >= startDate && itemDate <= selectedDate;
     });
-  }, [allHarvestingData, selectedYear, selectedMonth]);
+  }, [allHarvestingData, selectedEpoch]);
 
   // Calculate stats from data
   const totalNukeHarvested = useMemo(() => {
@@ -336,31 +309,15 @@ export function HarvestingPage() {
             />
           </div>
 
-          {/* Year and Month Filters with Export */}
+          {/* Calendar Filter and Export */}
           <div className="harvesting-filters-row">
-            <div>
-              <div className="filter-group">
-                <label className="filter-label">Year:</label>
-                <button
-                  className="filter-button active"
-                  onClick={() => {
-                    setSelectedYear(selectedYear);
-                  }}
-                >
-                  {selectedYear}
-                </button>
-              </div>
-              
-              {availableMonths.length > 0 && (
-                <div className="filter-group">
-                  <label className="filter-label">Month:</label>
-                  <button
-                    className="filter-button active"
-                  >
-                    {selectedMonth !== null ? monthNames[selectedMonth - 1] : monthNames[availableMonths[0] - 1]}
-                  </button>
-                </div>
-              )}
+            <div className="filter-group">
+              <label className="filter-label">Select Date (Last 30 days):</label>
+              <EpochDatePicker
+                selectedDate={selectedEpoch}
+                availableEpochs={availableEpochs}
+                onDateSelect={setSelectedEpoch}
+              />
             </div>
 
             <div className="filter-export">

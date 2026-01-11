@@ -70,6 +70,18 @@
   
   /* Ensure it stays within viewport */
   max-width: min(320px, calc(100vw - 2rem));
+  
+  /* Prevent horizontal overflow */
+  transform: translateX(0);
+}
+
+/* On small screens, align dropdown to screen edge if needed */
+@media (max-width: 768px) {
+  .epoch-date-picker-dropdown {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes slideDown {
@@ -277,8 +289,7 @@
     min-width: min(240px, calc(100vw - 2rem));
     max-width: min(260px, calc(100vw - 2rem));
     max-height: 340px;
-    right: 0;
-    left: auto;
+    /* Positioning handled by general mobile rule above */
   }
   
   .date-picker-header {

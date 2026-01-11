@@ -1,10 +1,20 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
-import { useRewards, useHistoricalRewards, useSolPrice } from '../hooks/useApiData';
+import { EpochDatePicker } from '../components/EpochDatePicker';
+import { useRewards, useHistoricalRewards, useSolPrice, useEpochs } from '../hooks/useApiData';
 import type { RewardCycle } from '../types/api';
 import './DistributionPage.css';
+
+// Helper to get current epoch date
+function getCurrentEpoch(): string {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export interface DistributionData {
   id: string;
@@ -17,6 +27,9 @@ export interface DistributionData {
 }
 
 export function DistributionPage() {
+  // Selected epoch for table filtering (defaults to today)
+  const [selectedEpoch, setSelectedEpoch] = useState<string>(getCurrentEpoch());
+  
   const {
     data: rewardsData,
     isLoading: isLoadingRewards,
@@ -35,8 +48,14 @@ export function DistributionPage() {
     refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Year filter state
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  // Fetch available epochs (last 30 days) for the calendar
+  const { data: epochsData } = useEpochs(30, {});
+
+  // Get available epoch dates for the calendar picker
+  const availableEpochs = useMemo(() => {
+    if (!epochsData?.epochs) return [];
+    return epochsData.epochs.map(e => e.epoch);
+  }, [epochsData]);
 
   // Transform historical reward cycles to distribution data
   const allDistributionData: DistributionData[] = useMemo(() => {
@@ -75,66 +94,20 @@ export function DistributionPage() {
       });
   }, [historicalData]);
 
-  // Get available years and months from actual data
-  const availableYears = useMemo(() => {
-    const years = new Set<number>();
-    allDistributionData.forEach((item) => {
-      const itemDate = new Date(item.date);
-      years.add(itemDate.getFullYear());
-    });
-    return Array.from(years).sort((a, b) => b - a); // Most recent first
-  }, [allDistributionData]);
-
-  // Initialize selected year to most recent year
-  useEffect(() => {
-    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
-      setSelectedYear(availableYears[0]);
-      setSelectedMonth(null); // Reset month when year changes
-    }
-  }, [availableYears, selectedYear]);
-
-  // Get available months for selected year
-  const availableMonths = useMemo(() => {
-    const months = new Set<number>();
-    allDistributionData.forEach((item) => {
-      const itemDate = new Date(item.date);
-      if (itemDate.getFullYear() === selectedYear) {
-        months.add(itemDate.getMonth() + 1);
-      }
-    });
-    return Array.from(months).sort((a, b) => b - a); // Most recent first
-  }, [allDistributionData, selectedYear]);
-
-  // Month names
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-    'July', 'August', 'September', 'October', 'November', 'December'];
-
-  // Initialize selected month to the latest available month
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-
-  // Update selected month when available months change
-  useEffect(() => {
-    if (availableMonths.length > 0) {
-      if (selectedMonth === null || !availableMonths.includes(selectedMonth)) {
-        setSelectedMonth(availableMonths[0]); // Most recent month (first in descending sorted array)
-      }
-    } else {
-      setSelectedMonth(null); // Reset if no months available
-    }
-  }, [availableMonths, selectedMonth]);
-
-  // Filter data by year and month
+  // Filter data by last 30 days from selected epoch
   const distributionData: DistributionData[] = useMemo(() => {
+    if (!selectedEpoch) return allDistributionData;
+    
+    // Calculate date 30 days before selected epoch
+    const selectedDate = new Date(selectedEpoch + 'T00:00:00Z');
+    const startDate = new Date(selectedDate);
+    startDate.setUTCDate(startDate.getUTCDate() - 29); // 30 days including selected day
+    
     return allDistributionData.filter((item) => {
-      const itemDate = new Date(item.date);
-      const itemYear = itemDate.getFullYear();
-      const itemMonth = itemDate.getMonth() + 1; // getMonth() returns 0-11
-      
-      if (itemYear !== selectedYear) return false;
-      if (selectedMonth !== null && itemMonth !== selectedMonth) return false;
-      return true;
+      const itemDate = new Date(item.date + 'T00:00:00Z');
+      return itemDate >= startDate && itemDate <= selectedDate;
     });
-  }, [allDistributionData, selectedYear, selectedMonth]);
+  }, [allDistributionData, selectedEpoch]);
 
   // Calculate stats from data
   const totalSOLDistributed = useMemo(() => {
@@ -208,7 +181,7 @@ export function DistributionPage() {
       },
       {
         key: 'transactions',
-        header: 'TRX',
+        header: 'TRANSACTIONS',
         accessor: (row) => row.transactions.toLocaleString(undefined, { maximumFractionDigits: 0 }),
         sortable: true,
         sortFn: (a, b) => a.transactions - b.transactions,
@@ -242,7 +215,7 @@ export function DistributionPage() {
   // Export CSV handler
   const handleExportCSV = () => {
     const solPrice = solPriceData?.price || 0;
-    const headers = ['DATE', 'TIME', 'DISTRIBUTED (SOL)', 'VALUE $', 'TRX', 'STATUS'];
+    const headers = ['DATE', 'TIME', 'DISTRIBUTED (SOL)', 'VALUE $', 'TRANSACTIONS', 'STATUS'];
     const rows = distributionData.map((row) => [
       row.date,
       row.time,
@@ -304,31 +277,15 @@ export function DistributionPage() {
             />
           </div>
 
-          {/* Year and Month Filters with Export */}
+          {/* Calendar Filter and Export */}
           <div className="distribution-filters-row">
-            <div>
             <div className="filter-group">
-              <label className="filter-label">Year:</label>
-              <button
-                className="filter-button active"
-                onClick={() => {
-                  setSelectedYear(selectedYear);
-                }}
-              >
-                {selectedYear}
-              </button>
-            </div>
-            
-            {availableMonths.length > 0 && (
-              <div className="filter-group">
-                <label className="filter-label">Month:</label>
-                <button
-                  className="filter-button active"
-                >
-                  {selectedMonth !== null ? monthNames[selectedMonth - 1] : monthNames[availableMonths[0] - 1]}
-                </button>
-              </div>
-            )}
+              <label className="filter-label">Select Date (Last 30 days):</label>
+              <EpochDatePicker
+                selectedDate={selectedEpoch}
+                availableEpochs={availableEpochs}
+                onDateSelect={setSelectedEpoch}
+              />
             </div>
 
             <div className="filter-export">
