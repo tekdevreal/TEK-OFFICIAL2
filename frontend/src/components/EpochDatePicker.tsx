@@ -5,7 +5,6 @@ interface EpochDatePickerProps {
   selectedDate: string; // YYYY-MM-DD format
   availableEpochs: string[]; // Array of available epoch dates
   onDateSelect: (date: string) => void;
-  maxDays?: number; // Maximum days to show (default 30)
 }
 
 function formatDisplayDate(dateStr: string): string {
@@ -78,7 +77,6 @@ export function EpochDatePicker({
   selectedDate,
   availableEpochs,
   onDateSelect,
-  maxDays = 30,
 }: EpochDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
