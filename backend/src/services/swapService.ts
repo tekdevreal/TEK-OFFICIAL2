@@ -1484,7 +1484,7 @@ export async function swapNukeToSOL(
       destTokenProgram: destTokenProgram.toBase58(),
       sourceIsToken2022,
       sourceTransferFeeBps,
-      note: `NUKE transfer fee: ${sourceTransferFeeBps} basis points (${sourceTransferFeeBps / 100}%)`,
+      note: `TEK transfer fee: ${sourceTransferFeeBps} basis points (${sourceTransferFeeBps / 100}%)`,
     });
 
     // Step 4: Determine swap direction and map mints/vaults

@@ -27,7 +27,7 @@ import * as path from 'path';
 /**
  * Tax Distribution Service
  * 
- * Handles 4% transaction tax on NUKE token transfers.
+ * Handles 3% transaction tax on TEK token transfers.
  * 
  * IMPORTANT: Transfer fees are epoch-gated. The fee will only be enforced when
  * newerTransferFee.epoch <= currentClusterEpoch. If the epoch is in the future,
@@ -61,13 +61,13 @@ let cachedTreasuryWallet: Keypair | null = null;
  * Tax Distribution State
  */
 interface TaxState {
-  totalTaxCollected: string; // Total NUKE tax collected (in token units, as string for BigInt)
+  totalTaxCollected: string; // Total TEK tax collected (in token units, as string for BigInt)
   totalRewardAmount: string; // Total SOL distributed to holders (in lamports, as string for BigInt)
   totalTreasuryAmount: string; // Total SOL sent to treasury (in lamports, as string for BigInt)
   totalSolDistributed: string; // Total SOL distributed to holders (in lamports)
   totalSolToTreasury: string; // Total SOL sent to treasury (in lamports)
-  totalNukeHarvested: string; // Total NUKE harvested from mint (in token units)
-  totalNukeSold: string; // Total NUKE sold for SOL (in token units)
+  totalNukeHarvested: string; // Total TEK harvested from mint (in token units)
+  totalNukeSold: string; // Total TEK sold for SOL (in token units)
   lastTaxDistribution: number | null; // Timestamp of last tax distribution
   lastDistributionCycleNumber: number | null; // Cycle number when last distribution occurred
   lastDistributionEpoch: string | null; // Epoch when last distribution occurred
@@ -78,7 +78,7 @@ interface TaxState {
   lastDistributionTime: number | null; // Timestamp of last distribution
   taxDistributions: Array<{
     timestamp: number;
-    transactionAmount: string; // NUKE amount harvested
+    transactionAmount: string; // TEK amount harvested
     rewardAmount: string; // SOL amount distributed to holders
     treasuryAmount: string; // SOL amount sent to treasury
     fromAddress: string;
@@ -1079,8 +1079,8 @@ export class TaxService {
         decimals,
       });
 
-      // Step 7: Swap NUKE to SOL via Raydium (with batch support for large amounts)
-      logger.info('Swapping harvested NUKE to SOL', {
+      // Step 7: Swap TEK to SOL via Raydium (with batch support for large amounts)
+      logger.info('Swapping harvested TEK to SOL', {
         nukeAmount: withdrawnAmount.toString(),
         nukeAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
       });
@@ -1106,14 +1106,14 @@ export class TaxService {
           };
           swapSignatures = batchResult.txSignatures;
           
-          logger.info('Batch NUKE swap to SOL completed successfully', {
+          logger.info('Batch TEK swap to SOL completed successfully', {
             nukeAmount: withdrawnAmount.toString(),
             solReceived: swapResult.solReceived.toString(),
             batchCount: swapSignatures.length,
             swapSignatures,
           });
         } catch (error) {
-          logger.error('Failed to execute batch swap NUKE to SOL - aborting distribution', {
+          logger.error('Failed to execute batch swap TEK to SOL - aborting distribution', {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
             nukeAmount: withdrawnAmount.toString(),
@@ -1128,13 +1128,13 @@ export class TaxService {
           swapResult = await swapNukeToSOL(withdrawnAmount);
           swapSignatures = [swapResult.txSignature];
           
-          logger.info('NUKE swapped to SOL successfully (single swap)', {
+          logger.info('TEK swapped to SOL successfully (single swap)', {
             nukeAmount: withdrawnAmount.toString(),
             solReceived: swapResult.solReceived.toString(),
             swapSignature: swapResult.txSignature,
           });
         } catch (error) {
-          logger.error('Failed to swap NUKE to SOL - aborting distribution', {
+          logger.error('Failed to swap TEK to SOL - aborting distribution', {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
             nukeAmount: withdrawnAmount.toString(),
@@ -1209,10 +1209,12 @@ export class TaxService {
           treasuryTx.recentBlockhash = blockhash;
           treasuryTx.feePayer = rewardWalletAddress;
 
+          // Use reward wallet to sign treasury transfer (reward wallet has the SOL)
+          const rewardWallet = getRewardWallet();
           treasurySignature = await sendAndConfirmTransaction(
             connection,
             treasuryTx,
-            [withdrawWallet],
+            [rewardWallet],
             { commitment: 'confirmed', maxRetries: 3 }
           );
 

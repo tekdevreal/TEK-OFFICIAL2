@@ -217,7 +217,7 @@ export async function distributeSolToHolders(
       totalRewardLamports: rewardsToPay.reduce((sum, r) => sum + r.amountLamports, 0n).toString(),
       totalRewardSOL: (Number(rewardsToPay.reduce((sum, r) => sum + r.amountLamports, 0n)) / LAMPORTS_PER_SOL).toFixed(6),
       minPayoutThresholdSOL: thresholdSOL,
-      note: 'Only distributing SOL from current NUKE swap, not accumulated rewards',
+      note: 'Only distributing SOL from current TEK swap, not accumulated rewards',
     });
 
     // Step 6: Get reward wallet
@@ -312,7 +312,7 @@ export async function distributeSolToHolders(
         
         // NOTE: Accumulated rewards are NOT cleared because we never pay them
         // They remain for informational/tracking purposes only
-        // Only SOL from NUKE swaps is distributed
+        // Only SOL from TEK swaps is distributed
 
         logger.info('SOL payout successful', {
           wallet: reward.pubkey,
@@ -321,7 +321,7 @@ export async function distributeSolToHolders(
           signature,
           wasAccumulated: false,  // Always false now - never pay accumulated
           accumulatedTracked: accumulatedRewardSOL.toFixed(6),  // For info only
-          note: 'Only SOL from NUKE swap distributed, not accumulated rewards',
+          note: 'Only SOL from TEK swap distributed, not accumulated rewards',
           status: 'PAID',
         });
       } catch (error) {
@@ -357,7 +357,7 @@ export async function distributeSolToHolders(
       totalDistributedLamports: totalDistributed.toString(),
       totalDistributedSol: (Number(totalDistributed) / LAMPORTS_PER_SOL).toFixed(6),
       minPayoutThresholdSOL: thresholdSOL,
-      note: 'Only SOL from current NUKE swap distributed',
+      note: 'Only SOL from current TEK swap distributed',
     });
 
     return {
