@@ -59,9 +59,9 @@ function normalizeBackendURL(url: string | undefined): string {
 
 const BACKEND_URL = normalizeBackendURL(BACKEND_URL_RAW);
 
-// Log backend URL only in development
+// Log backend URL (always log in production for debugging)
+console.log('[API] Backend URL configured:', BACKEND_URL);
 if (isDevelopment) {
-  console.log('[API] Backend URL configured:', BACKEND_URL);
   console.log('[API] Environment:', {
     mode: import.meta.env.MODE,
     prod: isProduction,
@@ -145,9 +145,16 @@ apiClient.interceptors.response.use(
       const message = error.message || 'Request failed';
       console.error(`[API] Error: ${message}${status ? ` (${status})` : ''}`);
       
-      // Only log CORS errors in production (they're critical)
+      // Always log network/CORS errors in production (they're critical)
       if (error.code === 'ERR_NETWORK' || error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
         console.error('[API] Network/CORS error - Backend may be unavailable');
+        console.error('[API] Backend URL:', BACKEND_URL);
+        console.error('[API] Error code:', error.code);
+        console.error('[API] Error message:', error.message);
+        console.error('[API] Troubleshooting:');
+        console.error('  1. Verify backend is running:', BACKEND_URL + '/health');
+        console.error('  2. Check CORS configuration in backend');
+        console.error('  3. Verify VITE_API_BASE_URL is set correctly');
       }
     } else {
       // In development, log detailed error information
