@@ -36,12 +36,12 @@ This guide covers deploying the TEK (The Eternal Key) rewards backend to Railway
 2. **Configure Service:**
    - **Name**: `tek-backend` (or `tek-rewards-backend`)
    - **Root Directory**: `backend` ⚠️ **CRITICAL: Set this in Railway Settings**
-   - Railway will auto-detect Dockerfile in `backend/` directory
+   - Railway will auto-detect `Dockerfile` in the root (which will be `backend/Dockerfile` when root is set)
 
 3. **Build Settings (Using Dockerfile):**
-   - **Root Directory**: `backend` (MUST be set in Railway dashboard)
-   - **Dockerfile**: `backend/Dockerfile` (auto-detected)
-   - **Build Method**: Docker (Railway will use the Dockerfile)
+   - **Root Directory**: `backend` (MUST be set in Railway dashboard → Settings → Source)
+   - **Dockerfile**: Railway will look for `Dockerfile` relative to root directory
+   - **Build Method**: Docker (Railway will use the Dockerfile automatically)
    - **Node Version**: 20.6.0 (specified in Dockerfile)
    
    **Note**: The Dockerfile handles all build steps automatically:
@@ -49,7 +49,10 @@ This guide covers deploying the TEK (The Eternal Key) rewards backend to Railway
    - Builds TypeScript with `npm run build`
    - Starts server with `npm start`
    
-   **Important**: Set **Root Directory** to `backend` in **Settings** → **Source**
+   **Important**: 
+   - Set **Root Directory** to `backend` in **Settings** → **Source**
+   - Railway will then find `Dockerfile` at `backend/Dockerfile` (relative to repo root)
+   - Or Railway will find it as just `Dockerfile` (relative to `backend/` root directory)
 
 ### Step 3: Configure Environment Variables
 
