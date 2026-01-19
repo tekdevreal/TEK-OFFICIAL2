@@ -28,16 +28,19 @@ export function createApp(): Express {
     'https://rewards.tekportal.app', // Explicitly allow TEK portal
   ].filter(Boolean); // Remove undefined values
 
-  // Log allowed origins on startup for debugging
-  console.log('[CORS] Allowed origins:', allowedOrigins);
-  console.log('[CORS] FRONTEND_URL from env:', process.env.FRONTEND_URL);
-  console.log('[CORS] Normalized frontend URL:', frontendUrl);
+  // Log allowed origins on startup for debugging (always log startup config)
+  console.log('[CORS] Configuration loaded', {
+    allowedOrigins,
+    frontendUrlFromEnv: process.env.FRONTEND_URL,
+    normalizedFrontendUrl: frontendUrl,
+    logCorsEnabled: process.env.LOG_CORS === 'true',
+    logRequestsEnabled: process.env.LOG_REQUESTS === 'true',
+  });
 
   app.use(cors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       // Allow requests with no origin (like mobile apps, Postman, curl)
       if (!origin) {
-        console.log('[CORS] Allowing request with no origin');
         return callback(null, true);
       }
       
@@ -46,12 +49,16 @@ export function createApp(): Express {
       
       // Allow requests from allowed origins
       if (allowedOrigins.includes(normalizedOrigin)) {
-        console.log(`[CORS] Allowing request from origin: ${origin}`);
+        // Only log in development or if explicitly enabled
+        if (process.env.NODE_ENV === 'development' || process.env.LOG_CORS === 'true') {
+          console.log(`[CORS] Allowing request from origin: ${origin}`);
+        }
         callback(null, true);
       } else if (process.env.NODE_ENV === 'development') {
         console.log(`[CORS] Development mode - allowing origin: ${origin}`);
         callback(null, true);
       } else {
+        // Always log blocked requests (security concern)
         console.warn(`[CORS] Blocked request from origin: ${origin} (normalized: ${normalizedOrigin})`);
         console.warn(`[CORS] Allowed origins:`, allowedOrigins);
         callback(new Error('Not allowed by CORS'));
@@ -63,19 +70,22 @@ export function createApp(): Express {
     exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
   }));
 
-  // Request logging middleware (for debugging - always log CORS-related requests)
+  // Request logging middleware (for debugging - reduced verbosity in production)
   app.use((req: Request, _res: Response, next: NextFunction) => {
-    // Always log CORS-related requests (OPTIONS preflight and requests with origin)
-    if (req.method === 'OPTIONS' || req.headers.origin) {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
-        origin: req.headers.origin,
-        query: req.query,
-      });
-    } else if (process.env.NODE_ENV === 'development') {
-      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
-        origin: req.headers.origin,
-        query: req.query,
-      });
+    // Only log in development or if explicitly enabled
+    if (process.env.NODE_ENV === 'development' || process.env.LOG_REQUESTS === 'true') {
+      // Log OPTIONS preflight requests (CORS)
+      if (req.method === 'OPTIONS') {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
+          origin: req.headers.origin,
+        });
+      } else {
+        // Log regular requests with origin
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
+          origin: req.headers.origin,
+          query: req.query,
+        });
+      }
     }
     next();
   });
