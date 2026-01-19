@@ -6,7 +6,7 @@
 1. Go to: https://dashboard.render.com
 2. Click "New +" → "Web Service"
 3. Connect your GitHub repository:
-   - Repository: `Millionaireguardian/nukerewards`
+   - Repository: `tekdevreal/TEK-OFFICIAL2`
    - Branch: `main`
 
 ### Step 2: Configure Service
@@ -70,7 +70,7 @@ Alternatively, you can use the `render.yaml` file in the repository root:
 
 1. Go to: https://dashboard.render.com
 2. Click "New +" → "Blueprint"
-3. Connect repository: `Millionaireguardian/nukerewards`
+3. Connect repository: `tekdevreal/TEK-OFFICIAL2`
 4. Render will detect `render.yaml` and create the service
 5. Add environment variables in the dashboard
 

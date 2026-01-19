@@ -6,7 +6,7 @@
 - [ ] Telegram chat ID determined (@channel, @group, or numeric ID)
 - [ ] Backend deployed on Render and accessible
 - [ ] Backend URL confirmed: `https://nukerewards-backend.onrender.com`
-- [ ] Repository pushed to GitHub: `Millionaireguardian/nukerewards`
+- [ ] Repository pushed to GitHub: `tekdevreal/TEK-OFFICIAL2`
 
 ## Deployment Steps
 
@@ -14,7 +14,7 @@
 
 - [ ] Go to: https://dashboard.render.com
 - [ ] Click "New +" → "Background Worker"
-- [ ] Connect repository: `Millionaireguardian/nukerewards`
+- [ ] Connect repository: `tekdevreal/TEK-OFFICIAL2`
 - [ ] Select branch: `main`
 
 ### Step 2: Configure Worker

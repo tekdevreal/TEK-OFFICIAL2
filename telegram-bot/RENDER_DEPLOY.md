@@ -14,7 +14,7 @@ Deploy the Telegram bot as a Render Worker service to run 24/7 and send automati
 
 2. **Create New Worker:**
    - Click "New +" → "Background Worker"
-   - Connect repository: `Millionaireguardian/nukerewards`
+   - Connect repository: `tekdevreal/TEK-OFFICIAL2`
    - Branch: `main`
 
 3. **Configure Worker:**
@@ -58,7 +58,7 @@ Deploy the Telegram bot as a Render Worker service to run 24/7 and send automati
 
 1. Go to: https://dashboard.render.com
 2. Click "New +" → "Blueprint"
-3. Connect repository: `Millionaireguardian/nukerewards`
+3. Connect repository: `tekdevreal/TEK-OFFICIAL2`
 4. Render will detect `render.yaml` and create both services
 5. Add environment variables in dashboard for the worker
 6. Deploy!
