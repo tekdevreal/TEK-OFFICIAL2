@@ -254,9 +254,9 @@ router.get('/rewards', async (req: Request, res: Response): Promise<void> => {
             }
           : null,
       tax: {
-        totalTaxCollected: taxStats.totalTaxCollected, // NUKE harvested
-        totalNukeHarvested: taxStats.totalNukeHarvested,
-        totalNukeSold: taxStats.totalNukeSold,
+        totalTaxCollected: taxStats.totalTaxCollected, // TEK harvested
+        totalNukeHarvested: taxStats.totalNukeHarvested, // TEK harvested (field name kept for API compatibility)
+        totalNukeSold: taxStats.totalNukeSold, // TEK sold (field name kept for API compatibility)
         totalRewardAmount: taxStats.totalRewardAmount, // SOL distributed to holders
         totalTreasuryAmount: taxStats.totalTreasuryAmount, // SOL sent to treasury
         totalSolDistributed: taxStats.totalSolDistributed,
@@ -403,7 +403,7 @@ router.get('/payouts', async (req: Request, res: Response): Promise<void> => {
 
 /**
  * GET /dashboard/raydium
- * Returns Raydium DEX analytics for NUKE token
+ * Returns Raydium DEX analytics for TEK token
  */
 router.get('/raydium', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -417,7 +417,7 @@ router.get('/raydium', async (req: Request, res: Response): Promise<void> => {
 
     const response = {
       dex: 'raydium',
-      price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null, // SOL per NUKE
+      price: raydiumData.price ? parseFloat(raydiumData.price.toFixed(8)) : null, // SOL per TEK
       source: raydiumData.source,
       updatedAt: raydiumData.updatedAt,
     };
@@ -605,11 +605,11 @@ router.get('/processing', async (req: Request, res: Response): Promise<void> => 
 
     // Get tax statistics for current cycle
     const taxStats = TaxService.getTaxStatistics();
-    const nukeCollected = parseFloat(taxStats.totalNukeHarvested || '0');
+    const tekCollected = parseFloat(taxStats.totalNukeHarvested || '0');
 
-    // Estimate SOL from NUKE collected (rough estimate - can be enhanced)
+    // Estimate SOL from TEK collected (rough estimate - can be enhanced)
     // TODO: Use actual price data for more accurate estimation
-    const estimatedSOL = nukeCollected > 0 ? (nukeCollected / 13333).toFixed(6) : '0.000000'; // Rough estimate
+    const estimatedSOL = tekCollected > 0 ? (tekCollected / 13333).toFixed(6) : '0.000000'; // Rough estimate
 
     // Determine status
     let status: 'Idle' | 'Processing' | 'Pending' | 'Error' = 'Idle';
@@ -662,7 +662,7 @@ router.get('/distributions/recent', async (req: Request, res: Response): Promise
       offset: 0,
     });
 
-    // Get tax statistics for harvested NUKE data
+    // Get tax statistics for harvested TEK data
     const taxStats = TaxService.getTaxStatistics();
 
     // Transform cycles to distribution format
@@ -674,16 +674,18 @@ router.get('/distributions/recent', async (req: Request, res: Response): Promise
       // For now, use index + 1, but ideally this should come from cycle data
       const epoch = cycles.length - index;
 
-      // Get harvested NUKE - approximate from SOL distributed
-      // TODO: Link to actual harvesting data when available
-      const harvestedNUKE = cycle.totalSOLDistributed > 0 
-        ? Math.floor(cycle.totalSOLDistributed * 13333) // Rough estimate
-        : 0;
+      // Get harvested TEK - use actual tax statistics if available
+      // Calculate from total tax collected for this cycle
+      const harvestedTEK = taxStats.totalNukeHarvested 
+        ? parseFloat(taxStats.totalNukeHarvested) / 1e6 // Convert from raw units to TEK (6 decimals)
+        : (cycle.totalSOLDistributed > 0 
+            ? Math.floor(cycle.totalSOLDistributed * 13333) // Rough estimate fallback
+            : 0);
 
       return {
         epoch,
         status,
-        harvestedNUKE,
+        harvestedNUKE: harvestedTEK, // Field name kept for API compatibility
         distributedSOL: parseFloat(cycle.totalSOLDistributed.toFixed(6)),
         timestamp: cycle.timestamp,
       };
