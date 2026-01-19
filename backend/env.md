@@ -162,6 +162,23 @@ MIN_PAYOUT_USD=0.001
 
 ---
 
+## 🟢 Optional: Logging Configuration
+
+### Debug Logging (Optional)
+```bash
+# Enable verbose CORS logging (default: disabled in production)
+# Set to "true" to see all CORS allow messages
+# LOG_CORS=true
+
+# Enable verbose request logging (default: disabled in production)
+# Set to "true" to see all HTTP request logs
+# LOG_REQUESTS=true
+```
+
+**Note**: By default, CORS and request logging are disabled in production to reduce log noise. Only blocked CORS requests and startup configuration are logged. Set these variables to `true` only if you need detailed debugging logs.
+
+---
+
 ## 📝 Notes
 
 1. **Token Information**:
@@ -196,6 +213,13 @@ MIN_PAYOUT_USD=0.001
    - Build Command: `npm install && npm run build` (auto-detected)
    - Start Command: `npm start` (auto-detected)
    - Node Version: 20.6.0 (from `package.json` engines)
+   - Dockerfile Path: `backend/Dockerfile` (if using Docker)
+
+6. **Logging**:
+   - CORS logging is disabled by default in production (cleaner logs)
+   - Request logging is disabled by default in production
+   - Only blocked CORS requests and startup config are logged
+   - Set `LOG_CORS=true` or `LOG_REQUESTS=true` for verbose debugging
 
 ---
 
