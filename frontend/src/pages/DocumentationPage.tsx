@@ -8,9 +8,9 @@ function OverviewTab() {
   return (
     <div className="doc-tab-content">
       <section className="doc-section">
-        <h3 className="doc-section-title">What Is NUKE?</h3>
+        <h3 className="doc-section-title">What Is TEK?</h3>
         <p>
-          NUKE is a Solana-based token protocol designed to provide automatic SOL yield to holders through a self-sustaining system powered by engineered arbitrage volume and Tax Reward mechanism. Unlike traditional tokens that rely solely on hype or organic trading, NUKE leverages a multi-pool architecture to create perpetual, mechanics-driven baseline activity. This ensures consistent rewards even during periods of low market interest.
+          TEK is a Solana-based token protocol designed to provide automatic SOL yield to holders through a self-sustaining system powered by engineered arbitrage volume and Tax Reward mechanism. Unlike traditional tokens that rely solely on hype or organic trading, TEK leverages a multi-pool architecture to create perpetual, mechanics-driven baseline activity. This ensures consistent rewards even during periods of low market interest.
         </p>
         <p>
           At its core, the protocol operates as a "hold-to-earn" model where every trade generates value that flows back to holders. Here's how value flows through the ecosystem:
@@ -19,7 +19,7 @@ function OverviewTab() {
         <div className="doc-subsection">
           <h4 className="doc-subsection-title">Trade Initiation</h4>
           <p>
-            Any buy, sell, or transfer of NUKE triggers a 3% transfer tax, which is automatically collected on-chain.
+            Any buy, sell, or transfer of TEK triggers a 3% transfer tax, which is automatically collected on-chain.
           </p>
         </div>
 
@@ -33,7 +33,7 @@ function OverviewTab() {
         <div className="doc-subsection">
           <h4 className="doc-subsection-title">Arbitrage-Driven Volume</h4>
           <p>
-            NUKE's fragmented liquidity pools (with varying fee structures from 0.01% to 2%) attract arbitrage bots that exploit price discrepancies across pools. This generates reliable baseline trading volume without depending on external hype.
+            TEK's fragmented liquidity pools (with varying fee structures from 0.01% to 2%) attract arbitrage bots that exploit price discrepancies across pools. This generates reliable baseline trading volume without depending on external hype.
           </p>
         </div>
 
@@ -59,7 +59,7 @@ function OverviewTab() {
         </div>
 
         <p className="doc-highlight">
-          This architecture ensures that value isn't extracted but recycled: arbitrage profits are effectively funneled back into the system, creating a net-positive ecosystem where holding NUKE passively earns SOL through mechanical reliability.
+          This architecture ensures that value isn't extracted but recycled: arbitrage profits are effectively funneled back into the system, creating a net-positive ecosystem where holding TEK passively earns SOL through mechanical reliability.
         </p>
       </section>
 
@@ -100,9 +100,9 @@ function RewardTokenTab() {
   return (
     <div className="doc-tab-content">
       <section className="doc-section">
-        <h3 className="doc-section-title">NUKE Token Overview</h3>
+        <h3 className="doc-section-title">TEK Token Overview</h3>
         <p>
-          The NUKE token is engineered as a reward-focused asset on Solana, with a total supply of 1 Billion NUKE. Mint authority is revoked, preventing any additional issuance, and liquidity provider (LP) tokens are fully burned at launch for irreversible, rug-proof liquidity.
+          The TEK (The Eternal Key) token is engineered as a reward-focused asset on Solana, with a total supply of 1 Billion TEK. Mint authority is revoked, preventing any additional issuance, and liquidity provider (LP) tokens are fully burned at launch for irreversible, rug-proof liquidity.
         </p>
       </section>
 
@@ -157,7 +157,7 @@ function RewardTokenTab() {
           </div>
 
           <p className="tax-summary">
-            The tax structure is designed for simplicity and efficiency, uniform across all transactions to avoid complexity while maximizing holder benefits. By tying taxes directly to volume (boosted by arbitrage), NUKE creates a self-reinforcing reward token where increased activity translates to higher SOL yields, all while the treasury builds deeper, more resilient liquidity.
+            The tax structure is designed for simplicity and efficiency, uniform across all transactions to avoid complexity while maximizing holder benefits. By tying taxes directly to volume (boosted by arbitrage), TEK creates a self-reinforcing reward token where increased activity translates to higher SOL yields, all while the treasury builds deeper, more resilient liquidity.
           </p>
         </Accordion>
       </section>
@@ -171,7 +171,7 @@ function RewardsDistributionTab() {
       <section className="doc-section">
         <h3 className="doc-section-title">How Rewards Are Distributed</h3>
         <p>
-          Rewards in the NUKE protocol are distributed automatically and passively, ensuring holders earn SOL without any manual intervention. The process is powered by the 2% reflections portion of the 3% transfer tax, which accumulates from every trade and is converted to SOL for fair, pro-rata airdrops.
+          Rewards in the TEK protocol are distributed automatically and passively, ensuring holders earn SOL without any manual intervention. The process is powered by the 2% reflections portion of the 3% transfer tax, which accumulates from every trade and is converted to SOL for fair, pro-rata airdrops.
         </p>
         <p>
           Here's a step-by-step breakdown of how rewards are distributed:
@@ -183,7 +183,7 @@ function RewardsDistributionTab() {
             <div className="step-content">
               <div className="step-title">Tax Collection</div>
               <div className="step-description">
-                On every NUKE transfer, 2% of the transaction amount (in NUKE tokens) is collected into a reward pool.
+                On every TEK transfer, 2% of the transaction amount (in TEK tokens) is collected into a reward pool.
               </div>
             </div>
           </div>
@@ -193,7 +193,7 @@ function RewardsDistributionTab() {
             <div className="step-content">
               <div className="step-title">Automated Swapping</div>
               <div className="step-description">
-                Approximately every 5 minutes, the accumulated NUKE in the reward pool is swapped to SOL through efficient on-chain mechanisms (e.g., via integrated DEX routes). This timing balances gas costs with timely distributions.
+                Approximately every 5 minutes, the accumulated TEK in the reward pool is swapped to SOL through efficient on-chain mechanisms (e.g., via integrated DEX routes). This timing balances gas costs with timely distributions.
               </div>
             </div>
           </div>
@@ -203,7 +203,7 @@ function RewardsDistributionTab() {
             <div className="step-content">
               <div className="step-title">Pro-Rata Airdrops</div>
               <div className="step-description">
-                The resulting SOL is airdropped directly to all NUKE holders based on their proportional ownership of the total circulating supply. For example, if you hold 1% of all NUKE, you'll receive 1% of the SOL rewards from each cycle—scaling seamlessly as the protocol grows.
+                The resulting SOL is airdropped directly to all TEK holders based on their proportional ownership of the total circulating supply. For example, if you hold 1% of all TEK, you'll receive 1% of the SOL rewards from each cycle—scaling seamlessly as the protocol grows.
               </div>
             </div>
           </div>
@@ -247,7 +247,7 @@ function RewardsDistributionTab() {
       <section className="doc-section">
         <Accordion title="Epoch and Cycles">
           <p>
-            The NUKE protocol operates on a time-based system of epochs and cycles to organize and track reward distributions efficiently.
+            The TEK protocol operates on a time-based system of epochs and cycles to organize and track reward distributions efficiently.
           </p>
           
           <div className="epoch-explanation">
@@ -261,14 +261,14 @@ function RewardsDistributionTab() {
             <div className="epoch-item">
               <h4 className="epoch-item-title">What are Cycles?</h4>
               <p>
-                Within each epoch, there are 288 cycles. Each cycle lasts exactly 5 minutes (24 hours ÷ 5 minutes = 288 cycles). During each cycle, the protocol collects taxes, swaps NUKE to SOL, and distributes rewards to holders.
+                Within each epoch, there are 288 cycles. Each cycle lasts exactly 5 minutes (24 hours ÷ 5 minutes = 288 cycles). During each cycle, the protocol collects taxes, swaps TEK to SOL, and distributes rewards to holders.
               </p>
             </div>
 
             <div className="epoch-item">
               <h4 className="epoch-item-title">How They Work Together</h4>
               <p>
-                <strong>Cycle Execution:</strong> Every 5 minutes, a new cycle begins. The system checks if there's enough tax collected (minimum $5), swaps NUKE to SOL, and distributes rewards proportionally to all eligible holders.
+                <strong>Cycle Execution:</strong> Every 5 minutes, a new cycle begins. The system checks if there's enough tax collected (minimum $5), swaps TEK to SOL, and distributes rewards proportionally to all eligible holders.
               </p>
               <p>
                 <strong>Epoch Reset:</strong> At 00:00 UTC each day, the cycle counter resets to 1, and a new epoch begins. This allows for clear daily tracking of distributions and protocol performance.
@@ -284,7 +284,7 @@ function RewardsDistributionTab() {
       <section className="doc-section">
         <Accordion title="The Reward System">
           <p>
-            The NUKE reward system is designed for efficiency, sustainability, and fairness. It incorporates several mechanisms to optimize gas costs, prevent manipulation, and ensure smooth operations even during high-volume periods.
+            The TEK reward system is designed for efficiency, sustainability, and fairness. It incorporates several mechanisms to optimize gas costs, prevent manipulation, and ensure smooth operations even during high-volume periods.
           </p>
 
           <div className="reward-system-breakdown">
@@ -343,10 +343,10 @@ function TreasuryTab() {
       <section className="doc-section">
         <h3 className="doc-section-title">What Is the Treasury?</h3>
         <p>
-          The Treasury in the NUKE protocol serves as a decentralized, on-chain fund that collects and manages a portion of the transaction taxes to ensure the long-term sustainability, growth, and resilience of the ecosystem. It acts as a strategic reserve, automatically funded by <strong>1% of every 3% transfer tax</strong> applied to buys, sells, and transfers of NUKE tokens. This Treasury is not controlled by any central entity—<strong>contract ownership is fully renounced at launch</strong>, making all operations trustless and transparent via Solana's blockchain.
+          The Treasury in the TEK protocol serves as a decentralized, on-chain fund that collects and manages a portion of the transaction taxes to ensure the long-term sustainability, growth, and resilience of the ecosystem. It acts as a strategic reserve, automatically funded by <strong>1% of every 3% transfer tax</strong> applied to buys, sells, and transfers of TEK tokens. This Treasury is not controlled by any central entity—<strong>contract ownership is fully renounced at launch</strong>, making all operations trustless and transparent via Solana's blockchain.
         </p>
         <p>
-          Unlike traditional token treasuries that might be subject to manual withdrawals or team discretion, NUKE's Treasury is programmatically designed for efficiency and holder alignment. It accumulates NUKE tokens from taxes, which are then converted and deployed through automated or community-governed mechanisms. The primary goal is to create a self-reinforcing flywheel: by reinvesting funds into liquidity and marketing, the Treasury boosts trading volume, which in turn generates more taxes and rewards for holders.
+          Unlike traditional token treasuries that might be subject to manual withdrawals or team discretion, TEK's Treasury is programmatically designed for efficiency and holder alignment. It accumulates TEK tokens from taxes, which are then converted and deployed through automated or community-governed mechanisms. The primary goal is to create a self-reinforcing flywheel: by reinvesting funds into liquidity and marketing, the Treasury boosts trading volume, which in turn generates more taxes and rewards for holders.
         </p>
 
         <div className="treasury-features">
@@ -385,14 +385,14 @@ function TreasuryTab() {
         </div>
 
         <p className="doc-highlight">
-          In essence, the Treasury transforms a small slice of transaction fees into compounding value, ensuring NUKE remains a robust "hold-to-earn" token even in varying market conditions.
+          In essence, the Treasury transforms a small slice of transaction fees into compounding value, ensuring TEK remains a robust "hold-to-earn" token even in varying market conditions.
         </p>
       </section>
 
       <section className="doc-section">
         <Accordion title="How Are Treasury Funds Used?">
           <p>
-            Treasury funds are exclusively dedicated to two core pillars: <strong>liquidity compounding</strong> and <strong>strategic marketing</strong>. This allocation is hardcoded into the protocol, with no flexibility for other uses, to maintain focus and trust. The 1% tax portion (in NUKE tokens) accumulates in the Treasury contract and is periodically converted to SOL or other assets for deployment. Conversions and usages occur through automated scripts or, in some cases, community-voted proposals via integrated governance tools (if enabled post-launch).
+            Treasury funds are exclusively dedicated to two core pillars: <strong>liquidity compounding</strong> and <strong>strategic marketing</strong>. This allocation is hardcoded into the protocol, with no flexibility for other uses, to maintain focus and trust. The 1% tax portion (in TEK tokens) accumulates in the Treasury contract and is periodically converted to SOL or other assets for deployment. Conversions and usages occur through automated scripts or, in some cases, community-voted proposals via integrated governance tools (if enabled post-launch).
           </p>
 
           <div className="treasury-usage-section">
@@ -403,14 +403,14 @@ function TreasuryTab() {
               
               <p><strong>Mechanism:</strong></p>
               <ul>
-                <li>Accumulated NUKE tokens are swapped to SOL (or paired assets) via low-fee routes.</li>
+                <li>Accumulated TEK tokens are swapped to SOL (or paired assets) via low-fee routes.</li>
                 <li>SOL is then added to existing liquidity pools, with a focus on creating or expanding fragmented pools (e.g., with varying fee tiers from 0.01% to 2%).</li>
                 <li>This creates a "liquidity flywheel": Deeper pools lead to tighter spreads, more bot activity, higher trading volume, increased tax collection, and ultimately amplified SOL rewards for holders.</li>
               </ul>
 
               <p><strong>Benefits:</strong></p>
               <ul>
-                <li>Reduces slippage for traders, making NUKE more attractive for large-volume trades.</li>
+                <li>Reduces slippage for traders, making TEK more attractive for large-volume trades.</li>
                 <li>Mitigates volatility by distributing liquidity, preventing single-pool dominance.</li>
                 <li>Ensures baseline volume persists, as arbitrage opportunities arise from pool discrepancies.</li>
               </ul>
@@ -418,7 +418,7 @@ function TreasuryTab() {
               <p><strong>Frequency:</strong> Automated additions occur every 24-48 hours or when Treasury balances reach a threshold (e.g., equivalent to 1,000 SOL), to optimize gas costs.</p>
 
               <div className="treasury-example-box">
-                <strong>Example:</strong> If the Treasury collects 10,000 NUKE from taxes, it might convert them to ~5 SOL (depending on market price) and add it to a low-fee pool, increasing total liquidity by 1-2%.
+                <strong>Example:</strong> If the Treasury collects 10,000 TEK from taxes, it might convert them to ~5 SOL (depending on market price) and add it to a low-fee pool, increasing total liquidity by 1-2%.
               </div>
             </div>
           </div>
@@ -428,7 +428,7 @@ function TreasuryTab() {
       <section className="doc-section">
         <Accordion title="Future Plans for the Treasury">
           <p>
-            As the NUKE protocol matures, the Treasury will evolve to incorporate advanced mechanisms that further enhance holder value, sustainability, and ecosystem growth. Currently, <strong>100% of the 1% Treasury tax allocation is directed toward liquidity compounding</strong> to build a strong foundational base of depth and arbitrage-driven volume. In future phases, this allocation will be diversified through community-governed updates to the smart contract (e.g., via DAO proposals on Solana). These updates will introduce <strong>deflationary burns with integrated buybacks</strong> and a <strong>dedicated marketing budget</strong>, all while maintaining the protocol's trustless and automated nature.
+            As the TEK protocol matures, the Treasury will evolve to incorporate advanced mechanisms that further enhance holder value, sustainability, and ecosystem growth. Currently, <strong>100% of the 1% Treasury tax allocation is directed toward liquidity compounding</strong> to build a strong foundational base of depth and arbitrage-driven volume. In future phases, this allocation will be diversified through community-governed updates to the smart contract (e.g., via DAO proposals on Solana). These updates will introduce <strong>deflationary burns with integrated buybacks</strong> and a <strong>dedicated marketing budget</strong>, all while maintaining the protocol's trustless and automated nature.
           </p>
           <p>
             The planned diversification aims to balance immediate liquidity strength with long-term scarcity and visibility, creating even greater compounding effects for SOL rewards. All changes will be transparent, audited, and implemented only after holder consensus to ensure alignment with the "hold-to-earn" ethos.
@@ -446,19 +446,19 @@ function TreasuryTab() {
             <div className="future-plan-item">
               <h4 className="future-plan-title">Deflationary Burns with Buybacks (New Allocation: ~10-20% of Treasury Funds)</h4>
               
-              <p><strong>Mechanism:</strong> A portion of accumulated Treasury NUKE tokens will be periodically bought back from the market using converted SOL and then permanently burned. This process will occur through on-chain automation, such as timed swaps and burns every 7-14 days or when Treasury thresholds are met (e.g., equivalent to 500 SOL).</p>
-              
-              <p><strong>Buyback Process:</strong> Treasury SOL is used to purchase NUKE tokens via low-slippage DEX routes, ensuring efficient execution without market disruption.</p>
-              
-              <p><strong>Burn Execution:</strong> Bought-back NUKE is sent to a dead address (e.g., the Solana burn address), irreversibly removing it from circulation. This builds on the existing 1% per-cycle burn but scales it with Treasury resources for accelerated supply reduction.</p>
+              <p><strong>Mechanism:</strong> A portion of accumulated Treasury TEK tokens will be periodically bought back from the market using converted SOL and then permanently burned. This process will occur through on-chain automation, such as timed swaps and burns every 7-14 days or when Treasury thresholds are met (e.g., equivalent to 500 SOL).</p>
+
+              <p><strong>Buyback Process:</strong> Treasury SOL is used to purchase TEK tokens via low-slippage DEX routes, ensuring efficient execution without market disruption.</p>
+
+              <p><strong>Burn Execution:</strong> Bought-back TEK is sent to a dead address (e.g., the Solana burn address), irreversibly removing it from circulation. This builds on the existing 1% per-cycle burn but scales it with Treasury resources for accelerated supply reduction.</p>
 
               <div className="benefits-section">
                 <h5>Benefits:</h5>
                 <ul>
-                  <li><strong>Supply Reduction and Scarcity:</strong> By systematically decreasing the total NUKE supply (starting from 1,000,000,000 with mint authority revoked), each remaining token becomes more valuable over time. Holders' proportional ownership increases, amplifying their share of future SOL rewards and potential price appreciation.</li>
-                  <li><strong>Price Support and Stability:</strong> Buybacks provide organic buying pressure, helping to stabilize or uplift the NUKE price during market dips. This counteracts sell-offs and reinforces the protocol's resilience, as arbitrage bots respond to improved liquidity dynamics.</li>
+                  <li><strong>Supply Reduction and Scarcity:</strong> By systematically decreasing the total TEK supply (starting from 1,000,000,000 with mint authority revoked), each remaining token becomes more valuable over time. Holders' proportional ownership increases, amplifying their share of future SOL rewards and potential price appreciation.</li>
+                  <li><strong>Price Support and Stability:</strong> Buybacks provide organic buying pressure, helping to stabilize or uplift the TEK price during market dips. This counteracts sell-offs and reinforces the protocol's resilience, as arbitrage bots respond to improved liquidity dynamics.</li>
                   <li><strong>Compounding Rewards:</strong> Reduced supply means higher per-holder yields from the 2% reflections tax, creating a deflationary flywheel: fewer tokens → greater individual stake → more SOL per holder → increased holding incentive.</li>
-                  <li><strong>Anti-Inflationary Hedge:</strong> In a volatile crypto market, burns protect against dilution, making NUKE a more attractive long-term asset compared to inflationary tokens.</li>
+                  <li><strong>Anti-Inflationary Hedge:</strong> In a volatile crypto market, burns protect against dilution, making TEK a more attractive long-term asset compared to inflationary tokens.</li>
                   <li><strong>Holder-Centric Value:</strong> Unlike manual team burns, this automated system ensures fair, predictable deflation, fostering trust and encouraging longer hold periods for sustained volume.</li>
                 </ul>
               </div>
@@ -469,7 +469,7 @@ function TreasuryTab() {
             <div className="future-plan-item">
               <h4 className="future-plan-title">Strategic Marketing (Secondary Allocation: ~20-30% of Treasury Funds)</h4>
               
-              <p><strong>Purpose:</strong> To drive organic adoption and educate the broader Solana community about NUKE's unique arbitrage-powered yield model, without relying on paid promotions or hype.</p>
+              <p><strong>Purpose:</strong> To drive organic adoption and educate the broader Solana community about TEK's unique arbitrage-powered yield model, without relying on paid promotions or hype.</p>
               
               <p><strong>Mechanism:</strong> Funds will support initiatives like collaborations with DeFi influencers, sponsored content on platforms such as X (formerly Twitter) or Discord, and integrations with Solana wallets or analytics tools. All spends will be proposed and voted on by holders through a lightweight DAO (e.g., using Realms on Solana), with strict caps per campaign to prevent overuse.</p>
               
@@ -499,7 +499,7 @@ function TreasuryTab() {
           </div>
 
           <p className="future-plans-summary">
-            These future plans position the Treasury as a dynamic engine for NUKE's longevity, transforming transaction taxes into multifaceted value: deeper liquidity, reduced supply via buybacks and burns, and strategic outreach. Holders can expect enhanced SOL yields, price resilience, and ecosystem expansion, all while maintaining the protocol's decentralized integrity. Stay tuned to the official channels for governance updates and proposal announcements.
+            These future plans position the Treasury as a dynamic engine for TEK's longevity, transforming transaction taxes into multifaceted value: deeper liquidity, reduced supply via buybacks and burns, and strategic outreach. Holders can expect enhanced SOL yields, price resilience, and ecosystem expansion, all while maintaining the protocol's decentralized integrity. Stay tuned to the official channels for governance updates and proposal announcements.
           </p>
         </Accordion>
       </section>
@@ -513,14 +513,14 @@ function LiquidityPoolsTab() {
       <section className="doc-section">
         <h3 className="doc-section-title">What Are Liquidity Pools?</h3>
         <p>
-          Liquidity pools are the foundational building blocks of decentralized trading on Solana. They are smart contract-based reserves that hold pairs of tokens (e.g., NUKE/SOL), enabling users to buy, sell, or swap tokens instantly without needing a traditional order book or intermediary.
+          Liquidity pools are the foundational building blocks of decentralized trading on Solana. They are smart contract-based reserves that hold pairs of tokens (e.g., TEK/SOL), enabling users to buy, sell, or swap tokens instantly without needing a traditional order book or intermediary.
         </p>
         <p>
-          In the NUKE protocol, liquidity pools operate on an <strong>Automated Market Maker (AMM)</strong> model, where prices are determined algorithmically based on the ratio of tokens in the pool (using constant product formulas like x * y = k in many cases, or more advanced variants). Traders interact directly with these pools: when someone buys NUKE, they add SOL and receive NUKE from the pool, shifting the ratio and slightly adjusting the price. The reverse happens on sells.
+          In the TEK protocol, liquidity pools operate on an <strong>Automated Market Maker (AMM)</strong> model, where prices are determined algorithmically based on the ratio of tokens in the pool (using constant product formulas like x * y = k in many cases, or more advanced variants). Traders interact directly with these pools: when someone buys TEK, they add SOL and receive TEK from the pool, shifting the ratio and slightly adjusting the price. The reverse happens on sells.
         </p>
 
         <div className="liquidity-characteristics">
-          <h4 className="liquidity-characteristics-title">Key Characteristics of NUKE's Liquidity Pools:</h4>
+          <h4 className="liquidity-characteristics-title">Key Characteristics of TEK's Liquidity Pools:</h4>
           
           <div className="liquidity-char-item">
             <div className="liquidity-char-icon">🔒</div>
@@ -534,7 +534,7 @@ function LiquidityPoolsTab() {
             <div className="liquidity-char-icon">🚫</div>
             <div className="liquidity-char-content">
               <h5>No Mint Authority</h5>
-              <p>The NUKE token contract has mint authority revoked, preventing any additional token creation beyond the initial supply.</p>
+              <p>The TEK token contract has mint authority revoked, preventing any additional token creation beyond the initial supply.</p>
             </div>
           </div>
 
@@ -564,7 +564,7 @@ function LiquidityPoolsTab() {
       <section className="doc-section">
         <h3 className="doc-section-title">Liquidity Pool Ecosystem</h3>
         <p>
-          NUKE employs a sophisticated <strong>multi-pool architecture</strong> with intentionally fragmented liquidity across multiple pools on leading Solana DEXes. This design is engineered to create perpetual baseline trading volume through automated arbitrage, ensuring consistent tax collection and SOL rewards even during low organic activity periods.
+          TEK employs a sophisticated <strong>multi-pool architecture</strong> with intentionally fragmented liquidity across multiple pools on leading Solana DEXes. This design is engineered to create perpetual baseline trading volume through automated arbitrage, ensuring consistent tax collection and SOL rewards even during low organic activity periods.
         </p>
 
         <Accordion title="Core Components of the Multi-Pool System">
@@ -633,7 +633,7 @@ function LiquidityPoolsTab() {
             <div className="arbitrage-step">
               <div className="arbitrage-step-number">2</div>
               <div className="arbitrage-step-content">
-                <p>Bots detect the temporary discrepancy (e.g., NUKE cheaper on a low-fee entry pool than on a deep constant product pool).</p>
+                <p>Bots detect the temporary discrepancy (e.g., TEK cheaper on a low-fee entry pool than on a deep constant product pool).</p>
               </div>
             </div>
 
@@ -666,7 +666,7 @@ function LiquidityPoolsTab() {
             <div className="flywheel-step">
               <div className="flywheel-step-icon">1️⃣</div>
               <div className="flywheel-step-content">
-                <p>Accumulated NUKE is swapped to SOL.</p>
+                <p>Accumulated TEK is swapped to SOL.</p>
               </div>
             </div>
 
@@ -719,7 +719,7 @@ function LiquidityPoolsTab() {
           </div>
 
           <p className="ecosystem-summary">
-            In summary, NUKE's liquidity pool ecosystem transforms traditional AMM limitations into a strength: engineered fragmentation powers reliable arbitrage volume, which fuels the hold-to-earn model. Holders benefit from passive SOL yields backed by mechanical sustainability, not speculation. For current pool details, visit the official dashboard or explore the contract addresses on Solscan/Explorer.
+            In summary, TEK's liquidity pool ecosystem transforms traditional AMM limitations into a strength: engineered fragmentation powers reliable arbitrage volume, which fuels the hold-to-earn model. Holders benefit from passive SOL yields backed by mechanical sustainability, not speculation. For current pool details, visit the official dashboard or explore the contract addresses on Solscan/Explorer.
           </p>
         </Accordion>
       </section>
@@ -732,12 +732,12 @@ function FAQTab() {
     <div className="doc-tab-content">
       <section className="doc-section">
         <p className="faq-intro">
-          Here are the most frequently asked questions about the NUKE protocol, covering core mechanics like the tax and token structure, followed by rewards, liquidity, treasury, and other common inquiries. These are based on the protocol's design as a hold-to-earn token on Solana with engineered arbitrage volume for sustainable SOL yields.
+          Here are the most frequently asked questions about the TEK protocol, covering core mechanics like the tax and token structure, followed by rewards, liquidity, treasury, and other common inquiries. These are based on the protocol's design as a hold-to-earn token on Solana with engineered arbitrage volume for sustainable SOL yields.
         </p>
 
-        <Accordion title="What is the transfer tax on NUKE, and how does it work?">
+        <Accordion title="What is the transfer tax on TEK, and how does it work?">
           <p>
-            NUKE applies a uniform <strong>3% transfer tax</strong> on every buy, sell, or transfer—no exceptions for fairness. This tax is automatically enforced on-chain. It breaks down as:
+            TEK applies a uniform <strong>3% transfer tax</strong> on every buy, sell, or transfer—no exceptions for fairness. This tax is automatically enforced on-chain. It breaks down as:
           </p>
           <ul>
             <li><strong>2%</strong> converted to SOL and distributed as passive reflections (rewards) to all holders</li>
@@ -750,14 +750,14 @@ function FAQTab() {
 
         <Accordion title="How do SOL rewards (reflections) work, and do I need to stake or claim them?">
           <p>
-            <strong>No staking or claiming is required—it's pure hold-to-earn.</strong> The 2% tax portion accumulates in a reward pool from every transaction. Approximately every 10 minutes, accumulated NUKE is automatically swapped to SOL and airdropped pro-rata to all holders based on their share of the circulating supply.
+            <strong>No staking or claiming is required—it's pure hold-to-earn.</strong> The 2% tax portion accumulates in a reward pool from every transaction. Approximately every 10 minutes, accumulated TEK is automatically swapped to SOL and airdropped pro-rata to all holders based on their share of the circulating supply.
           </p>
           <p>
             Your rewards scale directly with your holdings and protocol volume.
           </p>
         </Accordion>
 
-        <Accordion title="Why does NUKE use a multi-pool liquidity architecture?">
+        <Accordion title="Why does TEK use a multi-pool liquidity architecture?">
           <p>
             Liquidity is intentionally fragmented across multiple pools on Solana DEXes (e.g., ultra-low fee entry pools at 0.01%, deep constant product pools at 1-2%, dynamic hedge pools, and micro symbiote pools). This creates natural price discrepancies that attract arbitrage bots 24/7, generating reliable baseline trading volume.
           </p>
@@ -777,7 +777,7 @@ function FAQTab() {
 
         <Accordion title="What happens to the Treasury funds?">
           <p>
-            The Treasury receives the 1% tax allocation and is currently dedicated <strong>100% to liquidity compounding</strong>. Accumulated NUKE is swapped to SOL and added to pools to deepen liquidity, tighten spreads, and attract more arbitrage.
+            The Treasury receives the 1% tax allocation and is currently dedicated <strong>100% to liquidity compounding</strong>. Accumulated TEK is swapped to SOL and added to pools to deepen liquidity, tighten spreads, and attract more arbitrage.
           </p>
           <p>
             This creates a compounding loop: deeper liquidity → more bot activity → higher volume → more taxes → amplified rewards.
@@ -787,12 +787,12 @@ function FAQTab() {
           </p>
         </Accordion>
 
-        <Accordion title="Is NUKE deflationary, and how do burns work?">
+        <Accordion title="Is TEK deflationary, and how do burns work?">
           <p>
-            <strong>Not Yet, Future Plans:</strong> NUKE includes deflationary mechanics. 1% of collected tax tokens is burned per reward cycle, permanently reducing supply.
+            <strong>Not Yet, Future Plans:</strong> TEK includes deflationary mechanics. 1% of collected tax tokens is burned per reward cycle, permanently reducing supply.
           </p>
           <p>
-            In future phases, Treasury funds will support additional buybacks (using SOL to purchase NUKE from the market) followed by burns. This increases scarcity, boosts each holder's proportional ownership, supports price stability, and amplifies per-holder SOL yields over time.
+            In future phases, Treasury funds will support additional buybacks (using SOL to purchase TEK from the market) followed by burns. This increases scarcity, boosts each holder's proportional ownership, supports price stability, and amplifies per-holder SOL yields over time.
           </p>
         </Accordion>
 
@@ -814,15 +814,15 @@ function FAQTab() {
           </p>
         </Accordion>
 
-        <Accordion title="Does holding NUKE require any active participation?">
+        <Accordion title="Does holding TEK require any active participation?">
           <p>
-            <strong>No</strong>—simply hold NUKE in your Solana wallet (e.g., Phantom, Solflare). Rewards are passive and pro-rata. No staking, no claiming, no gas fees from your side—the protocol handles everything automatically.
+            <strong>No</strong>—simply hold TEK in your Solana wallet (e.g., Phantom, Solflare). Rewards are passive and pro-rata. No staking, no claiming, no gas fees from your side—the protocol handles everything automatically.
           </p>
         </Accordion>
 
-        <Accordion title="What makes NUKE different from typical Solana meme tokens?">
+        <Accordion title="What makes TEK different from typical Solana meme tokens?">
           <p>
-            Most rely on hype for volume, which fades quickly. NUKE uses <strong>engineered mechanics</strong> (multi-pool fragmentation + arbitrage bots) for perpetual baseline volume, ensuring consistent taxes and SOL yields.
+            Most rely on hype for volume, which fades quickly. TEK uses <strong>engineered mechanics</strong> (multi-pool fragmentation + arbitrage bots) for perpetual baseline volume, ensuring consistent taxes and SOL yields.
           </p>
           <p>
             It focuses on sustainability through liquidity flywheel, burns, and Treasury compounding, rather than speculation.
@@ -852,9 +852,9 @@ function FAQTab() {
           </p>
         </Accordion>
 
-        <Accordion title="How do I buy NUKE?">
+        <Accordion title="How do I buy TEK?">
           <p>
-            Use a Solana wallet like Phantom, connect to a DEX (e.g., Raydium, Jupiter), and swap SOL for NUKE via available pools.
+            Use a Solana wallet like Phantom, connect to a DEX (e.g., Raydium, Jupiter), and swap SOL for TEK via available pools.
           </p>
           <p>
             Search for the official contract address on DEX screeners or the project dashboard to avoid scams. <strong>Always verify the mint address.</strong>
@@ -863,7 +863,7 @@ function FAQTab() {
 
         <Accordion title="Are there any risks I should know about?">
           <p>
-            Like all crypto, NUKE carries risks:
+            Like all crypto, TEK carries risks:
           </p>
           <ul>
             <li>High volatility</li>

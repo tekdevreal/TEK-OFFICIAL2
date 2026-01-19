@@ -34,7 +34,7 @@ export function HoldersPage() {
         time: '2:30 PM EST',
         action: 'Add Liquidity',
         amount: '$5,000',
-        detail: 'Added liquidity to NUKE/SOL Pool',
+        detail: 'Added liquidity to TEK/SOL Pool',
         reference: '5KJp8vN2mQr9xYz3wE7tR4bC6dF1gH8jL0pM9nQ2sT5uV7xY',
       },
     ];

@@ -20,7 +20,7 @@ export interface HarvestingData {
   id: string;
   date: string;
   time: string;
-  nukeSold: number;
+  tekSold: number;
   rewardPoolSOL: number;
   allocatedSOL: number;
   status: 'Complete' | 'Failed';
@@ -76,19 +76,19 @@ export function HarvestingPage() {
           timeZone: 'Europe/Paris', // CET timezone
         });
 
-        // Calculate NUKE sold proportionally based on tax statistics
-        // Use the total NUKE sold and total SOL distributed to calculate proportion per cycle
+        // Calculate TEK sold proportionally based on tax statistics
+        // Use the total TEK sold and total SOL distributed to calculate proportion per cycle
         const distributedSOL = cycle.totalSOLDistributed;
         const tax = rewardsData?.tax || {
           totalNukeSold: '0',
           totalSolDistributed: '0',
         };
-        const totalNukeSold = parseFloat(tax.totalNukeSold || '0');
+        const totalTekSold = parseFloat(tax.totalNukeSold || '0');
         const totalSolDistributedAllTime = parseFloat(tax.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
         
-        // Calculate NUKE sold for this cycle proportionally
-        const nukeSold = totalSolDistributedAllTime > 0 && distributedSOL > 0
-          ? (totalNukeSold * distributedSOL / totalSolDistributedAllTime) / 1e6 // Convert to human-readable (divide by 1e6 for 6 decimals)
+        // Calculate TEK sold for this cycle proportionally
+        const tekSold = totalSolDistributedAllTime > 0 && distributedSOL > 0
+          ? (totalTekSold * distributedSOL / totalSolDistributedAllTime) / 1e6 // Convert to human-readable (divide by 1e6 for 6 decimals)
           : 0;
 
         // Reward pool = SOL to holders (75%) + SOL to treasury (25%) = distributedSOL / 0.75
@@ -107,7 +107,7 @@ export function HarvestingPage() {
           id: cycle.id,
           date: dateStr,
           time: cetTime,
-          nukeSold, // Already converted to human-readable format above
+          tekSold, // Already converted to human-readable format above
           rewardPoolSOL,
           allocatedSOL,
           status: 'Complete' as const,
@@ -131,12 +131,12 @@ export function HarvestingPage() {
   }, [allHarvestingData, selectedEpoch]);
 
   // Calculate stats from data
-  const totalNukeHarvested = useMemo(() => {
+  const totalTekHarvested = useMemo(() => {
     // Use cumulative total from backend if available, otherwise sum filtered data
     if (rewardsData?.tax?.totalNukeHarvested) {
       return parseFloat(rewardsData.tax.totalNukeHarvested) / 1e6; // Convert from raw units
     }
-    return harvestingData.reduce((sum, item) => sum + item.nukeSold, 0);
+    return harvestingData.reduce((sum, item) => sum + item.tekSold, 0);
   }, [harvestingData, rewardsData]);
 
   // Allocated SOL: total SOL allocated to holders in filtered period
@@ -200,11 +200,11 @@ export function HarvestingPage() {
       sortFn: (a, b) => a.time.localeCompare(b.time),
     },
     {
-      key: 'nukeSold',
-      header: 'NUKE HARVESTED',
-      accessor: (row) => row.nukeSold.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+      key: 'tekSold',
+      header: 'TEK HARVESTED',
+      accessor: (row) => row.tekSold.toLocaleString(undefined, { maximumFractionDigits: 0 }),
       sortable: true,
-      sortFn: (a, b) => a.nukeSold - b.nukeSold,
+      sortFn: (a, b) => a.tekSold - b.tekSold,
     },
     {
       key: 'rewardPoolSOL',
@@ -247,11 +247,11 @@ export function HarvestingPage() {
 
   // Export CSV handler
   const handleExportCSV = () => {
-    const headers = ['DATE', 'TIME', 'NUKE SOLD', 'REWARD POOL (SOL)', 'ALLOCATED (SOL)', 'STATUS'];
+    const headers = ['DATE', 'TIME', 'TEK SOLD', 'REWARD POOL (SOL)', 'ALLOCATED (SOL)', 'STATUS'];
     const rows = harvestingData.map((row) => [
       row.date,
       row.time,
-      row.nukeSold.toString(),
+      row.tekSold.toString(),
       row.rewardPoolSOL.toString(),
       row.allocatedSOL.toString(),
       row.status,
@@ -287,13 +287,13 @@ export function HarvestingPage() {
       <section className="dashboard-section">
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">Harvesting Data</h2>
-          <p className="section-subtitle">Track NUKE token harvesting activities and reward pool distributions.</p>
+          <p className="section-subtitle">Track TEK token harvesting activities and reward pool distributions.</p>
           
           {/* Stats Summary */}
           <div className="harvesting-stats">
             <StatCard
-              label="Total Nuke Harvested"
-              value={totalNukeHarvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              label="Total TEK Harvested"
+              value={totalTekHarvested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             />
             <StatCard
               label="Allocated SOL"

@@ -97,7 +97,7 @@ export function TopNav() {
           {/* Left: Logo */}
           <div className="top-nav-logo">
             <Link to="/" className="logo-link">
-              <span className="logo-text">NUKE</span>
+              <span className="logo-text">TEK</span>
             </Link>
           </div>
 

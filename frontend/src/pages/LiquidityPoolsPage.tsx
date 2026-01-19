@@ -25,7 +25,7 @@ export function LiquidityPoolsPage() {
   // Transform liquidity pools data
   const liquidityPools: LiquidityPoolCardItem[] = useMemo(() => {
     // Image paths - these should be in public/Image/ folder for Vite to serve them
-    const nukeLogo = '/Image/nukelogo.png';
+    const tekLogo = '/Image/teklogo.png';
     const solLogo = '/Image/sollogo.png';
     const usdcLogo = '/Image/usdclogo.png';
     const raydiumLogo = '/Image/raydiumlogo.png';
@@ -38,7 +38,7 @@ export function LiquidityPoolsPage() {
     return liquidityPoolsData.pools.map((pool) => {
       // Determine token logos based on pair name
       const pairUpper = pool.pair.toUpperCase();
-      let token1Logo = nukeLogo; // Default to NUKE
+      let token1Logo = tekLogo; // Default to TEK
       let token2Logo = solLogo; // Default to SOL
 
       if (pairUpper.includes('USDC')) {

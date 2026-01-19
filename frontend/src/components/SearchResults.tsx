@@ -62,7 +62,7 @@ export function SearchResults({ result, query, onClose }: SearchResultsProps) {
             <div className="search-result-item">
               <span className="search-result-label">Balance:</span>
               <span className="search-result-value">
-                {parseFloat(wallet.balance).toLocaleString()} NUKE
+                {parseFloat(wallet.balance).toLocaleString()} TEK
               </span>
             </div>
           )}

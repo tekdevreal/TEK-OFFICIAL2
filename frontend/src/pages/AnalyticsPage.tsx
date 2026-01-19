@@ -290,14 +290,14 @@ export function AnalyticsPage() {
   const liquidityPoolData: LiquidityPoolPerformance[] = useMemo(() => {
     if (!liquiditySummaryData) {
       return [{
-        poolPair: 'NUKE / SOL',
+        poolPair: 'TEK / SOL',
         totalFeesGenerated: 'Loading...',
         average24HVolume: 'Loading...',
       }];
     }
     
     return [{
-      poolPair: 'NUKE / SOL',
+      poolPair: 'TEK / SOL',
       totalFeesGenerated: `$${(liquiditySummaryData.volume24hUSD ? liquiditySummaryData.volume24hUSD * 0.003 : 0).toLocaleString()}`, // 0.3% fee
       average24HVolume: `$${liquiditySummaryData.volume24hUSD?.toLocaleString() || '0'}`,
     }];
@@ -556,7 +556,7 @@ export function AnalyticsPage() {
                 <span className="metric-value">{rewardsData?.tax?.distributionCount || 0}</span>
               </div>
               <div className="metric-item">
-                <span className="metric-label">Total NUKE Harvested:</span>
+                <span className="metric-label">Total TEK Harvested:</span>
                 <span className="metric-value">
                   {(parseFloat(rewardsData?.tax?.totalNukeHarvested || '0') / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </span>

@@ -25,7 +25,7 @@ export function Toolbar() {
     <nav className="toolbar">
       <div className="toolbar-container">
         <div className="toolbar-brand">
-          <h1>NUKE</h1>
+          <h1>TEK</h1>
         </div>
         <ul className="toolbar-nav">
           {navItems.map((item) => (

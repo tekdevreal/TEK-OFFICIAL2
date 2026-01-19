@@ -79,7 +79,7 @@ export function RewardSummary({ refreshInterval = 300000 }: RewardSummaryProps) 
       <div className="tax-section">
         <div className="tax-grid">
           <div className="tax-card highlight">
-            <div className="tax-label">NUKE Harvested</div>
+            <div className="tax-label">TEK Harvested</div>
             <div className="tax-value">
               {(() => {
                 // totalNukeHarvested is in raw token units (with 6 decimals)

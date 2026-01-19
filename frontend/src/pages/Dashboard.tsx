@@ -42,7 +42,7 @@ export function Dashboard() {
     refetchInterval: 1 * 60 * 1000, // 1 minute
   });
 
-  // Fetch epoch data to get actual harvested NUKE amounts for the selected epoch
+  // Fetch epoch data to get actual harvested TEK amounts for the selected epoch
   const { data: selectedEpochData } = useEpochCycles(selectedEpoch, {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
@@ -81,12 +81,12 @@ export function Dashboard() {
     // Get up to 108 items (12 pages * 9 cards per page) from selected epoch only
     const cycles = selectedEpochCycles.slice(0, 108);
     
-    // Create a map of cycle numbers to actual harvested NUKE from epoch data
-    const cycleNukeMap = new Map<number, number>();
+    // Create a map of cycle numbers to actual harvested TEK from epoch data
+    const cycleTekMap = new Map<number, number>();
     if (selectedEpochData?.cycles) {
       selectedEpochData.cycles.forEach(cycle => {
         if (cycle.taxResult?.nukeHarvested) {
-          cycleNukeMap.set(cycle.cycleNumber, parseFloat(cycle.taxResult.nukeHarvested) / 1e6);
+          cycleTekMap.set(cycle.cycleNumber, parseFloat(cycle.taxResult.nukeHarvested) / 1e6);
         }
       });
     }
@@ -106,8 +106,8 @@ export function Dashboard() {
         const minutesSinceStartOfDay = Math.floor((d.getTime() - startOfDay.getTime()) / (1000 * 60));
         const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1;
         
-        // Use actual harvested NUKE from epoch data if available, otherwise 0
-        const harvestedNUKE = cycleNukeMap.get(cycleNumber) || 0;
+        // Use actual harvested TEK from epoch data if available, otherwise 0
+        const harvestedTEK = cycleTekMap.get(cycleNumber) || 0;
         // Use SOL from historical API (already in SOL, not lamports)
         const distributedSOL = cycle.totalSOLDistributed || 0;
         
@@ -115,13 +115,13 @@ export function Dashboard() {
           date: d.toLocaleDateString(),
           time: `${displayHours}:${displayMinutes} ${period} EST`,
           status: 'Completed' as const,
-          harvestedNUKE,
+          harvestedTEK,
           distributedSOL,
           epochNumber: cycleNumber,
         };
       })
       .filter((item) => {
-        return item.harvestedNUKE > 0 || item.distributedSOL > 0;
+        return item.harvestedTEK > 0 || item.distributedSOL > 0;
       });
   }, [historicalData, selectedEpoch, selectedEpochData]);
 
@@ -288,12 +288,12 @@ export function Dashboard() {
                 value={rewardsData.nextRun ? getTimeUntilNext(rewardsData.nextRun) : 'N/A'}
               />
               <StatCard
-                label="NUKE Collected"
+                label="TEK Collected"
                 value={(() => {
                   // totalNukeHarvested is in raw token units (with 6 decimals)
                   // Divide by 1e6 to get human-readable format
-                  const nuke = parseFloat(tax.totalNukeHarvested || '0') / 1e6;
-                  return nuke > 0 ? nuke.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : '0.00';
+                  const tek = parseFloat(tax.totalNukeHarvested || '0') / 1e6;
+                  return tek > 0 ? tek.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : '0.00';
                 })()}
               />
               <StatCard

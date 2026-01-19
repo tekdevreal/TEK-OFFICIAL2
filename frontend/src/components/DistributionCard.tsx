@@ -5,7 +5,7 @@ export interface DistributionCardItem {
   date: string;
   time?: string;
   status: 'Completed' | 'Failed';
-  harvestedNUKE: number;
+  harvestedTEK: number;
   distributedSOL: number;
   epochNumber?: number; // Epoch number from backend (e.g., 1, 2, 3, 4)
 }
@@ -43,7 +43,7 @@ export function DistributionCard({ item, rewardWalletAddress }: DistributionCard
       <div className="distribution-card-details">
         <div className="distribution-detail">
           <span className="detail-label">Harvested:</span>
-          <span className="detail-value">{item.harvestedNUKE.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })} NUKE</span>
+          <span className="detail-value">{item.harvestedTEK.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })} TEK</span>
         </div>
         <div className="distribution-detail">
           <span className="detail-label">Distributed:</span>
