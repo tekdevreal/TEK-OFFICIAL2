@@ -30,7 +30,7 @@ dotenv.config();
 
 // Configuration (overridable via env)
 const RPC = process.env.HELIUS_RPC_URL || 'https://api.devnet.solana.com';
-const MINT_ADDRESS = process.env.TOKEN_MINT || 'CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq';
+const MINT_ADDRESS = process.env.TOKEN_MINT || 'DLukbipvUq2E2XXJbd33M9F3WAqu1FYa76kuEJZEgr8K';
 const TOKEN_DECIMALS = Number(process.env.TOKEN_DECIMALS || '6');
 
 // Keep the same fee configuration (4% = 400 basis points)

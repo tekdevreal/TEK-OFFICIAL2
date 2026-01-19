@@ -1,0 +1,29 @@
+# Git Commands to Run Manually
+
+cd /home/van/reward-project
+
+git add telegram-bot/src/state/notificationState.ts
+git add telegram-bot/src/index.ts
+git add backend/src/services/taxService.ts
+git add FIX_TELEGRAM_DUPLICATE_STATE.md
+git add TELEGRAM_DUPLICATE_FIX_SUMMARY.md
+git add commit-telegram-duplicate-fix.sh
+
+git commit -m "fix: telegram bot duplicate notifications - persist lastSwapTx to disk
+
+- Add lastSwapTx to NotificationState interface
+- Load lastSwapTx from persistent state on bot startup
+- Save lastSwapTx to disk after each notification
+- Prevents duplicate notifications after bot restarts/redeployments
+- Add disk flush to taxService.saveTaxState for cloud environments
+- Add detailed logging for state persistence
+- Fix TypeScript type mismatch (null vs undefined)
+
+Fixes issue where bot would send duplicate notifications for old
+distributions after Railway redeployments because lastSwapTx was
+only stored in memory.
+
+Root cause: Bot used in-memory variable that reset to null on restart,
+causing it to treat old distributions as new ones."
+
+git push

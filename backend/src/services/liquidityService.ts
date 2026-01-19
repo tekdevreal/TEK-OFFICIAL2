@@ -5,6 +5,7 @@
  */
 
 import { logger } from '../utils/logger';
+import { tokenMint } from '../config/solana';
 
 // Cache for liquidity pool data
 interface LiquidityPoolCache {
@@ -146,8 +147,8 @@ async function fetchPoolFromRaydium(poolId: string): Promise<RaydiumPoolInfo | n
  * Determine pair name from pool mints
  */
 function getPairName(pool: RaydiumPoolInfo): string {
-  // NUKE mint address
-  const NUKE_MINT = 'CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq';
+  // Token mint address (from config)
+  const TOKEN_MINT = tokenMint.toBase58();
   // USDC devnet mint (common devnet USDC mint)
   const USDC_MINT_DEVNET = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'; // Common devnet USDC mint
   // WSOL mint
@@ -157,22 +158,22 @@ function getPairName(pool: RaydiumPoolInfo): string {
   const mint1 = pool.mintA?.address || pool.baseMint || '';
   const mint2 = pool.mintB?.address || pool.quoteMint || '';
 
-  const mint1IsNuke = mint1 === NUKE_MINT;
-  const mint2IsNuke = mint2 === NUKE_MINT;
+  const mint1IsToken = mint1 === TOKEN_MINT;
+  const mint2IsToken = mint2 === TOKEN_MINT;
   
-  if (!mint1IsNuke && !mint2IsNuke) {
-    // Fallback if NUKE not found in either position
+  if (!mint1IsToken && !mint2IsToken) {
+    // Fallback if token not found in either position
     return 'Unknown / Unknown';
   }
 
-  const otherMint = mint1IsNuke ? mint2 : mint1;
+  const otherMint = mint1IsToken ? mint2 : mint1;
 
   if (otherMint === WSOL_MINT) {
-    return 'NUKE / SOL';
+    return 'TEK / SOL';
   } else if (otherMint === USDC_MINT_DEVNET || otherMint.toLowerCase().includes('usdc')) {
-    return 'NUKE / USDC';
+    return 'TEK / USDC';
   } else {
-    return 'NUKE / Unknown';
+    return 'TEK / Unknown';
   }
 }
 

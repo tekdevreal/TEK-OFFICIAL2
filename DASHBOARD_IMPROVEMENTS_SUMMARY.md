@@ -1,164 +1,147 @@
 # Dashboard Improvements Summary
 
-## ✅ All Three Improvements Completed
+## Changes Completed
 
-### 1. Tooltip Position Fix ✅
-**Problem:** Tooltip was far from hover location with native browser tooltip showing.
+### **Harvesting Page Updates**
 
-**Solution:**
-- Removed native `title` attribute from cycle blocks
-- Changed tooltip positioning from `translateY(-100%)` (above) to positioned below block
-- Tooltip now appears directly at the box location with `y: rect.bottom + 8`
+#### 1. ✅ Allocated SOL - 4 Decimal Places
+**Before**: `12.345678 SOL` (6 decimals)  
+**After**: `12.3457 SOL` (4 decimals)
 
-**Files Changed:**
-- `frontend/src/components/RewardSystem.tsx` - Removed title attribute, updated hover positioning
-- `frontend/src/components/RewardSystem.css` - Changed transform to `translateX(-50%)` only
+#### 2. ✅ Last Harvesting - CET Time Format
+**Before**: `14:35` (time only)  
+**After**: `14:35 CET` (with timezone indicator)
 
-**Result:** Tooltip now shows directly below the hovered cycle block with all information visible.
+#### 3. ✅ Table Time Format - 24h CET
+**Before**: `2:35 PM EST` (12-hour format, EST timezone)  
+**After**: `14:35` (24-hour format, CET timezone)
 
----
-
-### 2. Processing Cycle Display Fix ✅
-**Problem:** Processing section showed current cycle instead of last completed cycle.
-
-**Solution:**
-- Changed cycle display logic to show `currentCycle - 1`
-- Handle edge case: If current is cycle 1, show 288 (last cycle of previous epoch)
-
-**Files Changed:**
-- `frontend/src/pages/Dashboard.tsx` - Updated Cycle StatCard calculation
-
-**Before:**
-```
-Cycle: 141 / 288  (current cycle)
-```
-
-**After:**
-```
-Cycle: 140 / 288  (last completed cycle)
-```
+#### 4. ✅ Filters Auto-Update
+- Year filter automatically shows current year when data is available
+- Month filter automatically shows latest month with data
+- Filters update dynamically as new epochs/data arrive
 
 ---
 
-### 3. Analytics Page Real Data ✅
-**Problem:** Analytics page showed placeholder/mock data.
+### **Distribution Page Updates**
 
-**Solution:**
-- Integrated real API data using existing hooks (`useRewards`, `useHistoricalRewards`, `useLiquiditySummary`)
-- Replaced all placeholder data with real calculations
+#### 1. ✅ Total SOL Distributed - 4 Decimal Places
+**Before**: `45.123456 SOL` (6 decimals)  
+**After**: `45.1235 SOL` (4 decimals)
 
-**Files Changed:**
-- `frontend/src/pages/AnalyticsPage.tsx` - Complete data integration
+#### 2. ✅ Next Distribution - Fetch from Processing
+**Before**: `"5 Minutes"` (hardcoded)  
+**After**: Dynamically calculated from `rewardsData.nextRun`
+- Shows actual minutes until next distribution
+- Defaults to "5 Minutes" if data unavailable
 
-**Changes Made:**
+#### 3. ✅ Last Distribution - CET Time Format
+**Before**: `14:40` (time only)  
+**After**: `14:40 CET` (with timezone indicator)
 
-#### Stats Summary (Top Cards)
-- **Total SOL Distributed:** Real data from `tax.totalSolDistributed`
-- **Average SOL per Epoch:** Calculated from historical cycles
-- **Total Reward Epochs:** Real count from `tax.distributionCount`
-- **Total Treasury Deployed:** Real data from `tax.totalSolToTreasury`
+#### 4. ✅ Table Time Format - 24h CET
+**Before**: `2:40 PM EST` (12-hour format, EST timezone)  
+**After**: `14:40` (24-hour format, CET timezone)
 
-#### Rewards Over Time Chart
-- Uses last 30 distributions from historical data
-- Real SOL amounts and timestamps
-- Epoch numbers from actual cycle data
-
-#### Volume vs Rewards Correlation Chart
-- Real distribution data from historical cycles
-- Current 24h volume from liquidity API
-- Shows actual correlation between volume and rewards
-
-#### Treasury Balance Over Time Chart
-- Calculated from cumulative distributions
-- 25% of distributed SOL goes to treasury
-- Shows deployed (60%) vs available (40%) split
-
-#### Liquidity Pool Performance Table
-- Real data from `liquiditySummaryData`
-- Actual fees generated and 24h volume
-- Currently shows NUKE/SOL pool
-
-#### Distribution Reliability Metrics
-- **Total Distributions:** Real count
-- **Total NUKE Harvested:** Real amount from tax data
-- **Total SOL to Holders:** Real cumulative amount
-- **Total SOL to Treasury:** Real cumulative amount
+#### 5. ✅ Filters Auto-Update
+- Year filter automatically shows current year when data is available
+- Month filter automatically shows latest month with data
+- Filters update dynamically as new epochs/data arrive
 
 ---
 
-## Deployment
+## Technical Details
 
-### Build and Deploy
+### Timezone Conversion
+All times are converted to CET (Central European Time) using:
+```typescript
+d.toLocaleString('en-US', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Europe/Paris', // CET timezone
+})
+```
 
+### Decimal Formatting
+```typescript
+// 4 decimal places for SOL amounts
+value.toLocaleString(undefined, { 
+  maximumFractionDigits: 4, 
+  minimumFractionDigits: 4 
+})
+```
+
+### Next Distribution Calculation
+```typescript
+const nextRun = new Date(rewardsData.nextRun);
+const now = new Date();
+const diffMs = nextRun.getTime() - now.getTime();
+const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+return diffMinutes <= 5 ? '5 Minutes' : `${diffMinutes} Minutes`;
+```
+
+### Auto-Updating Filters
+Both pages use `useEffect` hooks that automatically:
+1. Set the selected year to the most recent year with data
+2. Set the selected month to the most recent month with data
+3. Update when new data arrives (every epoch)
+
+---
+
+## Files Modified
+1. ✅ `frontend/src/pages/HarvestingPage.tsx`
+2. ✅ `frontend/src/pages/DistributionPage.tsx`
+
+---
+
+## Expected Behavior
+
+### Harvesting Page
+```
+Stats:
+┌─────────────────────┐  ┌─────────────────────┐
+│ Total NUKE Harvested│  │ Allocated SOL       │
+│ 1,234,567          │  │ 12.3457 SOL         │
+└─────────────────────┘  └─────────────────────┘
+
+┌─────────────────────┐  ┌─────────────────────┐
+│ Allocated USD       │  │ Last Harvesting     │
+│ $1,234.56          │  │ 14:35 CET           │
+└─────────────────────┘  └─────────────────────┘
+
+Table:
+DATE        TIME     NUKE SOLD  REWARD POOL  ALLOCATED
+2026-01-10  14:35    123,456    1.2345       0.9259
+2026-01-10  14:30    123,456    1.2345       0.9259
+```
+
+### Distribution Page
+```
+Stats:
+┌─────────────────────┐  ┌─────────────────────┐
+│ Total SOL Distributed│  │ Distribution USD   │
+│ 45.1235 SOL        │  │ $4,512.34          │
+└─────────────────────┘  └─────────────────────┘
+
+┌─────────────────────┐  ┌─────────────────────┐
+│ Next Distribution   │  │ Last Distribution   │
+│ 3 Minutes          │  │ 14:40 CET           │
+└─────────────────────┘  └─────────────────────┘
+
+Table:
+DATE        TIME     RECIPIENTS  TRANSACTIONS  DISTRIBUTED
+2026-01-10  14:40    1,234       1,234         0.6032
+2026-01-10  14:35    1,234       1,234         0.6032
+```
+
+---
+
+## Deployment Ready
+
+All changes complete and tested. No linter errors.
+
+Run:
 ```bash
-cd /home/van/reward-project/frontend
-npm run build
-
-cd ..
-git add frontend/src/components/RewardSystem.tsx
-git add frontend/src/components/RewardSystem.css
-git add frontend/src/pages/Dashboard.tsx
-git add frontend/src/pages/AnalyticsPage.tsx
-git add DASHBOARD_IMPROVEMENTS_SUMMARY.md
-
-git commit -m "feat: dashboard improvements - tooltip, cycle display, analytics data
-
-1. Tooltip Position Fix:
-   - Removed native tooltip
-   - Position tooltip directly below hovered cycle block
-   - Shows all cycle info near hover location
-
-2. Processing Cycle Display:
-   - Show last completed cycle instead of current cycle
-   - Handles epoch boundary (cycle 1 shows 288)
-
-3. Analytics Real Data:
-   - Replaced all placeholder data with real API data
-   - Integrated useRewards, useHistoricalRewards, useLiquiditySummary
-   - Real charts: Rewards Over Time, Volume vs Rewards, Treasury Balance
-   - Real metrics: Total distributions, NUKE harvested, SOL distributed
-   - Real liquidity pool performance data
-
-All improvements completed without breaking existing functionality."
-
-git push
+./deploy-all-updates.sh
 ```
-
-### Deployment Targets
-
-- **Frontend:** Vercel/Netlify (auto-deploy on push)
-- **Expected Deploy Time:** ~2-3 minutes
-
-### Testing
-
-After deployment:
-
-1. **Tooltip Test:**
-   - Go to main dashboard
-   - Hover over any cycle block in Reward System
-   - Verify tooltip appears directly below the block
-   - Verify no native browser tooltip shows
-
-2. **Cycle Display Test:**
-   - Check Processing section on main page
-   - Verify "Cycle" shows last completed cycle (current - 1)
-   - If current is 141, should show 140 / 288
-
-3. **Analytics Test:**
-   - Navigate to Analytics page
-   - Verify all stats show real numbers (not placeholder)
-   - Verify charts display real data
-   - Verify liquidity pool table shows actual volume
-   - Verify reliability metrics show real totals
-
----
-
-## Summary
-
-✅ **All three improvements completed successfully**
-✅ **No existing functionality broken**
-✅ **Real data integrated throughout Analytics page**
-✅ **Better UX with improved tooltip positioning**
-✅ **Accurate cycle display showing last completed cycle**
-
-Ready for deployment! 🚀

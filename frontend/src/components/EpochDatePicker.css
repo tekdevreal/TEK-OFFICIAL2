@@ -54,11 +54,8 @@
 
 /* Dropdown */
 .epoch-date-picker-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  left: auto;
-  z-index: 1000;
+  position: fixed;
+  z-index: 10000;
   min-width: 280px;
   max-width: 320px;
   max-height: 420px;
@@ -71,7 +68,9 @@
   
   /* Ensure it stays within viewport */
   max-width: min(320px, calc(100vw - 2rem));
-  transform-origin: top right;
+  transform-origin: top left;
+  
+  /* Positioning will be set dynamically via inline styles from JS */
 }
 
 @keyframes slideDown {

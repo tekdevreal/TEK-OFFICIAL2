@@ -52,8 +52,33 @@ interface CycleServiceState {
   lastCycleTimestamp: number | null; // Last cycle execution timestamp
 }
 
+/**
+ * Get state file path - uses persistent storage if available, falls back to local
+ */
+function getStateFilePath(): string {
+  const persistentPath = '/data/cycle-state.json';
+  const localPath = path.join(process.cwd(), 'cycle-state.json');
+  
+  try {
+    // Check if /data directory exists and is writable
+    if (fs.existsSync('/data')) {
+      fs.accessSync('/data', fs.constants.W_OK);
+      logger.info('Using persistent storage', { path: persistentPath });
+      return persistentPath;
+    }
+  } catch (error) {
+    // /data doesn't exist or not writable, use local
+    logger.info('Persistent storage not available, using local directory', {
+      path: localPath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  
+  return localPath;
+}
+
 // Always use project directory for now (persistent storage disabled temporarily)
-const STATE_FILE_PATH = path.join(process.cwd(), 'cycle-state.json');
+const STATE_FILE_PATH = getStateFilePath();
 
 const CYCLE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const CYCLES_PER_EPOCH = 288; // 24 hours * 60 minutes / 5 minutes

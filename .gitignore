@@ -1,52 +1,88 @@
 # Dependencies
 node_modules/
-
-# Build outputs
-dist/
-*/dist/
-
-# Token information (contains sensitive keys)
-token-info.json
-*.keypair.json
-admin.json
-mint-authority.json
-tax-wallet.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
 
 # Environment variables
 .env
 .env.local
-.env.production
-.env.*
-!.env.example
-!.env.*.example
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
+telegram-bot/.env
 
-# State and data files
-reward-state.json
-reward-history.json
-*state.json
-data/
-*/data/
-logs/
-*/logs/
-exports/
-*/exports/
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+backend/dist/
+frontend/dist/
+telegram-bot/dist/
 
 # Logs
+logs/
 *.log
 npm-debug.log*
-bot.log
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+backend/bot.log
+telegram-bot/bot.log
+telegram-bot/logs/
 
-# OS files
-.DS_Store
-Thumbs.db
+# Private keys and secrets
+*.key
+*.pem
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
+admin.json
+mint-authority.json
+tax-wallet.json
+backend/admin.json
+backend/mint-authority.json
+backend/tax-wallet.json
+
+# State files
+*.state
+reward-state.json
+unpaid-rewards.json
+backend/reward-state.json
+backend/unpaid-rewards.json
+telegram-bot/data/notification-state.json
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.DS_Store
 
-# Temporary conversion files (can be regenerated)
-convert-keys.js
-convert-keys.mjs
-CONVERTED_KEYS.md
+# OS
+Thumbs.db
+.DS_Store
+*.Zone.Identifier
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Railway
+.railway/
+
+# Misc
+*.bak
+*.backup

@@ -21,10 +21,10 @@ import * as path from 'path';
 dotenv.config({ path: path.join(__dirname, 'backend', '.env') });
 
 const RPC = process.env.HELIUS_RPC_URL || 'https://api.devnet.solana.com';
-const MINT_ADDRESS = process.env.TOKEN_MINT || 'CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq';
+const MINT_ADDRESS = process.env.TOKEN_MINT || 'DLukbipvUq2E2XXJbd33M9F3WAqu1FYa76kuEJZEgr8K';
 const REWARD_WALLET = process.env.REWARD_WALLET_ADDRESS || '6PpZCPj72mdzBfrSJCJab9y535v2greCBe6YVW7XeXpo';
 const TREASURY_WALLET = process.env.TREASURY_WALLET_ADDRESS || 'DwhLErVhPhzg1ep19Lracmp6iMTECh4nVBdPebsvJwjo';
-const RAYDIUM_POOL_ID = process.env.RAYDIUM_POOL_ID || 'GFPwg4JVyRbsmNSvPGd8Wi3vvR3WVyChkjY56U7FKrc9';
+const RAYDIUM_POOL_ID = process.env.RAYDIUM_POOL_ID || '4U8vs7wMVNijhjJsxBUA2JAif47QJcfBN97RKVRk7XQs';
 
 async function diagnoseRewardSystem() {
   console.log('\n🔍 REWARD SYSTEM COMPREHENSIVE DIAGNOSTIC\n');

@@ -32,8 +32,8 @@ import { Clmm } from '@raydium-io/raydium-sdk-v2';
 const POOL_ID = 'At7BLqEWTchEYzCRhcnbXVfYYY9VLmTDSn7YAC3PQB1t';
 
 // Known IDs (for clarity / logging; not strictly required for computation)
-const AMM_PROGRAM_ID = new PublicKey('GFPwg4JVyRbsmNSvPGd8Wi3vvR3WVyChkjY56U7FKrc9'); // Raydium AMM ID (CPMM)
-const NUKE_MINT = new PublicKey('CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq');
+const AMM_PROGRAM_ID = new PublicKey('HTVWgp8CbUsRNmRE1p9RBYqopxe2qiyApSkiTFLrfxaW'); // Raydium CPMM AMM Config
+const TEK_MINT = new PublicKey('DLukbipvUq2E2XXJbd33M9F3WAqu1FYa76kuEJZEgr8K');
 const SOL_MINT  = new PublicKey('So11111111111111111111111111111111111111112');
 
 // Devnet RPC endpoint – you can swap in your Helius URL or custom RPC if desired
@@ -116,8 +116,8 @@ async function main() {
   console.log('=== Raydium Devnet Spot Price Fetcher ===');
   console.log('RPC:', RPC_ENDPOINT);
   console.log('Pool ID:', POOL_ID);
-  console.log('AMM Program ID (CPMM):', AMM_PROGRAM_ID.toBase58());
-  console.log('NUKE Mint:', NUKE_MINT.toBase58());
+  console.log('AMM Config ID (CPMM):', AMM_PROGRAM_ID.toBase58());
+  console.log('TEK Mint:', TEK_MINT.toBase58());
   console.log('SOL Mint :', SOL_MINT.toBase58());
   console.log('-----------------------------------------');
 
@@ -151,11 +151,11 @@ async function main() {
   console.log(`  1 quote = ${priceQuoteInBase} base`);
   console.log('-----------------------------------------');
 
-  // Convenience interpretation for NUKE/SOL pools.
-  if (baseMint === NUKE_MINT.toBase58() && quoteMint === SOL_MINT.toBase58()) {
-    console.log(`Interpreted as: 1 NUKE = ${priceBaseInQuote} SOL, 1 SOL = ${priceQuoteInBase} NUKE`);
-  } else if (baseMint === SOL_MINT.toBase58() && quoteMint === NUKE_MINT.toBase58()) {
-    console.log(`Interpreted as: 1 SOL = ${priceBaseInQuote} NUKE, 1 NUKE = ${priceQuoteInBase} SOL`);
+  // Convenience interpretation for TEK/SOL pools.
+  if (baseMint === TEK_MINT.toBase58() && quoteMint === SOL_MINT.toBase58()) {
+    console.log(`Interpreted as: 1 TEK = ${priceBaseInQuote} SOL, 1 SOL = ${priceQuoteInBase} TEK`);
+  } else if (baseMint === SOL_MINT.toBase58() && quoteMint === TEK_MINT.toBase58()) {
+    console.log(`Interpreted as: 1 SOL = ${priceBaseInQuote} TEK, 1 TEK = ${priceQuoteInBase} SOL`);
   }
 }
 

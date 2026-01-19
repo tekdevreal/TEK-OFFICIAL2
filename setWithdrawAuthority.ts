@@ -37,7 +37,7 @@ dotenv.config();
 
 // --- Config from env or sensible defaults ---
 const RPC = process.env.HELIUS_RPC_URL || 'https://api.devnet.solana.com';
-const MINT_ADDRESS = process.env.TOKEN_MINT || 'CzPWFT9ezPy53mQUj48T17Jm4ep7sPcKwjpWw9tACTyq';
+const MINT_ADDRESS = process.env.TOKEN_MINT || 'DLukbipvUq2E2XXJbd33M9F3WAqu1FYa76kuEJZEgr8K';
 const REWARD_WALLET_ADDRESS =
   process.env.REWARD_WALLET_ADDRESS || '6PpZCPj72mdzBfrSJCJab9y535v2greCBe6YVW7XeXpo';
 
