@@ -572,13 +572,13 @@ export function AnalyticsPage() {
               <div className="metric-item">
                 <span className="metric-label">Total SOL to Holders:</span>
                 <span className="metric-value">
-                  {(parseFloat(rewardsData?.tax?.totalSolDistributed || '0') / 1e9).toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL
+                  {(parseFloat(rewardsData?.tax?.totalSolDistributed || '0') / 1e9).toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 })} SOL
                 </span>
               </div>
               <div className="metric-item">
                 <span className="metric-label">Total SOL to Treasury:</span>
                 <span className="metric-value">
-                  {(parseFloat(rewardsData?.tax?.totalSolToTreasury || '0') / 1e9).toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL
+                  {(parseFloat(rewardsData?.tax?.totalSolToTreasury || '0') / 1e9).toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 })} SOL
                 </span>
               </div>
             </div>
