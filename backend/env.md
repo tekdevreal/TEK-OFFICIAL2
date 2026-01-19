@@ -111,9 +111,9 @@ REWARD_VALUE_MODE=TOKEN
 # Prevents harvesting when tax amount is too small to be cost-effective
 
 # Minimum tax in token units (for TOKEN mode)
-# Default: 20000 (20,000 TEK tokens)
-# Testing: 100 (100 TEK tokens for faster testing)
-MIN_TAX_THRESHOLD_TOKEN=100
+# Default: 20000 (20,000 TEK tokens) - for production
+# Testing: 5 (5 TEK tokens for faster testing cycles)
+MIN_TAX_THRESHOLD_TOKEN=5
 
 # Minimum tax in USD (for USD mode)
 # Default: 5 (5 USD)
