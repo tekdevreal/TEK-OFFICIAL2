@@ -16,7 +16,7 @@ FRONTEND_URL=https://rewards.tekportal.app/
 ### Solana Network Configuration
 ```bash
 SOLANA_NETWORK=devnet
-SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=1419cfe1-04ce-4fa4-a6d6-badda6902f4e
+SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=ae896970-4803-4004-a1ab-92560091c9e4
 ```
 
 ### Token Configuration

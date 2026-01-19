@@ -15,7 +15,7 @@ SOLANA_NETWORK=devnet
 # Helius Mainnet: https://mainnet.helius-rpc.com/?api-key=YOUR_API_KEY
 # Note: Helius free tier supports getProgramAccounts (required for token holders)
 # Alchemy free tier does NOT support getProgramAccounts - upgrade required
-SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=YOUR_API_KEY
+SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=ae896970-4803-4004-a1ab-92560091c9e4
 TOKEN_MINT=DLukbipvUq2E2XXJbd33M9F3WAqu1FYa76kuEJZEgr8K
 
 # Admin wallet (JSON secret key array, 64 numbers)
