@@ -621,7 +621,7 @@ router.get('/processing', async (req: Request, res: Response): Promise<void> => 
 
     const response = {
       nextDistribution,
-      nukeCollected: parseFloat(nukeCollected.toFixed(2)),
+      tekCollected: parseFloat(tekCollected.toFixed(2)),
       estimatedSOL: parseFloat(estimatedSOL),
       status,
     };
@@ -639,7 +639,7 @@ router.get('/processing', async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Unknown error',
       nextDistribution: null,
-      nukeCollected: 0,
+      tekCollected: 0,
       estimatedSOL: 0,
       status: 'Error',
     });
