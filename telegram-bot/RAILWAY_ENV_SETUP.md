@@ -1,5 +1,14 @@
 # Telegram Bot Railway Environment Variables
 
+## Railway Configuration
+
+### Dockerfile Setup
+- **Dockerfile Path**: `telegram-bot/Dockerfile`
+- **Build Command**: (Leave empty - Railway auto-detects from Dockerfile)
+- **Start Command**: (Leave empty - Railway auto-detects from Dockerfile)
+
+The Telegram bot uses Dockerfile for deployment, similar to the backend.
+
 ## Required Environment Variables
 
 When deploying the Telegram bot to Railway, set these environment variables:

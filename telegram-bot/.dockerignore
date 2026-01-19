@@ -1,0 +1,48 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+bot.log
+
+# Data files
+data
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Scripts
+*.sh
+verify-notifications.ts
+add-deployment-id-logging.patch.ts
