@@ -110,9 +110,10 @@ REWARD_VALUE_MODE=TOKEN
 # Minimum tax collection threshold before harvesting can proceed
 # Prevents harvesting when tax amount is too small to be cost-effective
 
-# Minimum tax in raw token units (for TOKEN mode)
+# Minimum tax in token units (for TOKEN mode)
 # Default: 20000 (20,000 TEK tokens)
-MIN_TAX_THRESHOLD_TOKEN=20000
+# Testing: 100 (100 TEK tokens for faster testing)
+MIN_TAX_THRESHOLD_TOKEN=100
 
 # Minimum tax in USD (for USD mode)
 # Default: 5 (5 USD)

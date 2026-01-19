@@ -50,21 +50,22 @@ export const MIN_PAYOUT_CONFIG = {
  * Minimum tax collection threshold before harvesting can proceed.
  * Prevents harvesting when tax amount is too small to be cost-effective.
  * 
- * - MIN_TAX_THRESHOLD_TOKEN: Minimum tax in raw token units (for TOKEN mode)
- *   Default: 20000 (20,000 NUKE tokens)
+ * - MIN_TAX_THRESHOLD_TOKEN: Minimum tax in token units (for TOKEN mode)
+ *   Default: 20000 (20,000 TEK tokens)
+ *   Testing: 100 (100 TEK tokens for faster testing)
  * 
  * - MIN_TAX_THRESHOLD_USD: Minimum tax in USD (for USD mode)
  *   Default: 5 (5 USD)
  * 
  * Configuration:
  * Set via environment variables:
- * - MIN_TAX_THRESHOLD_TOKEN (default: 20000)
+ * - MIN_TAX_THRESHOLD_TOKEN (default: 20000, testing: 100)
  * - MIN_TAX_THRESHOLD_USD (default: 5)
  */
 export const TAX_THRESHOLD_CONFIG = {
   MIN_TAX_THRESHOLD_TOKEN: process.env.MIN_TAX_THRESHOLD_TOKEN 
     ? parseInt(process.env.MIN_TAX_THRESHOLD_TOKEN, 10) 
-    : 20000, // Default: 20,000 NUKE tokens
+    : 20000, // Default: 20,000 TEK tokens
   MIN_TAX_THRESHOLD_USD: process.env.MIN_TAX_THRESHOLD_USD 
     ? parseFloat(process.env.MIN_TAX_THRESHOLD_USD) 
     : 5.0, // Default: 5 USD
