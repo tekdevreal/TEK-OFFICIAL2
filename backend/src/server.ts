@@ -15,8 +15,12 @@ export function createApp(): Express {
   const app = express();
 
   // CORS middleware - enable for all routes
-  // Normalize frontend URL (remove trailing slash for comparison)
-  const frontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, '');
+  // Normalize frontend URL (remove quotes, trailing slash, and whitespace)
+  const frontendUrl = process.env.FRONTEND_URL
+    ?.trim()
+    .replace(/^["']|["']$/g, '') // Remove surrounding quotes
+    .replace(/\/+$/, ''); // Remove trailing slashes
+  
   const allowedOrigins = [
     'http://localhost:5173', // Vite dev server
     'http://localhost:3000', // Backend (for testing)
@@ -24,16 +28,28 @@ export function createApp(): Express {
     'https://rewards.tekportal.app', // Explicitly allow TEK portal
   ].filter(Boolean); // Remove undefined values
 
+  // Log allowed origins on startup for debugging
+  console.log('[CORS] Allowed origins:', allowedOrigins);
+  console.log('[CORS] FRONTEND_URL from env:', process.env.FRONTEND_URL);
+  console.log('[CORS] Normalized frontend URL:', frontendUrl);
+
   app.use(cors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       // Allow requests with no origin (like mobile apps, Postman, curl)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('[CORS] Allowing request with no origin');
+        return callback(null, true);
+      }
       
       // Normalize origin (remove trailing slash for comparison)
       const normalizedOrigin = origin.replace(/\/+$/, '');
       
       // Allow requests from allowed origins
-      if (allowedOrigins.includes(normalizedOrigin) || process.env.NODE_ENV === 'development') {
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        console.log(`[CORS] Allowing request from origin: ${origin}`);
+        callback(null, true);
+      } else if (process.env.NODE_ENV === 'development') {
+        console.log(`[CORS] Development mode - allowing origin: ${origin}`);
         callback(null, true);
       } else {
         console.warn(`[CORS] Blocked request from origin: ${origin} (normalized: ${normalizedOrigin})`);
@@ -47,9 +63,15 @@ export function createApp(): Express {
     exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
   }));
 
-  // Request logging middleware (for debugging)
+  // Request logging middleware (for debugging - always log CORS-related requests)
   app.use((req: Request, _res: Response, next: NextFunction) => {
-    if (process.env.NODE_ENV === 'development') {
+    // Always log CORS-related requests (OPTIONS preflight and requests with origin)
+    if (req.method === 'OPTIONS' || req.headers.origin) {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
+        origin: req.headers.origin,
+        query: req.query,
+      });
+    } else if (process.env.NODE_ENV === 'development') {
       console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`, {
         origin: req.headers.origin,
         query: req.query,
