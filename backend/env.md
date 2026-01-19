@@ -160,6 +160,7 @@ MIN_PAYOUT_TOKEN=60
 MIN_PAYOUT_USD=0.001
 ```
 
+
 ---
 
 ## 🟢 Optional: Logging Configuration

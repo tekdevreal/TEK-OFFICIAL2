@@ -1,12 +1,12 @@
 /**
  * Swap Service
  * 
- * Handles swapping NUKE tokens to SOL via Raydium pools (Standard, CPMM, or CLMM) on devnet and mainnet
+ * Handles swapping TEK tokens to SOL via Raydium pools (Standard, CPMM, or CLMM) on devnet and mainnet
  * 
  * IMPORTANT: 
  * - Standard pools: Uses @raydium-io/raydium-sdk for automatic account fetching and instruction building
  * - CLMM pools: Uses pool-specific program IDs with Anchor instruction format
- * - NUKE is a Token-2022 transfer-fee token (4% fee = 400 basis points), SDK handles transfer fees automatically
+ * - TEK is a Token-2022 transfer-fee token (3% fee = 300 basis points), SDK handles transfer fees automatically
  * - Handles bidirectional swaps (mintA→mintB and mintB→mintA)
  * - Works on both devnet and mainnet with correct program IDs
  */
@@ -41,6 +41,7 @@ import Decimal from 'decimal.js';
 import { createHash } from 'crypto';
 import { connection, tokenMint, NETWORK } from '../config/solana';
 import { RAYDIUM_CONFIG, WSOL_MINT, getRaydiumPoolId, RAYDIUM_AMM_PROGRAM_ID } from '../config/raydium';
+import { REWARD_CONFIG } from '../config/constants';
 import { logger } from '../utils/logger';
 import { loadKeypairFromEnv } from '../utils/loadKeypairFromEnv';
 // Raydium SDK imports - using dynamic import to handle type issues
@@ -57,8 +58,10 @@ const RAYDIUM_AMM_V4_PROGRAM_ID = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM
 // Default slippage tolerance (2%)
 const DEFAULT_SLIPPAGE_BPS = 200; // 2% = 200 basis points
 
-// Minimum SOL output to proceed with swap (0.001 SOL)
-const MIN_SOL_OUTPUT = 0.001 * LAMPORTS_PER_SOL;
+// Minimum SOL output to proceed with swap
+// Uses MIN_SOL_PAYOUT from REWARD_CONFIG (same as payout threshold)
+// This ensures swaps only proceed if output meets minimum payout requirements
+const MIN_SOL_OUTPUT = REWARD_CONFIG.MIN_SOL_PAYOUT * LAMPORTS_PER_SOL;
 
 /**
  * Compute dynamic slippage tolerance based on price impact.
@@ -602,7 +605,7 @@ function verifyLiquidity(
 ): { valid: boolean; reason?: string } {
   // Check source reserve is sufficient
   if (sourceReserve === 0n) {
-    return { valid: false, reason: 'Source reserve (NUKE) is zero - pool has no liquidity' };
+    return { valid: false, reason: 'Source reserve (TEK) is zero - pool has no liquidity' };
   }
 
   // Check destination reserve is sufficient
@@ -1015,7 +1018,7 @@ function createRaydiumCpmmSwapInstruction(
  * 1. Authority (signer, writable)
  * 2. Amm Config (readonly)
  * 3. Pool State (writable) - poolId
- * 4. Input Token Account (writable) - user NUKE ATA
+ * 4. Input Token Account (writable) - user TEK ATA
  * 5. Output Token Account (writable) - user WSOL ATA
  * 6. Input Vault (writable) - pool NUKE vault
  * 7. Output Vault (writable) - pool WSOL vault
@@ -1393,7 +1396,7 @@ function createRaydiumClmmSwapInstruction(
  * - Uses TOKEN_PROGRAM_ID for SPL Token source tokens
  * - Accounts for transfer fees in swap calculations
  * 
- * @param amountNuke - Amount of NUKE to swap (in raw token units, with decimals)
+ * @param amountNuke - Amount of TEK to swap (in raw token units, with decimals)
  *                    - This is the amount BEFORE transfer fee deduction
  * @param slippageBps - Slippage tolerance in basis points (default: 200 = 2%)
  * @returns SOL received and transaction signature
@@ -1406,7 +1409,7 @@ export async function swapNukeToSOL(
   txSignature: string;
 }> {
   try {
-    logger.info('Starting NUKE to SOL swap via Raydium pool', {
+    logger.info('Starting TEK to SOL swap via Raydium pool', {
       amountNuke: amountNuke.toString(),
       slippageBps,
     });
@@ -1509,7 +1512,7 @@ export async function swapNukeToSOL(
       sourceDecimals = poolInfo.decimalsB;
       destDecimals = poolInfo.decimalsA;
     } else {
-      throw new Error(`Pool does not contain NUKE/SOL pair. Pool mints: ${poolInfo.mintA.toBase58()}, ${poolInfo.mintB.toBase58()}`);
+      throw new Error(`Pool does not contain TEK/SOL pair. Pool mints: ${poolInfo.mintA.toBase58()}, ${poolInfo.mintB.toBase58()}`);
     }
 
     // Step 4.5: Get reserves (from API if available, otherwise from chain)
@@ -1704,42 +1707,42 @@ export async function swapNukeToSOL(
       note: 'Using dynamic slippage based on transfer fee + trade impact + buffer',
     });
 
-    // Step 7: Derive user token accounts (NUKE ATA and WSOL ATA)
+    // Step 7: Derive user token accounts (TEK ATA and WSOL ATA)
     // -------------------------------------------------------------------
     // CRITICAL: Raydium SDK does NOT auto-detect user token accounts.
     // It expects explicit Associated Token Accounts (ATAs) for:
-    // - tokenAccountIn  = NUKE ATA  (source SPL token)
+    // - tokenAccountIn  = TEK ATA  (source SPL token)
     // - tokenAccountOut = WSOL ATA  (destination wrapped SOL)
     // If either ATA is undefined, the SDK will build an instruction with an
     // undefined pubkey, and Solana will crash at compileMessage() with:
     // "Cannot read properties of undefined (reading 'toString')".
     // -------------------------------------------------------------------
 
-    // Explicitly derive NUKE ATA (source token ATA)
+    // Explicitly derive TEK ATA (source token ATA)
     const nukeAta = getAssociatedTokenAddressSync(
-      tokenMint,            // NUKE mint
+      tokenMint,            // TEK mint
       rewardWalletAddress,  // owner = reward wallet
       false,
-      TOKEN_2022_PROGRAM_ID // NUKE is Token-2022
+      TOKEN_2022_PROGRAM_ID // TEK is Token-2022
     );
 
     if (!nukeAta) {
-      throw new Error('NUKE ATA (nukeAta) is undefined after derivation');
+      throw new Error('TEK ATA (nukeAta) is undefined after derivation');
     }
     try {
       nukeAta.toString(); // Verify it's a valid PublicKey
     } catch (error) {
-      throw new Error(`Invalid NUKE ATA (nukeAta) address: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Invalid TEK ATA (nukeAta) address: ${error instanceof Error ? error.message : String(error)}`);
     }
 
-    // Check NUKE balance in ATA
+    // Check TEK balance in ATA
     let rewardNukeBalance = 0n;
     try {
       const rewardAccount = await getAccount(connection, nukeAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
       rewardNukeBalance = rewardAccount.amount;
     } catch (error) {
       throw new Error(
-        `Reward wallet NUKE ATA not found or has no balance: ${
+        `Reward wallet TEK ATA not found or has no balance: ${
           error instanceof Error ? error.message : String(error)
         }`
       );
@@ -1814,13 +1817,13 @@ export async function swapNukeToSOL(
     // These ATAs must be created once per wallet (not during swaps).
     // ===================================================================
     
-    // Step 8: Verify NUKE ATA exists on-chain (REQUIRED for swap)
+    // Step 8: Verify TEK ATA exists on-chain (REQUIRED for swap)
     let rewardNukeAccountExists = false;
     let nukeAccountInfo = null;
     try {
       nukeAccountInfo = await getAccount(connection, nukeAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
       rewardNukeAccountExists = true;
-      logger.info('NUKE ATA verified on-chain', {
+      logger.info('TEK ATA verified on-chain', {
         nukeAta: nukeAta.toBase58(),
         balance: nukeAccountInfo.amount.toString(),
         mint: nukeAccountInfo.mint.toBase58(),
@@ -1828,17 +1831,17 @@ export async function swapNukeToSOL(
       });
     } catch (error) {
       rewardNukeAccountExists = false;
-      logger.error('NUKE ATA does not exist on-chain', {
+      logger.error('TEK ATA does not exist on-chain', {
         nukeAta: nukeAta.toBase58(),
         error: error instanceof Error ? error.message : String(error),
-        note: 'Create this ATA once using create-nuke-ata.ts script BEFORE running swaps',
+        note: 'Create this ATA once using create-tek-ata.ts script BEFORE running swaps',
       });
     }
 
     if (!rewardNukeAccountExists) {
       throw new Error(
-        `Reward NUKE ATA does not exist on-chain: ${nukeAta.toBase58()}. ` +
-        `Create it once by running: cd backend && npx tsx create-nuke-ata.ts`
+        `Reward TEK ATA does not exist on-chain: ${nukeAta.toBase58()}. ` +
+        `Create it once by running: cd backend && npx tsx create-tek-ata.ts`
       );
     }
 
@@ -2023,7 +2026,7 @@ export async function swapNukeToSOL(
       });
 
       if (!foundNukeAta) {
-        logger.warn('NUKE ATA not found in token account query (may still work if SDK uses different query)', {
+        logger.warn('TEK ATA not found in token account query (may still work if SDK uses different query)', {
           nukeAta: nukeAta.toBase58(),
           note: 'ATA exists on-chain but not in query results - SDK may use different query method',
         });
@@ -2058,12 +2061,12 @@ export async function swapNukeToSOL(
     // ===================================================================
     // CRITICAL: Do NOT create ATAs during swap transaction
     // ===================================================================
-    // ATAs (NUKE and WSOL) must exist on-chain BEFORE calling the SDK.
+    // ATAs (TEK and WSOL) must exist on-chain BEFORE calling the SDK.
     // Creating them in the same transaction as the swap will cause the SDK
     // to fail because it queries accounts BEFORE our create instruction executes.
     // 
     // ATAs are created once per wallet using:
-    // - create-nuke-ata.ts (for NUKE ATA)
+    // - create-tek-ata.ts (for TEK ATA)
     // - create-wsol-atas.ts (for WSOL ATA)
     // ===================================================================
     
@@ -2145,7 +2148,7 @@ export async function swapNukeToSOL(
     
     // Final validation: Ensure ATAs are valid PublicKeys
     if (!nukeAta || !(nukeAta instanceof PublicKey)) {
-      throw new Error(`NUKE ATA is not a valid PublicKey: ${nukeAta}`);
+      throw new Error(`TEK ATA is not a valid PublicKey: ${nukeAta}`);
     }
     if (!wsolAta || !(wsolAta instanceof PublicKey)) {
       throw new Error(`WSOL ATA is not a valid PublicKey: ${wsolAta}`);
@@ -2847,7 +2850,7 @@ export async function swapNukeToSOL(
       txSignature: signature,
     };
   } catch (error) {
-    logger.error('Error swapping NUKE to SOL via Raydium pool', {
+    logger.error('Error swapping TEK to SOL via Raydium pool', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       amountNuke: amountNuke.toString(),

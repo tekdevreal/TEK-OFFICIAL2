@@ -58,10 +58,22 @@ BATCH_DELAY_TOKEN_MODE=5000      # Shorter delays (default: 10000)
 MIN_PAYOUT_TOKEN=1               # Lower for testing (default: 60)
 ```
 
+## Minimum SOL Output for Swaps
+
+The swap service uses `MIN_SOL_PAYOUT` (same as payout threshold) to determine the minimum SOL output required for a swap to proceed. This ensures consistency - swaps only proceed if the output meets the minimum payout requirements.
+
+### Current Configuration
+```bash
+MIN_SOL_PAYOUT=0.0001
+```
+
+This allows swaps with as little as **0.0001 SOL** output (100,000 lamports), which works well with `MIN_TAX_THRESHOLD_TOKEN=15`.
+
 ## Current Testing Setup
 
 For faster testing, we're using:
-- `MIN_TAX_THRESHOLD_TOKEN=5` - Harvest when 5 TEK collected
+- `MIN_TAX_THRESHOLD_TOKEN=15` - Harvest when 15 TEK collected
+- `MIN_SOL_PAYOUT=0.0001` - Minimum SOL for both swaps and payouts
 - All other settings remain at production defaults
 
 ## Notes
