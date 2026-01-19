@@ -195,7 +195,7 @@ export interface CycleResult {
   timestamp: number; // Unix timestamp in milliseconds
   error?: string;
   taxResult?: {
-    nukeHarvested: string;
+    harvested: string; // TEK amount harvested (in raw token units)
     solToHolders: string;
     solToTreasury: string;
     distributedCount: number;

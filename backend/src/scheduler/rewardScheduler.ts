@@ -114,7 +114,7 @@ async function processRewards(): Promise<void> {
         // DISTRIBUTED: Successful harvest + distribution
         cycleResult.state = CycleState.DISTRIBUTED;
         cycleResult.taxResult = {
-          nukeHarvested: taxResult.totalTax.toString(),
+          harvested: taxResult.totalTax.toString(),
           solToHolders: (Number(taxResult.rewardAmount) / 1e9).toFixed(6),
           solToTreasury: (Number(taxResult.treasuryAmount) / 1e9).toFixed(6),
           distributedCount: taxResult.distributionResult?.distributedCount || 0,
@@ -124,8 +124,8 @@ async function processRewards(): Promise<void> {
         logger.info('✅ Cycle completed: DISTRIBUTED', {
           epoch,
           cycleNumber,
-          nukeHarvested: taxResult.totalTax.toString(),
-          nukeSold: taxResult.totalTax.toString(),
+          tekHarvested: taxResult.totalTax.toString(),
+          tekSold: taxResult.totalTax.toString(),
           solReceived: (taxResult.rewardAmount + taxResult.treasuryAmount).toString(),
           solToHolders: taxResult.rewardAmount.toString(),
           solToTreasury: taxResult.treasuryAmount.toString(),
@@ -271,7 +271,7 @@ async function processRewards(): Promise<void> {
         totalCollected: taxStats.totalTaxCollected,
         harvestStatus,
         wasBatched,
-        nukeHarvested: taxResult?.totalTax?.toString() || '0',
+        tekHarvested: taxResult?.totalTax?.toString() || '0',
         solToHolders: taxResult ? (Number(taxResult.rewardAmount) / 1e9).toFixed(6) : '0',
         solToTreasury: taxResult ? (Number(taxResult.treasuryAmount) / 1e9).toFixed(6) : '0',
         swapSignature: taxResult?.swapSignature || null,

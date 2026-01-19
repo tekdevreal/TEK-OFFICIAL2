@@ -85,8 +85,8 @@ export function Dashboard() {
     const cycleTekMap = new Map<number, number>();
     if (selectedEpochData?.cycles) {
       selectedEpochData.cycles.forEach(cycle => {
-        if (cycle.taxResult?.nukeHarvested) {
-          cycleTekMap.set(cycle.cycleNumber, parseFloat(cycle.taxResult.nukeHarvested) / 1e6);
+        if (cycle.taxResult?.harvested) {
+          cycleTekMap.set(cycle.cycleNumber, parseFloat(cycle.taxResult.harvested) / 1e6);
         }
       });
     }

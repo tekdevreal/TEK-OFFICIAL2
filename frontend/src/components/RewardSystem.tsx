@@ -135,7 +135,7 @@ function Tooltip({ cycle, cycleNumber, currentCycle, epochNumber, x, y, historic
       <div className="tooltip-status">{statusLabel}</div>
       {cycle.taxResult && (
         <div className="tooltip-details">
-          <div>Harvest (TEK): {(parseFloat(cycle.taxResult.nukeHarvested) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}</div>
+          <div>Harvest (TEK): {(parseFloat(cycle.taxResult.harvested) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}</div>
           <div>Distributed (SOL): {historicalSOL !== undefined ? historicalSOL.toFixed(6) : ((parseFloat(cycle.taxResult.solToHolders) + parseFloat(cycle.taxResult.solToTreasury || '0')) / 1e9).toFixed(6)}</div>
         </div>
       )}

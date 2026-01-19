@@ -1276,7 +1276,7 @@ export class TaxService {
 
       logger.info('Tax distribution complete', {
         totalTax: totalTax.toString(),
-        nukeSold: totalTax.toString(),
+        tekSold: totalTax.toString(),
         solReceived: totalSolReceived.toString(),
         holdersSol: holdersSol.toString(),
         treasurySol: treasurySol.toString(),
