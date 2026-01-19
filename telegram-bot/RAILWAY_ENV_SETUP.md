@@ -31,10 +31,18 @@ Or use a single chat ID:
 TELEGRAM_CHAT_ID=your_chat_id_here
 ```
 
+### Webhook Configuration (Required)
+```
+TELEGRAM_WEBHOOK_URL=https://your-telegram-bot-service.up.railway.app
+```
+
+**Note:** This should be the Public Networking URL of your Telegram bot service on Railway. The bot uses webhooks to receive messages from Telegram.
+
 ### Optional Configuration
 ```
 POLLING_INTERVAL_MS=60000
 PORT=3000
+NODE_ENV=production
 ```
 
 ## Railway URLs Reference
@@ -44,8 +52,10 @@ PORT=3000
 - Private Networking: `tek-backend.railway.internal` (not used for Telegram bot)
 
 **Telegram Bot Service:**
-- Use Public Networking URL for `BACKEND_URL`
+- Use Public Networking URL for `BACKEND_URL` (points to backend service)
+- Use Public Networking URL for `TELEGRAM_WEBHOOK_URL` (points to telegram-bot service itself)
 - The bot will make HTTP requests to the backend API
+- The bot registers a webhook with Telegram to receive messages
 
 ## Verification
 

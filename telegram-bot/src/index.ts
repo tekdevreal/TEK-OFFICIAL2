@@ -250,18 +250,22 @@ async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl
       : 'N/A';
 
     const messageLines = [
-      '🟩 TEK Reward Statistics',
+      '*🟩 TEK Reward Statistics*',
       '',
-      `Total Distributed: ${totalDistributed} SOL`,
-      `To Holders: ${totalToHolders} SOL`,
-      `To Treasury: ${totalToTreasury} SOL`,
-      `Distributions: ${rewards.tax.distributionCount || 0}`,
+      `*Total Distributed:* ${totalDistributed} SOL`,
+      `*To Holders:* ${totalToHolders} SOL`,
+      `*To Treasury:* ${totalToTreasury} SOL`,
+      `*Distributions:* ${rewards.tax.distributionCount || 0}`,
+      '',
     ];
 
     // Add cycle info if available
     if (cycleInfo) {
       messageLines.push(`*Current Epoch:* ${cycleInfo.epochNumber}`); // Use epochNumber instead of epoch date
       messageLines.push(`*Current Cycle:* ${cycleInfo.cycleNumber} / ${cycleInfo.cyclesPerEpoch}`);
+    } else {
+      messageLines.push('*Current Epoch:* N/A');
+      messageLines.push('*Current Cycle:* N/A');
     }
 
     messageLines.push(`*Last Distribution:* ${lastDistribution}`);
