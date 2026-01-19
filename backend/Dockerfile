@@ -1,19 +1,20 @@
 # Backend Dockerfile for TEK Rewards API
 # Uses Node.js 20.6.0 to match package.json engines
+# Railway build context is repository root, so we copy from backend/
 
 FROM node:20.6.0-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy backend package files (build context is repo root)
+COPY backend/package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production=false
 
-# Copy source files
-COPY . .
+# Copy all backend source files
+COPY backend/ ./
 
 # Build TypeScript
 RUN npm run build
