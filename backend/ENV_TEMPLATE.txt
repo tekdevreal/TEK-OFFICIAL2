@@ -32,6 +32,11 @@ RAYDIUM_CPMM_OBSERVATION_STATE=GdwHP2eUjXsF2DzW3sUupXmGo7RoCr665qSHHs4Qk66K
 # Reward Configuration
 TOTAL_REWARD_POOL_SOL=1.0
 MIN_HOLDING_USD=5
+# Minimum SOL output required for swaps to proceed (in SOL)
+# This value is also used as MIN_SOL_PAYOUT for holder distributions.
+# Default: 0.0001 SOL (for testing with small amounts)
+# The swap service uses a flexible threshold (50% of this value) for very small swaps
+# Example: If MIN_SOL_PAYOUT=0.0001, flexible threshold = 0.00005 SOL
 MIN_SOL_PAYOUT=0.0001
 
 # Reward Value Mode

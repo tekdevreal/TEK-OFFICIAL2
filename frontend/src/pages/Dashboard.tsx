@@ -252,7 +252,8 @@ export function Dashboard() {
               <StatCard
                 label="Total Distributions (SOL)"
                 value={(() => {
-                  const sol = parseFloat(tax.totalSolDistributed || '0') / 1e9;
+                  // Use statistics.totalSOLDistributed which is already in SOL (converted from lamports)
+                  const sol = stats.totalSOLDistributed || 0;
                   return sol > 0 ? `${sol.toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL` : '0 SOL';
                 })()}
               />

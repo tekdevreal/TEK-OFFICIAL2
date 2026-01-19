@@ -508,8 +508,8 @@ export class TaxService {
       });
 
       try {
-        const { swapNukeToSOL } = await import('./swapService');
-        const swapResult = await swapNukeToSOL(currentBatchAmount);
+        const { swapTekToSOL } = await import('./swapService');
+        const swapResult = await swapTekToSOL(currentBatchAmount);
         
         totalSolReceived += swapResult.solReceived;
         txSignatures.push(swapResult.txSignature);
@@ -1081,8 +1081,8 @@ export class TaxService {
 
       // Step 7: Swap TEK to SOL via Raydium (with batch support for large amounts)
       logger.info('Swapping harvested TEK to SOL', {
-        nukeAmount: withdrawnAmount.toString(),
-        nukeAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
+        tekAmount: withdrawnAmount.toString(),
+        tekAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
       });
 
       // Check if harvest should be split into batches
@@ -1094,8 +1094,8 @@ export class TaxService {
       if (shouldSplit) {
         // Execute batch harvest
         logger.info('Large harvest detected - using batch mode', {
-          nukeAmount: withdrawnAmount.toString(),
-          nukeAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
+          tekAmount: withdrawnAmount.toString(),
+          tekAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
         });
 
         try {
@@ -1107,7 +1107,7 @@ export class TaxService {
           swapSignatures = batchResult.txSignatures;
           
           logger.info('Batch TEK swap to SOL completed successfully', {
-            nukeAmount: withdrawnAmount.toString(),
+            tekAmount: withdrawnAmount.toString(),
             solReceived: swapResult.solReceived.toString(),
             batchCount: swapSignatures.length,
             swapSignatures,
@@ -1116,20 +1116,20 @@ export class TaxService {
           logger.error('Failed to execute batch swap TEK to SOL - aborting distribution', {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
-            nukeAmount: withdrawnAmount.toString(),
-            nukeAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
+            tekAmount: withdrawnAmount.toString(),
+            tekAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
           });
           return null; // Abort if batch swap fails
         }
       } else {
         // Execute single swap
         try {
-          const { swapNukeToSOL } = await import('./swapService');
-          swapResult = await swapNukeToSOL(withdrawnAmount);
+          const { swapTekToSOL } = await import('./swapService');
+          swapResult = await swapTekToSOL(withdrawnAmount);
           swapSignatures = [swapResult.txSignature];
           
           logger.info('TEK swapped to SOL successfully (single swap)', {
-            nukeAmount: withdrawnAmount.toString(),
+            tekAmount: withdrawnAmount.toString(),
             solReceived: swapResult.solReceived.toString(),
             swapSignature: swapResult.txSignature,
           });
@@ -1137,8 +1137,8 @@ export class TaxService {
           logger.error('Failed to swap TEK to SOL - aborting distribution', {
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined,
-            nukeAmount: withdrawnAmount.toString(),
-            nukeAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
+            tekAmount: withdrawnAmount.toString(),
+            tekAmountHuman: (Number(withdrawnAmount) / Math.pow(10, decimals)).toFixed(6),
           });
           return null; // Abort if swap fails
         }

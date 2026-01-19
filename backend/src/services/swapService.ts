@@ -923,9 +923,9 @@ async function fetchCpmmPoolState(
   let poolCoinMint: PublicKey;
   let poolPcMint: PublicKey;
 
-  // Determine order based on which mint is NUKE
-  const nukeMint = tokenMint;
-  if (mintA.equals(nukeMint)) {
+  // Determine order based on which mint is TEK
+  const tekMint = tokenMint;
+  if (mintA.equals(tekMint)) {
     poolCoinTokenAccount = vaultA;
     poolPcTokenAccount = vaultB;
     poolCoinMint = mintA;
@@ -978,7 +978,7 @@ async function fetchCpmmPoolState(
  * CPMM pools use a simpler instruction format without Serum accounts.
  * The instruction format uses Anchor discriminator for swap.
  * 
- * For Token-2022 source tokens (NUKE), we must handle the transfer fee correctly.
+ * For Token-2022 source tokens (TEK), we must handle the transfer fee correctly.
  * 
  * CPMM Swap Instruction Format (Anchor):
  * - Instruction discriminator: Anchor observed: 40c6cde8260871e2
@@ -1020,11 +1020,11 @@ function createRaydiumCpmmSwapInstruction(
  * 3. Pool State (writable) - poolId
  * 4. Input Token Account (writable) - user TEK ATA
  * 5. Output Token Account (writable) - user WSOL ATA
- * 6. Input Vault (writable) - pool NUKE vault
+ * 6. Input Vault (writable) - pool TEK vault
  * 7. Output Vault (writable) - pool WSOL vault
  * 8. Input Token Program (readonly) - TOKEN_2022_PROGRAM_ID
  * 9. Output Token Program (readonly) - TOKEN_PROGRAM_ID
- * 10. Input Token Mint (readonly) - NUKE mint
+ * 10. Input Token Mint (readonly) - TEK mint
  * 11. Output Token Mint (readonly) - WSOL mint
  * 12. Observation State (readonly) - from pool state
  * Optional (Anchor sysvars / programs if required by IDL): SysvarClock, SysvarRent, AssociatedTokenProgram
@@ -1039,9 +1039,9 @@ export function createRaydiumCpmmSwapInstructionV2(params: {
   outputTokenAccount: PublicKey;
   inputVault: PublicKey;
   outputVault: PublicKey;
-  inputTokenProgram: PublicKey;  // likely TOKEN_2022_PROGRAM_ID for NUKE
+  inputTokenProgram: PublicKey;  // likely TOKEN_2022_PROGRAM_ID for TEK
   outputTokenProgram: PublicKey; // likely TOKEN_PROGRAM_ID for WSOL
-  inputMint: PublicKey;          // NUKE mint
+  inputMint: PublicKey;          // TEK mint
   outputMint: PublicKey;         // WSOL mint
   observationState: PublicKey;
   amountIn: bigint;
@@ -1104,7 +1104,7 @@ export function createRaydiumCpmmSwapInstructionV2(params: {
     { pubkey: outputVault, isSigner: false, isWritable: true },
     // Account 8: Input Token Program (readonly) - sourceTokenProgram (TOKEN_PROGRAM_ID for WSOL)
     { pubkey: inputTokenProgram, isSigner: false, isWritable: false },
-    // Account 9: Output Token Program (readonly) - destTokenProgram (TOKEN_2022_PROGRAM_ID for NUKE)
+    // Account 9: Output Token Program (readonly) - destTokenProgram (TOKEN_2022_PROGRAM_ID for TEK)
     { pubkey: outputTokenProgram, isSigner: false, isWritable: false },
     // Account 10: Input Token Mint (WRITABLE)
     { pubkey: inputMint, isSigner: false, isWritable: true },
@@ -1142,7 +1142,7 @@ export function createRaydiumCpmmSwapInstructionV2(params: {
  * - This is the ONLY valid instruction format for AMM v4 swaps
  * - Serum market accounts are REQUIRED - all 25 accounts must be included
  * 
- * For Token-2022 source tokens (NUKE), we must handle the transfer fee correctly.
+ * For Token-2022 source tokens (TEK), we must handle the transfer fee correctly.
  * The amountIn is the amount we want to swap, and the transfer fee will be deducted
  * during the token transfer, so the pool receives amountIn * (1 - transferFeeBps/10000).
  * 
@@ -1260,7 +1260,7 @@ async function createRaydiumStandardSwapInstruction(
  * CLMM pools use the pool's specific program ID from API (not the standard AMM v4 ID).
  * The instruction format for CLMM uses Anchor instruction format.
  * 
- * For Token-2022 source tokens (NUKE), we must handle the transfer fee correctly.
+ * For Token-2022 source tokens (TEK), we must handle the transfer fee correctly.
  * The amountIn is the amount we want to swap, and the transfer fee will be deducted
  * during the token transfer.
  * 
@@ -1360,11 +1360,11 @@ function createRaydiumClmmSwapInstruction(
     programId: poolProgramId, // CRITICAL: Use pool's program ID from API
     keys: [
       { pubkey: poolId, isSigner: false, isWritable: true },
-      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true }, // NUKE (Token-2022)
+      { pubkey: userSourceTokenAccount, isSigner: false, isWritable: true }, // TEK (Token-2022)
       { pubkey: userDestinationTokenAccount, isSigner: false, isWritable: true }, // WSOL (SPL Token)
-      { pubkey: poolSourceTokenAccount, isSigner: false, isWritable: true }, // Pool NUKE vault (Token-2022)
+      { pubkey: poolSourceTokenAccount, isSigner: false, isWritable: true }, // Pool TEK vault (Token-2022)
       { pubkey: poolDestinationTokenAccount, isSigner: false, isWritable: true }, // Pool WSOL vault (SPL Token)
-      { pubkey: poolCoinMint, isSigner: false, isWritable: false }, // NUKE mint (Token-2022)
+      { pubkey: poolCoinMint, isSigner: false, isWritable: false }, // TEK mint (Token-2022)
       { pubkey: poolPcMint, isSigner: false, isWritable: false }, // WSOL mint (SPL Token)
       { pubkey: userWallet, isSigner: true, isWritable: true },
       { pubkey: tokenProgramId, isSigner: false, isWritable: false }, // TOKEN_2022_PROGRAM_ID
@@ -1375,7 +1375,7 @@ function createRaydiumClmmSwapInstruction(
 }
 
 /**
- * Swap NUKE tokens to SOL via Raydium pool (Standard, CPMM, or CLMM)
+ * Swap TEK tokens to SOL via Raydium pool (Standard, CPMM, or CLMM)
  * 
  * This function:
  * 1. Detects pool type from API (Standard, CPMM, or CLMM)
@@ -1396,13 +1396,13 @@ function createRaydiumClmmSwapInstruction(
  * - Uses TOKEN_PROGRAM_ID for SPL Token source tokens
  * - Accounts for transfer fees in swap calculations
  * 
- * @param amountNuke - Amount of TEK to swap (in raw token units, with decimals)
+ * @param amountTek - Amount of TEK to swap (in raw token units, with decimals)
  *                    - This is the amount BEFORE transfer fee deduction
  * @param slippageBps - Slippage tolerance in basis points (default: 200 = 2%)
  * @returns SOL received and transaction signature
  */
-export async function swapNukeToSOL(
-  amountNuke: bigint,
+export async function swapTekToSOL(
+  amountTek: bigint,
   slippageBps: number = DEFAULT_SLIPPAGE_BPS
 ): Promise<{
   solReceived: bigint;
@@ -1410,12 +1410,12 @@ export async function swapNukeToSOL(
 }> {
   try {
     logger.info('Starting TEK to SOL swap via Raydium pool', {
-      amountNuke: amountNuke.toString(),
+      amountTek: amountTek.toString(),
       slippageBps,
     });
 
     // Step 1: Validate inputs
-    if (amountNuke <= 0n) {
+    if (amountTek <= 0n) {
       throw new Error('Amount must be greater than zero');
     }
 
@@ -1456,8 +1456,8 @@ export async function swapNukeToSOL(
     });
 
     // Step 3.5: Determine Token-2022 vs SPL Token based on pool info
-    // Detect which mint is NUKE and which is WSOL, then determine token programs
-    const nukeMint = tokenMint;
+    // Detect which mint is TEK and which is WSOL, then determine token programs
+    const tekMint = tokenMint;
     const solMint = WSOL_MINT;
     
     let sourceIsToken2022: boolean;
@@ -1465,14 +1465,14 @@ export async function swapNukeToSOL(
     let destTokenProgram: PublicKey;
     let sourceTransferFeeBps: number = 0;
 
-    if (poolInfo.mintA.equals(nukeMint)) {
-      // mintA is NUKE
+    if (poolInfo.mintA.equals(tekMint)) {
+      // mintA is TEK
       sourceIsToken2022 = poolInfo.transferFeeBasisPointsA !== undefined;
       sourceTokenProgram = sourceIsToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
       destTokenProgram = TOKEN_PROGRAM_ID; // WSOL is always SPL Token
       sourceTransferFeeBps = poolInfo.transferFeeBasisPointsA || 0;
     } else {
-      // mintB is NUKE
+      // mintB is TEK
       sourceIsToken2022 = poolInfo.transferFeeBasisPointsB !== undefined;
       sourceTokenProgram = sourceIsToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
       destTokenProgram = TOKEN_PROGRAM_ID; // WSOL is always SPL Token
@@ -1495,16 +1495,16 @@ export async function swapNukeToSOL(
     let sourceDecimals: number;
     let destDecimals: number;
 
-    if (poolInfo.mintA.equals(nukeMint) && poolInfo.mintB.equals(solMint)) {
-      // mintA = NUKE, mintB = SOL
+    if (poolInfo.mintA.equals(tekMint) && poolInfo.mintB.equals(solMint)) {
+      // mintA = TEK, mintB = SOL
       poolSourceMint = poolInfo.mintA;
       poolDestMint = poolInfo.mintB;
       poolSourceVault = poolInfo.vaultA;
       poolDestVault = poolInfo.vaultB;
       sourceDecimals = poolInfo.decimalsA;
       destDecimals = poolInfo.decimalsB;
-    } else if (poolInfo.mintB.equals(nukeMint) && poolInfo.mintA.equals(solMint)) {
-      // mintB = NUKE, mintA = SOL
+    } else if (poolInfo.mintB.equals(tekMint) && poolInfo.mintA.equals(solMint)) {
+      // mintB = TEK, mintA = SOL
       poolSourceMint = poolInfo.mintB;
       poolDestMint = poolInfo.mintA;
       poolSourceVault = poolInfo.vaultB;
@@ -1563,24 +1563,24 @@ export async function swapNukeToSOL(
     const feeMultiplier = 0.9975; // Raydium fee (0.25%)
     
     // Calculate amount after transfer fee (if Token-2022 with transfer fee)
-    // transferFeeBps is in basis points (400 = 4%)
+    // transferFeeBps is in basis points (300 = 3% for TEK)
     // Amount after fee = amountIn * (10000 - transferFeeBps) / 10000
-    const nukeAfterTransferFee = sourceTransferFeeBps > 0
-      ? (amountNuke * BigInt(10000 - sourceTransferFeeBps)) / BigInt(10000)
-      : amountNuke;
+    const tekAfterTransferFee = sourceTransferFeeBps > 0
+      ? (amountTek * BigInt(10000 - sourceTransferFeeBps)) / BigInt(10000)
+      : amountTek;
     
     // ✅ CRITICAL: Dynamic slippage based on trade size and transfer fees (for liquidity check)
     // Calculate trade size impact (% of pool reserves)
-    const tradeImpactBpsForLiquidity = Number((nukeAfterTransferFee * 10_000n) / sourceReserve);
+    const tradeImpactBpsForLiquidity = Number((tekAfterTransferFee * 10_000n) / sourceReserve);
     const tradeImpactPercentForLiquidity = tradeImpactBpsForLiquidity / 100;
     
     // Dynamic slippage formula (same as final calculation):
     // - Base: 2% (200 bps)
-    // - Transfer fee: 4% (400 bps) if Token-2022
+    // - Transfer fee: 3% (300 bps) for TEK Token-2022
     // - Price impact: scales with trade size (0.1% per 1% of pool)
     // - Safety buffer: 1% (100 bps)
     const baseSlippageBpsForLiquidity = slippageBps; // 2% (200 bps)
-    const transferFeeSlippageBpsForLiquidity = sourceTransferFeeBps; // 4% (400 bps) for NUKE
+    const transferFeeSlippageBpsForLiquidity = sourceTransferFeeBps; // 3% (300 bps) for TEK
     const priceImpactSlippageBpsForLiquidity = Math.floor(tradeImpactBpsForLiquidity * 0.1); // 0.1% per 1% of pool
     const bufferBpsForLiquidity = 100; // 1% safety buffer
     
@@ -1597,11 +1597,11 @@ export async function swapNukeToSOL(
     const priceImpactBps = tradeImpactBpsForLiquidity;
     
     // Estimate expected output for liquidity verification
-    const estimatedDestAmount = (destReserve * nukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + nukeAfterTransferFee) / BigInt(10000);
+    const estimatedDestAmount = (destReserve * tekAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + tekAfterTransferFee) / BigInt(10000);
     const estimatedMinDestAmount = (estimatedDestAmount * BigInt(10000 - cappedSlippageBpsForLiquidity)) / BigInt(10000);
     
     logger.info('Dynamic slippage calculation (liquidity check)', {
-      amountIn: nukeAfterTransferFee.toString(),
+      amountIn: tekAfterTransferFee.toString(),
       sourceReserve: sourceReserve.toString(),
       tradeImpactPercent: tradeImpactPercentForLiquidity.toFixed(2) + '%',
       priceImpactBps,
@@ -1620,33 +1620,33 @@ export async function swapNukeToSOL(
     });
 
     // Verify liquidity
-    const liquidityCheck = verifyLiquidity(sourceReserve, destReserve, amountNuke, estimatedMinDestAmount);
+    const liquidityCheck = verifyLiquidity(sourceReserve, destReserve, amountTek, estimatedMinDestAmount);
     if (!liquidityCheck.valid) {
       logger.warn('Insufficient liquidity - aborting swap', {
         reason: liquidityCheck.reason,
         sourceReserve: sourceReserve.toString(),
         destReserve: destReserve.toString(),
-        amountNuke: amountNuke.toString(),
+        amountTek: amountTek.toString(),
         estimatedMinDestAmount: estimatedMinDestAmount.toString(),
       });
       throw new Error(`Insufficient liquidity: ${liquidityCheck.reason}`);
     }
 
     // Step 7: Calculate expected SOL output (final calculation)
-    const expectedDestAmount = (destReserve * nukeAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + nukeAfterTransferFee) / BigInt(10000);
+    const expectedDestAmount = (destReserve * tekAfterTransferFee * BigInt(Math.floor(feeMultiplier * 10000))) / (sourceReserve + tekAfterTransferFee) / BigInt(10000);
     
     // ✅ CRITICAL: Dynamic slippage based on trade size and transfer fees
     // Calculate trade size impact (% of pool reserves)
-    const tradeImpactBps = Number((nukeAfterTransferFee * 10_000n) / sourceReserve);
+    const tradeImpactBps = Number((tekAfterTransferFee * 10_000n) / sourceReserve);
     const tradeImpactPercent = tradeImpactBps / 100;
     
     // Dynamic slippage formula:
     // - Base: 2% (200 bps)
-    // - Transfer fee: 4% (400 bps) if Token-2022
+    // - Transfer fee: 3% (300 bps) for TEK Token-2022
     // - Price impact: scales with trade size (0.1% per 1% of pool)
     // - Safety buffer: 1% (100 bps)
     const baseSlippageBps = slippageBps; // 2% (200 bps)
-    const transferFeeSlippageBps = sourceTransferFeeBps; // 4% (400 bps) for NUKE
+    const transferFeeSlippageBps = sourceTransferFeeBps; // 3% (300 bps) for TEK
     const priceImpactSlippageBps = Math.floor(tradeImpactBps * 0.1); // 0.1% per 1% of pool
     const bufferBps = 100; // 1% safety buffer
     
@@ -1664,22 +1664,27 @@ export async function swapNukeToSOL(
     // Calculate price impact for final logging
     const priceImpactBpsFinal = tradeImpactBps;
 
-    if (minDestAmount < MIN_SOL_OUTPUT) {
+    // For very small amounts, use a lower threshold (50% of MIN_SOL_OUTPUT) to allow micro-swaps
+    // This handles cases where small TEK amounts result in very small SOL outputs
+    const MIN_SOL_OUTPUT_FLEXIBLE = MIN_SOL_OUTPUT / 2; // 50% of minimum for small swaps
+    
+    if (minDestAmount < MIN_SOL_OUTPUT_FLEXIBLE) {
       logger.warn('Expected SOL output below minimum threshold', {
         expectedSolLamports: expectedDestAmount.toString(),
         minSolLamports: minDestAmount.toString(),
         minimumThreshold: MIN_SOL_OUTPUT.toString(),
+        flexibleThreshold: MIN_SOL_OUTPUT_FLEXIBLE.toString(),
       });
       throw new Error(
-        `Expected SOL output too low: ${Number(minDestAmount) / LAMPORTS_PER_SOL} SOL (minimum: ${MIN_SOL_OUTPUT / LAMPORTS_PER_SOL} SOL). Pool may have insufficient liquidity.`
+        `Expected SOL output too low: ${Number(minDestAmount) / LAMPORTS_PER_SOL} SOL (minimum: ${MIN_SOL_OUTPUT_FLEXIBLE / LAMPORTS_PER_SOL} SOL). Pool may have insufficient liquidity.`
       );
     }
 
     logger.info('Swap calculation with dynamic slippage', {
-      amountNuke: amountNuke.toString(),
-      amountNukeAfterTransferFee: nukeAfterTransferFee.toString(),
+      amountTek: amountTek.toString(),
+      amountTekAfterTransferFee: tekAfterTransferFee.toString(),
       transferFeeBps: sourceTransferFeeBps,
-      transferFeeAmount: (amountNuke - nukeAfterTransferFee).toString(),
+      transferFeeAmount: (amountTek - tekAfterTransferFee).toString(),
       sourceReserve: sourceReserve.toString(),
       destReserve: destReserve.toString(),
       tradeImpactPercent: tradeImpactPercent.toFixed(2) + '%',
@@ -1719,27 +1724,27 @@ export async function swapNukeToSOL(
     // -------------------------------------------------------------------
 
     // Explicitly derive TEK ATA (source token ATA)
-    const nukeAta = getAssociatedTokenAddressSync(
+    const tekAta = getAssociatedTokenAddressSync(
       tokenMint,            // TEK mint
       rewardWalletAddress,  // owner = reward wallet
       false,
       TOKEN_2022_PROGRAM_ID // TEK is Token-2022
     );
 
-    if (!nukeAta) {
-      throw new Error('TEK ATA (nukeAta) is undefined after derivation');
+    if (!tekAta) {
+      throw new Error('TEK ATA (tekAta) is undefined after derivation');
     }
     try {
-      nukeAta.toString(); // Verify it's a valid PublicKey
+      tekAta.toString(); // Verify it's a valid PublicKey
     } catch (error) {
-      throw new Error(`Invalid TEK ATA (nukeAta) address: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Invalid TEK ATA (tekAta) address: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // Check TEK balance in ATA
-    let rewardNukeBalance = 0n;
+    let rewardTekBalance = 0n;
     try {
-      const rewardAccount = await getAccount(connection, nukeAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
-      rewardNukeBalance = rewardAccount.amount;
+      const rewardAccount = await getAccount(connection, tekAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      rewardTekBalance = rewardAccount.amount;
     } catch (error) {
       throw new Error(
         `Reward wallet TEK ATA not found or has no balance: ${
@@ -1748,9 +1753,9 @@ export async function swapNukeToSOL(
       );
     }
 
-    if (rewardNukeBalance < amountNuke) {
+    if (rewardTekBalance < amountTek) {
       throw new Error(
-        `Insufficient NUKE balance. Required: ${amountNuke.toString()}, Available: ${rewardNukeBalance.toString()}`
+        `Insufficient TEK balance. Required: ${amountTek.toString()}, Available: ${rewardTekBalance.toString()}`
       );
     }
 
@@ -1775,15 +1780,15 @@ export async function swapNukeToSOL(
     const userSolAccount = wsolAta;
 
     // Defensive guard: both ATAs MUST be resolved before calling Raydium SDK
-    if (!nukeAta || !wsolAta) {
-      throw new Error('User token accounts not resolved before Raydium swap (nukeAta or wsolAta undefined)');
+    if (!tekAta || !wsolAta) {
+      throw new Error('User token accounts not resolved before Raydium swap (tekAta or wsolAta undefined)');
     }
 
     logger.info('Raydium swap user accounts', {
-      nukeAta: nukeAta.toBase58(),
+      tekAta: tekAta.toBase58(),
       wsolAta: wsolAta.toBase58(),
       owner: rewardWalletAddress.toBase58(),
-      nukeBalance: rewardNukeBalance.toString(),
+      tekBalance: rewardTekBalance.toString(),
     });
 
     // ===================================================================
@@ -1818,29 +1823,29 @@ export async function swapNukeToSOL(
     // ===================================================================
     
     // Step 8: Verify TEK ATA exists on-chain (REQUIRED for swap)
-    let rewardNukeAccountExists = false;
-    let nukeAccountInfo = null;
+    let rewardTekAccountExists = false;
+    let tekAccountInfo = null;
     try {
-      nukeAccountInfo = await getAccount(connection, nukeAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
-      rewardNukeAccountExists = true;
+      tekAccountInfo = await getAccount(connection, tekAta, 'confirmed', TOKEN_2022_PROGRAM_ID);
+      rewardTekAccountExists = true;
       logger.info('TEK ATA verified on-chain', {
-        nukeAta: nukeAta.toBase58(),
-        balance: nukeAccountInfo.amount.toString(),
-        mint: nukeAccountInfo.mint.toBase58(),
-        owner: nukeAccountInfo.owner.toBase58(),
+        tekAta: tekAta.toBase58(),
+        balance: tekAccountInfo.amount.toString(),
+        mint: tekAccountInfo.mint.toBase58(),
+        owner: tekAccountInfo.owner.toBase58(),
       });
     } catch (error) {
-      rewardNukeAccountExists = false;
+      rewardTekAccountExists = false;
       logger.error('TEK ATA does not exist on-chain', {
-        nukeAta: nukeAta.toBase58(),
+        tekAta: tekAta.toBase58(),
         error: error instanceof Error ? error.message : String(error),
         note: 'Create this ATA once using create-tek-ata.ts script BEFORE running swaps',
       });
     }
 
-    if (!rewardNukeAccountExists) {
+    if (!rewardTekAccountExists) {
       throw new Error(
-        `Reward TEK ATA does not exist on-chain: ${nukeAta.toBase58()}. ` +
+        `Reward TEK ATA does not exist on-chain: ${tekAta.toBase58()}. ` +
         `Create it once by running: cd backend && npx tsx create-tek-ata.ts`
       );
     }
@@ -1939,10 +1944,10 @@ export async function swapNukeToSOL(
 
     // Final validation: Both ATAs must exist and be accessible
     logger.info('All ATAs verified on-chain (BEFORE SDK call)', {
-      nukeAta: {
-        address: nukeAta.toBase58(),
-        exists: rewardNukeAccountExists,
-        balance: nukeAccountInfo?.amount.toString() || '0',
+      tekAta: {
+        address: tekAta.toBase58(),
+        exists: rewardTekAccountExists,
+        balance: tekAccountInfo?.amount.toString() || '0',
       },
       wsolAta: {
         address: wsolAta.toBase58(),
@@ -1991,11 +1996,11 @@ export async function swapNukeToSOL(
         'confirmed'
       );
 
-      // Also check Token-2022 accounts (NUKE uses Token-2022)
+      // Also check Token-2022 accounts (TEK uses Token-2022)
       const parsedToken2022Accounts = await connection.getParsedTokenAccountsByOwner(
         rewardWalletAddress,
         {
-          programId: TOKEN_2022_PROGRAM_ID, // NUKE uses Token-2022 program
+          programId: TOKEN_2022_PROGRAM_ID, // TEK uses Token-2022 program
         },
         'confirmed'
       );
@@ -2010,7 +2015,7 @@ export async function swapNukeToSOL(
 
       // Verify that our ATAs are in the query results
       const allTokenAccounts = [...parsedTokenAccounts.value, ...parsedToken2022Accounts.value];
-      const foundNukeAta = allTokenAccounts.some(acc => acc.pubkey.equals(nukeAta));
+      const foundTekAta = allTokenAccounts.some(acc => acc.pubkey.equals(tekAta));
       const foundWsolAta = allTokenAccounts.some(acc => acc.pubkey.equals(wsolAta));
 
       logger.info('SDK token account query pre-validation successful', {
@@ -2018,16 +2023,16 @@ export async function swapNukeToSOL(
         totalTokenAccounts: allTokenAccounts.length,
         standardTokenAccounts: parsedTokenAccounts.value.length,
         token2022Accounts: parsedToken2022Accounts.value.length,
-        nukeAtaFound: foundNukeAta,
+        tekAtaFound: foundTekAta,
         wsolAtaFound: foundWsolAta,
-        nukeAtaAddress: nukeAta.toBase58(),
+        tekAtaAddress: tekAta.toBase58(),
         wsolAtaAddress: wsolAta.toBase58(),
         note: 'SDK can successfully query token accounts - _selectTokenAccount will work',
       });
 
-      if (!foundNukeAta) {
+      if (!foundTekAta) {
         logger.warn('TEK ATA not found in token account query (may still work if SDK uses different query)', {
-          nukeAta: nukeAta.toBase58(),
+          tekAta: tekAta.toBase58(),
           note: 'ATA exists on-chain but not in query results - SDK may use different query method',
         });
       }
@@ -2044,7 +2049,7 @@ export async function swapNukeToSOL(
       logger.error('SDK token account query pre-validation FAILED', {
         error: errorMessage,
         owner: rewardWalletAddress.toBase58(),
-        nukeAta: nukeAta.toBase58(),
+        tekAta: tekAta.toBase58(),
         wsolAta: wsolAta.toBase58(),
         note: 'SDK will fail with .filter() error - aborting swap to prevent crash',
       });
@@ -2080,7 +2085,7 @@ export async function swapNukeToSOL(
     }
     
     // NOTE: We DO NOT create ATAs here - they must exist on-chain already.
-    // Both NUKE ATA and WSOL ATA have been verified to exist above.
+    // Both TEK ATA and WSOL ATA have been verified to exist above.
 
     // For non-Standard pools, verify pool vaults exist (Standard pools use SDK which handles this)
     if (poolInfo.poolType !== 'Standard') {
@@ -2135,7 +2140,7 @@ export async function swapNukeToSOL(
       poolType: poolInfo.poolType,
       poolProgramId: poolInfo.poolProgramId.toBase58(),
       poolId: poolId.toBase58(),
-      amountNuke: amountNuke.toString(),
+      amountTek: amountTek.toString(),
       minDestAmount: minDestAmount.toString(),
       sourceTokenProgram: sourceTokenProgram.toBase58(),
     });
@@ -2147,8 +2152,8 @@ export async function swapNukeToSOL(
     // ===================================================================
     
     // Final validation: Ensure ATAs are valid PublicKeys
-    if (!nukeAta || !(nukeAta instanceof PublicKey)) {
-      throw new Error(`TEK ATA is not a valid PublicKey: ${nukeAta}`);
+    if (!tekAta || !(tekAta instanceof PublicKey)) {
+      throw new Error(`TEK ATA is not a valid PublicKey: ${tekAta}`);
     }
     if (!wsolAta || !(wsolAta instanceof PublicKey)) {
       throw new Error(`WSOL ATA is not a valid PublicKey: ${wsolAta}`);
@@ -2158,10 +2163,10 @@ export async function swapNukeToSOL(
     }
 
     logger.info('Final validation complete - ready to build swap instruction', {
-      nukeAta: nukeAta.toBase58(),
+      tekAta: tekAta.toBase58(),
       wsolAta: wsolAta.toBase58(),
       owner: rewardWalletAddress.toBase58(),
-      amountIn: amountNuke.toString(),
+      amountIn: amountTek.toString(),
       amountOut: minDestAmount.toString(),
       poolType: poolInfo.poolType,
       hasSerumMarket: poolInfo.hasSerumMarket,
@@ -2192,9 +2197,9 @@ export async function swapNukeToSOL(
         poolId: poolId.toBase58(),
         poolType: poolInfo.poolType,
         poolProgramId: poolInfo.poolProgramId.toBase58(),
-        nukeAta: nukeAta.toBase58(),
+        tekAta: tekAta.toBase58(),
         wsolAta: wsolAta.toBase58(),
-        amountIn: amountNuke.toString(),
+        amountIn: amountTek.toString(),
         minAmountOut: minDestAmount.toString(),
         note: 'CPMM pool detected - Serum not required (CPMM pools never use Serum)',
       });
@@ -2213,12 +2218,12 @@ export async function swapNukeToSOL(
       const { ammConfig, observationState } = getRaydiumCpmmConfig();
 
       // ✅ CRITICAL: Determine token program order based on swap direction
-      // For NUKE → WSOL swap:
-      // - Input (NUKE) uses TOKEN_2022_PROGRAM_ID
+      // For TEK → WSOL swap:
+      // - Input (TEK) uses TOKEN_2022_PROGRAM_ID
       // - Output (WSOL) uses TOKEN_PROGRAM_ID
       // But the working transaction shows: sourceTokenProgram (TOKEN_PROGRAM_ID) first, then destTokenProgram (TOKEN_2022_PROGRAM_ID)
-      // This is because the transaction was WSOL → NUKE, so we need to reverse for NUKE → WSOL
-      const inputTokenProgram = sourceTokenProgram; // TOKEN_2022_PROGRAM_ID for NUKE
+      // This is because the transaction was WSOL → TEK, so we need to reverse for TEK → WSOL
+      const inputTokenProgram = sourceTokenProgram; // TOKEN_2022_PROGRAM_ID for TEK
       const outputTokenProgram = TOKEN_PROGRAM_ID;  // TOKEN_PROGRAM_ID for WSOL
 
       // Create CPMM swap instruction using V2 builder (explicit account order)
@@ -2228,16 +2233,16 @@ export async function swapNukeToSOL(
         authority: cpmmPoolState.poolAuthority, // ✅ CRITICAL: authority = pool authority from API (NOT reward wallet)
         ammConfig,
         poolState: poolId,
-        inputTokenAccount: nukeAta,
+        inputTokenAccount: tekAta,
         outputTokenAccount: wsolAta,
         inputVault: cpmmPoolState.poolCoinTokenAccount,
         outputVault: cpmmPoolState.poolPcTokenAccount,
-        inputTokenProgram: inputTokenProgram,  // TOKEN_2022_PROGRAM_ID for NUKE
+        inputTokenProgram: inputTokenProgram,  // TOKEN_2022_PROGRAM_ID for TEK
         outputTokenProgram: outputTokenProgram, // TOKEN_PROGRAM_ID for WSOL
         inputMint: cpmmPoolState.poolCoinMint,
         outputMint: cpmmPoolState.poolPcMint,
         observationState,
-        amountIn: amountNuke,
+        amountIn: amountTek,
         minimumAmountOut: minDestAmount,
         tradeFeeFlag: 0,
         creatorFeeFlag: 0,
@@ -2302,9 +2307,9 @@ export async function swapNukeToSOL(
       logger.info('Building Raydium AMM v4 swap instruction with Serum market', {
         poolId: poolId.toBase58(),
         poolProgramId: poolInfo.poolProgramId.toBase58(),
-        nukeAta: nukeAta.toBase58(),
+        tekAta: tekAta.toBase58(),
         wsolAta: wsolAta.toBase58(),
-        amountIn: amountNuke.toString(),
+        amountIn: amountTek.toString(),
         minAmountOut: minDestAmount.toString(),
         note: 'AMM v4 pools REQUIRE Serum market - using full 25-account instruction',
       });
@@ -2334,9 +2339,9 @@ export async function swapNukeToSOL(
         poolId,
         poolInfo.poolProgramId,
         poolState,
-        nukeAta,
+        tekAta,
         wsolAta,
-        amountNuke,
+        amountTek,
         minDestAmount,
         rewardWalletAddress,
         sourceTokenProgram
@@ -2389,7 +2394,7 @@ export async function swapNukeToSOL(
       poolProgramId: poolInfo.poolProgramId.toBase58(),
       poolId: poolId.toBase58(),
       accountCount: swapInstruction.keys.length,
-      amountIn: amountNuke.toString(),
+      amountIn: amountTek.toString(),
       minAmountOut: minDestAmount.toString(),
       sourceTokenProgram: sourceTokenProgram.toBase58(),
       poolType: poolInfo.poolType,
@@ -2539,7 +2544,7 @@ export async function swapNukeToSOL(
             authority: cpmmPoolState.poolAuthority,
             ammConfig,
             poolState: poolId,
-            inputTokenAccount: nukeAta,
+            inputTokenAccount: tekAta,
             outputTokenAccount: wsolAta,
             inputVault: cpmmPoolState.poolCoinTokenAccount,
             outputVault: cpmmPoolState.poolPcTokenAccount,
@@ -2548,7 +2553,7 @@ export async function swapNukeToSOL(
             inputMint: cpmmPoolState.poolCoinMint,
             outputMint: cpmmPoolState.poolPcMint,
             observationState,
-            amountIn: amountNuke,
+            amountIn: amountTek,
             minimumAmountOut: currentMinDestAmount, // Use updated minDestAmount
             tradeFeeFlag: 0,
             creatorFeeFlag: 0,
@@ -2561,9 +2566,9 @@ export async function swapNukeToSOL(
             poolId,
             poolInfo.poolProgramId,
             poolState,
-            nukeAta,
+            tekAta,
             wsolAta,
-            amountNuke,
+            amountTek,
             currentMinDestAmount, // Use updated minDestAmount
             rewardWalletAddress,
             sourceTokenProgram
@@ -2853,7 +2858,7 @@ export async function swapNukeToSOL(
     logger.error('Error swapping TEK to SOL via Raydium pool', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      amountNuke: amountNuke.toString(),
+      amountTek: amountTek.toString(),
     });
     throw error; // Re-throw to abort reward distribution
   }

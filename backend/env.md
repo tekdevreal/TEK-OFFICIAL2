@@ -89,6 +89,10 @@ TOTAL_REWARD_POOL_SOL=1.0
 MIN_HOLDING_USD=5
 
 # Minimum SOL payout amount per distribution
+# Minimum SOL output required for swaps to proceed (in SOL)
+# This value is also used as MIN_SOL_PAYOUT for holder distributions.
+# Default: 0.0001 SOL (for testing with small amounts)
+# The swap service uses a flexible threshold (50% of this value) for very small swaps
 MIN_SOL_PAYOUT=0.0001
 ```
 

@@ -198,14 +198,22 @@ async function processRewards(): Promise<void> {
 
     // Get tax stats for history and logging (get once, use multiple times)
     const taxStats = TaxService.getTaxStatistics();
-    const lastDistribution = taxStats.lastTaxDistribution 
-      ? new Date(taxStats.lastTaxDistribution).getTime()
-      : null;
     
-    // Calculate total SOL distributed (only if distribution happened in this cycle)
+    // Calculate total SOL distributed for THIS cycle
+    // Use taxResult.rewardAmount if available (amount distributed in this cycle)
+    // Otherwise use lastDistributionSolToHolders (amount from last distribution)
     let totalSolDistributed = 0;
-    if (lastDistribution && (now - lastDistribution) < 60000) {
-      totalSolDistributed = parseFloat(taxStats.totalSolDistributed || '0') / 1e9; // Convert lamports to SOL
+    if (taxResult && taxResult.rewardAmount) {
+      // Use the actual amount distributed in this cycle
+      totalSolDistributed = parseFloat(taxResult.rewardAmount.toString()) / 1e9; // Convert lamports to SOL
+    } else if (taxStats.lastDistributionSolToHolders) {
+      // Fallback: use last distribution amount (if distribution happened recently)
+      const lastDistribution = taxStats.lastTaxDistribution 
+        ? new Date(taxStats.lastTaxDistribution).getTime()
+        : null;
+      if (lastDistribution && (now - lastDistribution) < 60000) {
+        totalSolDistributed = parseFloat(taxStats.lastDistributionSolToHolders || '0') / 1e9; // Convert lamports to SOL
+      }
     }
 
     // Save reward cycle to history

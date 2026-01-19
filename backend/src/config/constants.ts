@@ -14,7 +14,9 @@ export const REWARD_CONFIG = {
   MIN_REWARD_INTERVAL: 5 * 60 * 1000, // 5 minutes (minimum time between reward runs)
   MIN_HOLDING_USD: 5, // Minimum holding value in USD to be eligible
   MAX_RETRIES: 3, // Maximum retries for failed reward transfers
-  MIN_SOL_PAYOUT: 0.0001, // Minimum SOL amount to send (dust limit)
+  MIN_SOL_PAYOUT: process.env.MIN_SOL_PAYOUT 
+    ? parseFloat(process.env.MIN_SOL_PAYOUT)
+    : 0.0001, // Default: 0.0001 SOL (for testing with small amounts)
   TOTAL_REWARD_POOL_SOL: 1.0, // Total SOL reward pool per distribution cycle
 } as const;
 
