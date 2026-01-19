@@ -35,13 +35,13 @@ export class TelegramBotService {
     // /help command
     this.bot.onText(/\/help/, async (msg) => {
       const helpText = `
-🤖 *NUKE Rewards Audit Bot Commands*
+🤖 TEK Rewards Audit Bot Commands
 
 /help - Show this help message
 /summary - Get current reward cycle summary
 /latest_report - Download latest Excel export file
 
-*Automatic Notifications*
+Automatic Notifications
 The bot automatically sends reward cycle summaries every ${config.POLLING_INTERVAL_MS / 60000} minutes.
       `;
 

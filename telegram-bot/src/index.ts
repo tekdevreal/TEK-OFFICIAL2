@@ -54,7 +54,7 @@ type RewardApiResponse = {
   };
   dex?: {
     name: string;
-    price: number | null; // SOL per NUKE
+    price: number | null; // SOL per TEK
     source: string;
     updatedAt: string;
   } | null;
@@ -154,27 +154,41 @@ async function fetchSwapDistributionNotification(
     console.error('[Notification] Failed to fetch cycle info:', err);
   }
   
-  // Format distribution timestamp in CET without seconds
+  // Format distribution timestamp in CET (MM/DD/YYYY, HH:mm CET)
   const distributionTime = rewards.tax.lastTaxDistribution 
-    ? new Date(rewards.tax.lastTaxDistribution).toLocaleString('en-US', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit', 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        timeZone: 'Europe/Paris', // CET timezone
-        hour12: false 
-      }) + ' CET'
+    ? (() => {
+        const date = new Date(rewards.tax.lastTaxDistribution);
+        // Convert to CET timezone using Intl.DateTimeFormat
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Europe/Paris',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const parts = formatter.formatToParts(date);
+        const month = parts.find(p => p.type === 'month')?.value || '01';
+        const day = parts.find(p => p.type === 'day')?.value || '01';
+        const year = parts.find(p => p.type === 'year')?.value || '2026';
+        const hours = parts.find(p => p.type === 'hour')?.value || '00';
+        const minutes = parts.find(p => p.type === 'minute')?.value || '00';
+        return `${month}/${day}/${year}, ${hours}:${minutes} CET`;
+      })()
     : 'N/A';
   
-  // Build message with bold titles using Telegram markdown
+  // Build message with TEK branding and spacing
   const messageLines = [
-    '💰 *NUKE Rewards Distributed*',
+    '🟩 TEK Rewards Distributed',
     '',
-    `*Total:* ${totalSOLFormatted} SOL`,
-    `*Holders:* ${solToHoldersFormatted} SOL`,
-    `*Treasury:* ${solToTreasuryFormatted} SOL`,
+    `Total: ${totalSOLFormatted} SOL`,
+    `Holders: ${solToHoldersFormatted} SOL`,
+    `Treasury: ${solToTreasuryFormatted} SOL`,
   ];
+
+  // Add spacing before epoch/cycle section
+  messageLines.push('');
 
   // Add epoch and cycle info if available
   if (cycleInfo) {
@@ -182,12 +196,12 @@ async function fetchSwapDistributionNotification(
     const distributionCycleNumber = rewards.tax.lastDistributionCycleNumber || cycleInfo.cycleNumber;
     const distributionEpochNumber = rewards.tax.lastDistributionEpochNumber || cycleInfo.epochNumber;
     
-    messageLines.push(`*Epoch:* ${distributionEpochNumber}`); // Use stored epoch number from distribution
-    messageLines.push(`*Cycle:* ${distributionCycleNumber} / ${cycleInfo.cyclesPerEpoch}`); // Use stored cycle number from distribution
+    messageLines.push(`Epoch: ${distributionEpochNumber}`); // Use stored epoch number from distribution
+    messageLines.push(`Cycle: ${distributionCycleNumber} / ${cycleInfo.cyclesPerEpoch}`); // Use stored cycle number from distribution
   }
 
   // Add timestamp
-  messageLines.push(`*Time:* ${distributionTime}`);
+  messageLines.push(`Time: ${distributionTime}`);
 
   const message = messageLines.join('\n');
 
@@ -236,12 +250,12 @@ async function handleRewardsCommand(bot: TelegramBot, chatId: number, backendUrl
       : 'N/A';
 
     const messageLines = [
-      '💰 *NUKE Reward Statistics*',
+      '🟩 TEK Reward Statistics',
       '',
-      `*Total Distributed:* ${totalDistributed} SOL`,
-      `*To Holders:* ${totalToHolders} SOL`,
-      `*To Treasury:* ${totalToTreasury} SOL`,
-      `*Distributions:* ${rewards.tax.distributionCount || 0}`,
+      `Total Distributed: ${totalDistributed} SOL`,
+      `To Holders: ${totalToHolders} SOL`,
+      `To Treasury: ${totalToTreasury} SOL`,
+      `Distributions: ${rewards.tax.distributionCount || 0}`,
     ];
 
     // Add cycle info if available
