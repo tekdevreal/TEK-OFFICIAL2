@@ -47,7 +47,7 @@ export function DistributionCard({ item, rewardWalletAddress }: DistributionCard
         </div>
         <div className="distribution-detail">
           <span className="detail-label">Distributed:</span>
-          <span className="detail-value">{item.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })} SOL</span>
+          <span className="detail-value">{item.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 8, minimumFractionDigits: 8 })} SOL</span>
         </div>
       </div>
 

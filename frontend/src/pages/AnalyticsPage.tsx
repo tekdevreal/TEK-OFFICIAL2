@@ -81,14 +81,14 @@ export function AnalyticsPage() {
   // Calculate stats from real data
   const totalSOLDistributed = useMemo(() => {
     const sol = parseFloat(rewardsData?.tax?.totalSolDistributed || '0') / 1e9;
-    return sol.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    return sol.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 });
   }, [rewardsData]);
 
   const averageSOLPerEpoch = useMemo(() => {
-    if (!historicalData?.cycles || historicalData.cycles.length === 0) return '0.00';
+    if (!historicalData?.cycles || historicalData.cycles.length === 0) return '0.000000';
     const totalSOL = historicalData.cycles.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
     const avg = totalSOL / historicalData.cycles.length;
-    return avg.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    return avg.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 });
   }, [historicalData]);
 
   const totalRewardEpochs = useMemo(() => {
@@ -97,7 +97,7 @@ export function AnalyticsPage() {
 
   const totalTreasuryDeployed = useMemo(() => {
     const sol = parseFloat(rewardsData?.tax?.totalSolToTreasury || '0') / 1e9;
-    return `${sol.toLocaleString(undefined, { maximumFractionDigits: 2 })} SOL`;
+    return `${sol.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 })} SOL`;
   }, [rewardsData]);
 
   // Real data for Rewards Over Time chart - Filtered by selected time range
@@ -418,6 +418,7 @@ export function AnalyticsPage() {
                   labelStyle={{ color: '#ffffff' }}
                   itemStyle={{ color: '#ffffff' }}
                   cursor={{ stroke: 'rgba(255, 255, 255, 0.3)', strokeWidth: 1 }}
+                  formatter={(value: number) => typeof value === 'number' ? value.toFixed(6) : value}
                 />
                 <Legend />
                 <Line 
@@ -467,6 +468,12 @@ export function AnalyticsPage() {
                   labelStyle={{ color: '#ffffff' }}
                   itemStyle={{ color: '#ffffff' }}
                   cursor={{ stroke: 'rgba(255, 255, 255, 0.3)', strokeWidth: 1 }}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'SOL Distributed') {
+                      return typeof value === 'number' ? value.toFixed(6) : value;
+                    }
+                    return typeof value === 'number' ? value.toFixed(2) : value;
+                  }}
                 />
                 <Legend />
                 <Bar 
@@ -516,6 +523,7 @@ export function AnalyticsPage() {
                   labelStyle={{ color: '#ffffff' }}
                   itemStyle={{ color: '#ffffff' }}
                   cursor={{ stroke: 'rgba(255, 255, 255, 0.3)', strokeWidth: 1 }}
+                  formatter={(value: number) => typeof value === 'number' ? value.toFixed(6) : value}
                 />
                 <Legend />
                 <Line 

@@ -1664,9 +1664,10 @@ export async function swapTekToSOL(
     // Calculate price impact for final logging
     const priceImpactBpsFinal = tradeImpactBps;
 
-    // For very small amounts, use a lower threshold (50% of MIN_SOL_OUTPUT) to allow micro-swaps
+    // For very small amounts, use a lower threshold (25% of MIN_SOL_OUTPUT) to allow micro-swaps
     // This handles cases where small TEK amounts result in very small SOL outputs
-    const MIN_SOL_OUTPUT_FLEXIBLE = MIN_SOL_OUTPUT / 2; // 50% of minimum for small swaps
+    // Lowered from 50% to 25% to allow smaller swaps (e.g., 0.000025 SOL minimum instead of 0.00005 SOL)
+    const MIN_SOL_OUTPUT_FLEXIBLE = MIN_SOL_OUTPUT / 4; // 25% of minimum for small swaps (allows ~0.000025 SOL)
     
     if (minDestAmount < MIN_SOL_OUTPUT_FLEXIBLE) {
       logger.warn('Expected SOL output below minimum threshold', {

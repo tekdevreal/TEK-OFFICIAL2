@@ -168,14 +168,14 @@ export function DistributionPage() {
       {
         key: 'distributedSOL',
         header: 'DISTRIBUTED (SOL)',
-        accessor: (row) => row.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 }),
+        accessor: (row) => row.distributedSOL.toLocaleString(undefined, { maximumFractionDigits: 8, minimumFractionDigits: 8 }),
         sortable: true,
         sortFn: (a, b) => a.distributedSOL - b.distributedSOL,
       },
       {
         key: 'usdValue',
         header: 'VALUE $',
-        accessor: (row) => `$${(row.distributedSOL * solPrice).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`,
+        accessor: (row) => `$${(row.distributedSOL * solPrice).toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 })}`,
         sortable: true,
         sortFn: (a, b) => (a.distributedSOL * solPrice) - (b.distributedSOL * solPrice),
       },
@@ -219,7 +219,7 @@ export function DistributionPage() {
     const rows = distributionData.map((row) => [
       row.date,
       row.time,
-      row.distributedSOL.toFixed(4),
+      row.distributedSOL.toFixed(8),
       (row.distributedSOL * solPrice).toFixed(2),
       row.transactions.toString(),
       row.status,
@@ -261,11 +261,11 @@ export function DistributionPage() {
           <div className="distribution-stats">
             <StatCard
               label="Total SOL Distributed"
-              value={`${totalSOLDistributed.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 })} SOL`}
+              value={`${totalSOLDistributed.toLocaleString(undefined, { maximumFractionDigits: 8, minimumFractionDigits: 8 })} SOL`}
             />
             <StatCard
               label="Distribution USD Value"
-              value={`$${distributionUSDValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              value={`$${distributionUSDValue.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 })}`}
             />
             <StatCard
               label="Next Distribution"

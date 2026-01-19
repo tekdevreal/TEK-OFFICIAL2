@@ -19,6 +19,8 @@ import {
   getAllEpochStates,
   getEpochStatistics,
 } from '../services/cycleService';
+import { clearTokenHoldersCache } from '../services/solanaService';
+import { tokenMint } from '../config/solana';
 
 const router = Router();
 
@@ -553,9 +555,16 @@ router.get('/token-stats', async (req: Request, res: Response): Promise<void> =>
     try {
       const holdersWithStatus = await getAllHoldersWithStatus();
       totalHolders = holdersWithStatus.length;
+      logger.debug('Token stats: Total holders fetched', {
+        totalHolders,
+        tokenMint: tokenMint.toBase58(),
+        envTokenMint: process.env.TOKEN_MINT || 'not set',
+      });
     } catch (error) {
       logger.warn('Could not fetch total holders for token-stats', {
         error: error instanceof Error ? error.message : String(error),
+        tokenMint: tokenMint.toBase58(),
+        envTokenMint: process.env.TOKEN_MINT || 'not set',
       });
     }
 
@@ -1040,6 +1049,40 @@ router.get('/sol-price', async (req: Request, res: Response): Promise<void> => {
       error: error instanceof Error ? error.message : 'Unknown error',
       price: 100, // Fallback price
       source: 'fallback',
+    });
+  }
+});
+
+/**
+ * POST /dashboard/cache/clear
+ * Clears the token holders cache to force refresh
+ * Useful when TOKEN_MINT environment variable has been updated
+ */
+router.post('/cache/clear', async (req: Request, res: Response): Promise<void> => {
+  try {
+    logger.info('Dashboard API: POST /dashboard/cache/clear - Clearing token holders cache');
+    
+    // Clear the cache
+    clearTokenHoldersCache();
+    
+    // Log current token mint for verification
+    logger.info('Token holders cache cleared', {
+      tokenMint: tokenMint.toBase58(),
+      envTokenMint: process.env.TOKEN_MINT || 'not set',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Token holders cache cleared successfully',
+      tokenMint: tokenMint.toBase58(),
+    });
+  } catch (error) {
+    logger.error('Error clearing token holders cache', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
     });
   }
 });

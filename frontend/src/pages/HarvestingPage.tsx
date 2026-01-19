@@ -3,7 +3,7 @@ import { StatCard } from '../components/StatCard';
 import { GlassCard } from '../components/GlassCard';
 import { Table, type TableColumn } from '../components/Table';
 import { EpochDatePicker } from '../components/EpochDatePicker';
-import { useRewards, useHistoricalRewards, useSolPrice, useEpochs } from '../hooks/useApiData';
+import { useRewards, useHistoricalRewards, useSolPrice, useEpochs, useEpochCycles } from '../hooks/useApiData';
 import type { RewardCycle } from '../types/api';
 import './HarvestingPage.css';
 
@@ -20,6 +20,8 @@ export interface HarvestingData {
   id: string;
   date: string;
   time: string;
+  cycleNumber?: number;
+  tekHarvested: number;
   tekSold: number;
   rewardPoolSOL: number;
   allocatedSOL: number;
@@ -51,11 +53,34 @@ export function HarvestingPage() {
   // Fetch available epochs (last 30 days) for the calendar
   const { data: epochsData } = useEpochs(30, {});
 
+  // Fetch epoch cycles to get actual harvested TEK amounts
+  const { data: selectedEpochData } = useEpochCycles(selectedEpoch, {
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+  });
+
   // Get available epoch dates for the calendar picker
   const availableEpochs = useMemo(() => {
     if (!epochsData?.epochs) return [];
     return epochsData.epochs.map(e => e.epoch);
   }, [epochsData]);
+
+  // Create a map of cycle numbers to actual harvested TEK from epoch data
+  const cycleTekMap = useMemo(() => {
+    const map = new Map<number, number>();
+    if (selectedEpochData?.cycles) {
+      selectedEpochData.cycles.forEach(cycle => {
+        if (cycle.taxResult?.harvested) {
+          const cycleDate = new Date(cycle.timestamp);
+          const cycleDateStr = `${cycleDate.getUTCFullYear()}-${String(cycleDate.getUTCMonth() + 1).padStart(2, '0')}-${String(cycleDate.getUTCDate()).padStart(2, '0')}`;
+          // Only use data from the selected epoch
+          if (cycleDateStr === selectedEpoch) {
+            map.set(cycle.cycleNumber, parseFloat(cycle.taxResult.harvested) / 1e6);
+          }
+        }
+      });
+    }
+    return map;
+  }, [selectedEpochData, selectedEpoch]);
 
   // Transform historical reward cycles to harvesting data
   const allHarvestingData: HarvestingData[] = useMemo(() => {
@@ -75,6 +100,15 @@ export function HarvestingPage() {
           hour12: false,
           timeZone: 'Europe/Paris', // CET timezone
         });
+
+        // Calculate actual cycle number (1-288) based on timestamp
+        const startOfDay = new Date(d);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const minutesSinceStartOfDay = Math.floor((d.getTime() - startOfDay.getTime()) / (1000 * 60));
+        const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1;
+
+        // Get actual harvested TEK from epoch data if available
+        const tekHarvested = cycleTekMap.get(cycleNumber) || 0;
 
         // Calculate TEK sold proportionally based on tax statistics
         // Use the total TEK sold and total SOL distributed to calculate proportion per cycle
@@ -107,13 +141,15 @@ export function HarvestingPage() {
           id: cycle.id,
           date: dateStr,
           time: cetTime,
+          cycleNumber,
+          tekHarvested,
           tekSold, // Already converted to human-readable format above
           rewardPoolSOL,
           allocatedSOL,
           status: 'Complete' as const,
         };
       });
-  }, [historicalData, rewardsData]);
+  }, [historicalData, rewardsData, cycleTekMap]);
 
   // Filter data by last 30 days from selected epoch
   const harvestingData: HarvestingData[] = useMemo(() => {
@@ -200,23 +236,23 @@ export function HarvestingPage() {
       sortFn: (a, b) => a.time.localeCompare(b.time),
     },
     {
-      key: 'tekSold',
+      key: 'tekHarvested',
       header: 'TEK HARVESTED',
-      accessor: (row) => row.tekSold.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+      accessor: (row) => row.tekHarvested.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }),
       sortable: true,
-      sortFn: (a, b) => a.tekSold - b.tekSold,
+      sortFn: (a, b) => a.tekHarvested - b.tekHarvested,
     },
     {
       key: 'rewardPoolSOL',
       header: 'REWARD POOL (SOL)',
-      accessor: (row) => row.rewardPoolSOL.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+      accessor: (row) => row.rewardPoolSOL.toLocaleString(undefined, { maximumFractionDigits: 8, minimumFractionDigits: 8 }),
       sortable: true,
       sortFn: (a, b) => a.rewardPoolSOL - b.rewardPoolSOL,
     },
     {
       key: 'allocatedSOL',
       header: 'ALLOCATED (SOL)',
-      accessor: (row) => row.allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+      accessor: (row) => row.allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 8, minimumFractionDigits: 8 }),
       sortable: true,
       sortFn: (a, b) => a.allocatedSOL - b.allocatedSOL,
     },
@@ -247,13 +283,13 @@ export function HarvestingPage() {
 
   // Export CSV handler
   const handleExportCSV = () => {
-    const headers = ['DATE', 'TIME', 'TEK SOLD', 'REWARD POOL (SOL)', 'ALLOCATED (SOL)', 'STATUS'];
+    const headers = ['DATE', 'TIME', 'TEK HARVESTED', 'REWARD POOL (SOL)', 'ALLOCATED (SOL)', 'STATUS'];
     const rows = harvestingData.map((row) => [
       row.date,
       row.time,
-      row.tekSold.toString(),
-      row.rewardPoolSOL.toString(),
-      row.allocatedSOL.toString(),
+      row.tekHarvested.toString(),
+      row.rewardPoolSOL.toFixed(8),
+      row.allocatedSOL.toFixed(8),
       row.status,
     ]);
 
@@ -297,11 +333,11 @@ export function HarvestingPage() {
             />
             <StatCard
               label="Allocated SOL"
-              value={`${allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 })} SOL`}
+              value={`${allocatedSOL.toLocaleString(undefined, { maximumFractionDigits: 8, minimumFractionDigits: 8 })} SOL`}
             />
             <StatCard
               label="Allocated USD"
-              value={`$${allocatedUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              value={`$${allocatedUSD.toLocaleString(undefined, { maximumFractionDigits: 4, minimumFractionDigits: 4 })}`}
             />
             <StatCard
               label="Last Harvesting"

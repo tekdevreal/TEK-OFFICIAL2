@@ -47,6 +47,12 @@ export function Dashboard() {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 
+  // Fetch current epoch data to get the last cycle's harvested TEK
+  const currentEpoch = getCurrentEpoch();
+  const { data: currentEpochData } = useEpochCycles(currentEpoch, {
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+  });
+
   // Fetch all epochs to calculate epoch numbers
   const { data: epochsData } = useEpochs(365, {}); // Get up to a year of epochs
   
@@ -116,7 +122,7 @@ export function Dashboard() {
           time: `${displayHours}:${displayMinutes} ${period} EST`,
           status: 'Completed' as const,
           harvestedTEK,
-          distributedSOL,
+          distributedSOL: parseFloat(distributedSOL.toFixed(8)), // Ensure 8 decimal places
           epochNumber: cycleNumber,
         };
       })
@@ -291,10 +297,19 @@ export function Dashboard() {
               <StatCard
                 label="TEK Collected"
                 value={(() => {
-                  // totalNukeHarvested is in raw token units (with 6 decimals)
-                  // Divide by 1e6 to get human-readable format
-                  const tek = parseFloat(tax.totalNukeHarvested || '0') / 1e6;
-                  return tek > 0 ? tek.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : '0.00';
+                  // Get TEK collected from the last cycle's harvest
+                  // Use the most recent cycle from the current epoch
+                  if (currentEpochData?.cycles && currentEpochData.cycles.length > 0) {
+                    // Find the most recent cycle with harvested TEK
+                    const sortedCycles = [...currentEpochData.cycles].sort((a, b) => b.cycleNumber - a.cycleNumber);
+                    const lastCycle = sortedCycles.find(c => c.taxResult?.harvested);
+                    if (lastCycle?.taxResult?.harvested) {
+                      const tek = parseFloat(lastCycle.taxResult.harvested) / 1e6;
+                      return tek > 0 ? tek.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : '0.00';
+                    }
+                  }
+                  // Fallback: if no current epoch data yet, return 0
+                  return '0.00';
                 })()}
               />
               <StatCard
