@@ -144,10 +144,10 @@
 
 .copy-button {
   padding: 0.5rem 1rem;
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 6px;
+  background-color: rgba(0, 102, 255, 0.1);
+  color: #0066FF;
+  border: 1px solid rgba(0, 102, 255, 0.2);
+  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -160,27 +160,27 @@
 }
 
 .copy-button:hover {
-  background-color: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.3);
+  background-color: rgba(0, 102, 255, 0.2);
+  border-color: rgba(0, 102, 255, 0.3);
 }
 
 [data-theme='light'] .copy-button {
-  background-color: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
-  border-color: rgba(99, 102, 241, 0.25);
+  background-color: rgba(0, 71, 179, 0.1);
+  color: #0047B3;
+  border-color: rgba(0, 71, 179, 0.25);
 }
 
 [data-theme='light'] .copy-button:hover {
-  background-color: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.35);
+  background-color: rgba(0, 71, 179, 0.2);
+  border-color: rgba(0, 71, 179, 0.35);
 }
 
 .treasury-wallet-section .solscan-button {
   padding: 0.5rem 1rem;
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 6px;
+  background-color: rgba(0, 102, 255, 0.1);
+  color: #0066FF;
+  border: 1px solid rgba(0, 102, 255, 0.2);
+  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
@@ -193,19 +193,19 @@
 }
 
 .treasury-wallet-section .solscan-button:hover {
-  background-color: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.3);
+  background-color: rgba(0, 102, 255, 0.2);
+  border-color: rgba(0, 102, 255, 0.3);
 }
 
 [data-theme='light'] .treasury-wallet-section .solscan-button {
-  background-color: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
-  border-color: rgba(99, 102, 241, 0.25);
+  background-color: rgba(0, 71, 179, 0.1);
+  color: #0047B3;
+  border-color: rgba(0, 71, 179, 0.25);
 }
 
 [data-theme='light'] .treasury-wallet-section .solscan-button:hover {
-  background-color: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.35);
+  background-color: rgba(0, 71, 179, 0.2);
+  border-color: rgba(0, 71, 179, 0.35);
 }
 
 /* Treasury Filters Row - Responsive layout */
@@ -319,10 +319,10 @@
 /* Export CSV Button */
 .export-csv-button {
   padding: 0.5rem 1rem;
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 6px;
+  background-color: rgba(0, 102, 255, 0.1);
+  color: #0066FF;
+  border: 1px solid rgba(0, 102, 255, 0.2);
+  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -337,19 +337,19 @@
 }
 
 .export-csv-button:hover {
-  background-color: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.3);
+  background-color: rgba(0, 102, 255, 0.2);
+  border-color: rgba(0, 102, 255, 0.3);
 }
 
 [data-theme='light'] .export-csv-button {
-  background-color: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
-  border-color: rgba(99, 102, 241, 0.25);
+  background-color: rgba(0, 71, 179, 0.1);
+  color: #0047B3;
+  border-color: rgba(0, 71, 179, 0.25);
 }
 
 [data-theme='light'] .export-csv-button:hover {
-  background-color: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.35);
+  background-color: rgba(0, 71, 179, 0.2);
+  border-color: rgba(0, 71, 179, 0.35);
 }
 
 /* Responsive: Hide labels on mobile/tablet to save space */

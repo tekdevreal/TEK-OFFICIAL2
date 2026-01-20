@@ -1,7 +1,7 @@
 /* Global Table Styling - Dark and Light Mode */
 .table-wrapper {
-  margin: 20px 0;
-  padding: 20px;
+  margin: 24px 0;
+  padding: 24px;
   background: var(--bg-card);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
@@ -10,8 +10,8 @@
 
 .table-toolbar {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -19,7 +19,7 @@
 .table-search {
   flex: 1;
   min-width: 200px;
-  padding: 8px 12px;
+  padding: 12px 16px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: 14px;
@@ -33,12 +33,12 @@
 
 .table-filters {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
 .table-filter {
-  padding: 8px 12px;
+  padding: 12px 16px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   font-size: 14px;
@@ -48,20 +48,32 @@
 }
 
 .table-export-btn {
-  padding: 8px 16px;
-  background: var(--accent-primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  background: rgba(0, 102, 255, 0.1);
+  color: #0066FF;
+  border: 1px solid rgba(0, 102, 255, 0.2);
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .table-export-btn:hover {
-  background: var(--accent-secondary);
+  background: rgba(0, 102, 255, 0.2);
+  border-color: rgba(0, 102, 255, 0.3);
   transform: translateY(-1px);
+}
+
+[data-theme='light'] .table-export-btn {
+  background: rgba(0, 71, 179, 0.1);
+  color: #0047B3;
+  border-color: rgba(0, 71, 179, 0.25);
+}
+
+[data-theme='light'] .table-export-btn:hover {
+  background: rgba(0, 71, 179, 0.2);
+  border-color: rgba(0, 71, 179, 0.35);
 }
 
 .table-loading {
@@ -96,7 +108,7 @@
 }
 
 .data-table th {
-  padding: 12px;
+  padding: 16px;
   text-align: left;
   font-weight: 600;
   color: var(--text-primary);
@@ -126,14 +138,24 @@
 }
 
 .data-table td {
-  padding: 12px;
+  padding: 16px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
   font-size: 0.875rem;
+  min-height: 56px;
+  vertical-align: middle;
 }
 
 .data-table tbody tr {
   transition: background 0.2s ease;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme='light'] .data-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.01);
 }
 
 .data-table tbody tr:hover {
@@ -155,13 +177,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 24px;
+  padding-top: 24px;
   border-top: 1px solid var(--border-color);
 }
 
 .pagination-btn {
-  padding: 8px 16px;
+  padding: 12px 16px;
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
   color: var(--text-primary);

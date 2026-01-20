@@ -30,7 +30,7 @@
 }
 
 .dashboard-section-card {
-  padding: 2rem;
+  padding: 32px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -55,7 +55,7 @@
 .analytics-page .dashboard-section-card .section-subtitle {
   color: var(--text-secondary);
   font-size: 0.875rem;
-  margin-bottom: 2rem;
+  margin-bottom: 32px;
   margin-top: 0.0625rem !important; /* 1px - minimal spacing */
   padding-top: 0 !important;
   line-height: 1.2;
@@ -65,8 +65,8 @@
 .analytics-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
-  margin-bottom: 3rem;
+  gap: 24px;
+  margin-bottom: 40px;
 }
 
 @media (max-width: 768px) {
@@ -87,11 +87,11 @@
 .analytics-filters-row {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 16px;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -180,10 +180,10 @@
 
 /* Chart Sections - CLEAN APPROACH */
 .analytics-chart-section {
-  margin-bottom: 3rem;
-  padding: 1.5rem;
+  margin-bottom: 40px;
+  padding: 24px;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -196,14 +196,14 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
   margin-top: 0;
 }
 
 .chart-section-description {
   font-size: 0.875rem;
   color: var(--text-secondary);
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
   margin-top: 0;
 }
 
@@ -227,20 +227,30 @@
     font-size: 0.8125rem;
     margin-bottom: 1rem;
   }
+  
+  /* Reduce chart height on mobile/tablet for better visibility */
+  .analytics-chart-section .recharts-responsive-container {
+    height: 240px !important;
+  }
 }
 
 @media (max-width: 640px) {
   .analytics-chart-section {
     padding: 0.875rem;
   }
+  
+  /* Even smaller on mobile phones */
+  .analytics-chart-section .recharts-responsive-container {
+    height: 200px !important;
+  }
 }
 
 /* Metrics Section */
 .analytics-metrics-section {
-  margin-bottom: 3rem;
-  padding: 1.5rem;
+  margin-bottom: 40px;
+  padding: 24px;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -253,22 +263,22 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
   margin-top: 0;
 }
 
 .metrics-section-description {
   font-size: 0.875rem;
   color: var(--text-secondary);
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
   margin-top: 0;
 }
 
 .reliability-metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-  margin-top: 1rem;
+  gap: 24px;
+  margin-top: 16px;
 }
 
 @media (max-width: 768px) {
@@ -338,7 +348,7 @@
 }
 
 .pool-performance-table th {
-  padding: 0.75rem 1rem;
+  padding: 16px;
   text-align: left;
   font-weight: 600;
   color: var(--text-secondary);
@@ -348,9 +358,11 @@
 }
 
 .pool-performance-table td {
-  padding: 0.875rem 1rem;
+  padding: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
+  min-height: 56px;
+  vertical-align: middle;
 }
 
 [data-theme='light'] .pool-performance-table td {

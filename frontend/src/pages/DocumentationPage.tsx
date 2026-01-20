@@ -10,7 +10,7 @@ function OverviewTab() {
       <section className="doc-section">
         <h3 className="doc-section-title">What Is TEK?</h3>
         <p>
-          TEK is a Solana-based token protocol designed to provide automatic SOL yield to holders through a self-sustaining system powered by engineered arbitrage volume and Tax Reward mechanism. Unlike traditional tokens that rely solely on hype or organic trading, TEK leverages a multi-pool architecture to create perpetual, mechanics-driven baseline activity. This ensures consistent rewards even during periods of low market interest.
+          TEK (The Eternal Key) is a Solana-based token protocol designed to provide automatic SOL yield to holders through a self-sustaining system powered by engineered arbitrage volume and Tax Reward mechanism. Unlike traditional tokens that rely solely on hype or organic trading, TEK leverages a multi-pool architecture to create perpetual, mechanics-driven baseline activity. This ensures consistent rewards even during periods of low market interest.
         </p>
         <p>
           At its core, the protocol operates as a "hold-to-earn" model where every trade generates value that flows back to holders. Here's how value flows through the ecosystem:
@@ -102,7 +102,7 @@ function RewardTokenTab() {
       <section className="doc-section">
         <h3 className="doc-section-title">TEK Token Overview</h3>
         <p>
-          The TEK (The Eternal Key) token is engineered as a reward-focused asset on Solana, with a total supply of 1 Billion TEK. Mint authority is revoked, preventing any additional issuance, and liquidity provider (LP) tokens are fully burned at launch for irreversible, rug-proof liquidity.
+          The TEK token (The Eternal Key) is engineered as a reward-focused asset on Solana, with a total supply of 1 Billion TEK. Mint authority is revoked, preventing any additional issuance, and liquidity provider (LP) tokens are fully burned at launch for irreversible, rug-proof liquidity.
         </p>
       </section>
 
@@ -137,7 +137,7 @@ function RewardTokenTab() {
             <div className="tax-breakdown-item">
               <h4 className="tax-breakdown-title">2% for SOL Reflections</h4>
               <p>
-                This portion is swapped to SOL approximately every 10 minutes (via automated processes) and distributed as direct yield to holders. It's a gas-efficient, pro-rata system where rewards scale with your holdings— no staking or active claiming required.
+                This portion is swapped to SOL approximately every 5 minutes (via automated processes) and distributed as direct yield to holders. It's a gas-efficient, pro-rata system where rewards scale with your holdings— no staking or active claiming required.
               </p>
             </div>
 
@@ -447,9 +447,9 @@ function TreasuryTab() {
               <h4 className="future-plan-title">Deflationary Burns with Buybacks (New Allocation: ~10-20% of Treasury Funds)</h4>
               
               <p><strong>Mechanism:</strong> A portion of accumulated Treasury TEK tokens will be periodically bought back from the market using converted SOL and then permanently burned. This process will occur through on-chain automation, such as timed swaps and burns every 7-14 days or when Treasury thresholds are met (e.g., equivalent to 500 SOL).</p>
-
+              
               <p><strong>Buyback Process:</strong> Treasury SOL is used to purchase TEK tokens via low-slippage DEX routes, ensuring efficient execution without market disruption.</p>
-
+              
               <p><strong>Burn Execution:</strong> Bought-back TEK is sent to a dead address (e.g., the Solana burn address), irreversibly removing it from circulation. This builds on the existing 1% per-cycle burn but scales it with Treasury resources for accelerated supply reduction.</p>
 
               <div className="benefits-section">
@@ -513,10 +513,10 @@ function LiquidityPoolsTab() {
       <section className="doc-section">
         <h3 className="doc-section-title">What Are Liquidity Pools?</h3>
         <p>
-          Liquidity pools are the foundational building blocks of decentralized trading on Solana. They are smart contract-based reserves that hold pairs of tokens (e.g., TEK/SOL), enabling users to buy, sell, or swap tokens instantly without needing a traditional order book or intermediary.
+          Liquidity pools are the foundational building blocks of decentralized trading on Solana. They are smart contract-based reserves that hold pairs of tokens (e.g., TEK/SOL, TEK/USDC), enabling users to buy, sell, or swap tokens instantly without needing a traditional order book or intermediary.
         </p>
         <p>
-          In the TEK protocol, liquidity pools operate on an <strong>Automated Market Maker (AMM)</strong> model, where prices are determined algorithmically based on the ratio of tokens in the pool (using constant product formulas like x * y = k in many cases, or more advanced variants). Traders interact directly with these pools: when someone buys TEK, they add SOL and receive TEK from the pool, shifting the ratio and slightly adjusting the price. The reverse happens on sells.
+          In the TEK protocol, liquidity pools operate on an <strong>Automated Market Maker (AMM)</strong> model, where prices are determined algorithmically based on the ratio of tokens in the pool (using constant product formulas like x * y = k in many cases, or more advanced variants). Traders interact directly with these pools: when someone buys TEK, they add SOL or USDC and receive TEK from the pool, shifting the ratio and slightly adjusting the price. The reverse happens on sells.
         </p>
 
         <div className="liquidity-characteristics">
@@ -750,7 +750,7 @@ function FAQTab() {
 
         <Accordion title="How do SOL rewards (reflections) work, and do I need to stake or claim them?">
           <p>
-            <strong>No staking or claiming is required—it's pure hold-to-earn.</strong> The 2% tax portion accumulates in a reward pool from every transaction. Approximately every 10 minutes, accumulated TEK is automatically swapped to SOL and airdropped pro-rata to all holders based on their share of the circulating supply.
+            <strong>No staking or claiming is required—it's pure hold-to-earn.</strong> The 2% tax portion accumulates in a reward pool from every transaction. Approximately every 5 minutes, accumulated TEK is automatically swapped to SOL and airdropped pro-rata to all holders based on their share of the circulating supply.
           </p>
           <p>
             Your rewards scale directly with your holdings and protocol volume.
@@ -854,7 +854,7 @@ function FAQTab() {
 
         <Accordion title="How do I buy TEK?">
           <p>
-            Use a Solana wallet like Phantom, connect to a DEX (e.g., Raydium, Jupiter), and swap SOL for TEK via available pools.
+            Use a Solana wallet like Phantom, connect to a DEX (e.g., Raydium, Jupiter), and swap SOL or USDC for TEK via available pools.
           </p>
           <p>
             Search for the official contract address on DEX screeners or the project dashboard to avoid scams. <strong>Always verify the mint address.</strong>
@@ -919,4 +919,3 @@ export function DocumentationPage() {
     </div>
   );
 }
-

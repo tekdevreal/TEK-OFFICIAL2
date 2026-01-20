@@ -30,7 +30,7 @@
 }
 
 .dashboard-section-card {
-  padding: 2rem;
+  padding: 32px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -56,7 +56,7 @@
 .distribution-page .dashboard-section-card .section-subtitle {
   color: var(--text-secondary);
   font-size: 0.875rem;
-  margin-bottom: 2rem;
+  margin-bottom: 32px;
   margin-top: 0.0625rem !important; /* 1px - minimal spacing */
   padding-top: 0 !important;
   line-height: 1.2;
@@ -66,8 +66,8 @@
 .distribution-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
-  margin-bottom: 2rem;
+  gap: 24px;
+  margin-bottom: 32px;
 }
 
 @media (max-width: 768px) {
@@ -86,11 +86,11 @@
 .distribution-filters-row {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 0.5rem;
-  padding: 1rem;
+  gap: 24px;
+  margin-bottom: 16px;
+  padding: 16px;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -103,7 +103,7 @@
 .distribution-filters-row > div:first-child {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 24px;
   flex: 1;
 }
 
@@ -193,10 +193,10 @@
 /* Export CSV Button */
 .export-csv-button {
   padding: 0.5rem 1rem;
-  background-color: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 6px;
+  background-color: rgba(0, 102, 255, 0.1);
+  color: #0066FF;
+  border: 1px solid rgba(0, 102, 255, 0.2);
+  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -211,19 +211,19 @@
 }
 
 .export-csv-button:hover {
-  background-color: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.3);
+  background-color: rgba(0, 102, 255, 0.2);
+  border-color: rgba(0, 102, 255, 0.3);
 }
 
 [data-theme='light'] .export-csv-button {
-  background-color: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
-  border-color: rgba(99, 102, 241, 0.25);
+  background-color: rgba(0, 71, 179, 0.1);
+  color: #0047B3;
+  border-color: rgba(0, 71, 179, 0.25);
 }
 
 [data-theme='light'] .export-csv-button:hover {
-  background-color: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.35);
+  background-color: rgba(0, 71, 179, 0.2);
+  border-color: rgba(0, 71, 179, 0.35);
 }
 
 /* Responsive: Hide labels on mobile/tablet to save space */
@@ -277,16 +277,16 @@
 
 .distribution-table-container .table-pagination {
   order: 3;
-  margin-top: 1rem;
+  margin-top: 24px;
 }
 
 .distribution-table-container .table-info {
   order: 4;
-  margin-top: 1rem;
+  margin-top: 24px;
   text-align: center;
   color: var(--text-secondary);
   font-size: 0.875rem;
-  padding: 0.5rem 0;
+  padding: 16px 0;
 }
 
 /* Distribution ID Link */
@@ -321,11 +321,11 @@
   }
 
   .dashboard-section-card {
-    padding: 1.75rem;
+    padding: 24px;
   }
 
   .distribution-filters-row {
-    gap: 1rem;
+    gap: 16px;
   }
 }
 
@@ -336,12 +336,12 @@
   }
 
   .dashboard-section-card {
-    padding: 1.25rem;
+    padding: 24px;
   }
 
   .distribution-filters-row {
-    gap: 0.75rem;
-    padding: 0.875rem;
+    gap: 16px;
+    padding: 16px;
   }
 }
 

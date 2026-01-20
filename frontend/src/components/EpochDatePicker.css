@@ -56,21 +56,22 @@
 .epoch-date-picker-dropdown {
   position: fixed;
   z-index: 10000;
-  min-width: 280px;
-  max-width: 320px;
-  max-height: 420px;
+  min-width: 240px;
+  max-width: 260px;
+  max-height: 320px;
   overflow-y: auto;
   background: var(--bg-tertiary);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   animation: slideDown 0.2s ease;
   
   /* Ensure it stays within viewport */
-  max-width: min(320px, calc(100vw - 2rem));
+  max-width: min(260px, calc(100vw - 32px));
   transform-origin: top left;
   
   /* Positioning will be set dynamically via inline styles from JS */
+  /* Rendered via React Portal at document.body to escape container constraints */
 }
 
 @keyframes slideDown {
@@ -84,30 +85,9 @@
   }
 }
 
-/* Header */
-.date-picker-header {
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.date-picker-title {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.2rem;
-}
-
-.date-picker-subtitle {
-  display: block;
-  font-size: 0.6875rem;
-  color: var(--text-secondary);
-}
-
-/* Month Group */
+/* Month Group - Reduced padding for smaller size */
 .month-group {
-  padding: 0.875rem 1rem;
+  padding: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -116,19 +96,19 @@
 }
 
 .month-header {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 0.625rem;
+  margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* Calendar Grid */
+/* Calendar Grid - Smaller cells */
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
-  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 6px;
 }
 
 .calendar-day {
@@ -137,13 +117,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0.625rem 0.4rem;
+  padding: 6px 4px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
   transition: all 0.2s ease;
-  min-height: 56px;
+  min-height: 44px;
 }
 
 .calendar-day:not(.disabled):hover {
@@ -174,16 +154,16 @@
 }
 
 .day-name {
-  font-size: 0.5625rem;
+  font-size: 0.5rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  margin-bottom: 0.2rem;
+  margin-bottom: 2px;
 }
 
 .day-number {
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -207,11 +187,6 @@
   background: var(--bg-secondary);
   border-color: rgba(0, 0, 0, 0.1);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme='light'] .date-picker-header {
-  background: rgba(0, 0, 0, 0.02);
-  border-bottom-color: rgba(0, 0, 0, 0.06);
 }
 
 [data-theme='light'] .month-group {
@@ -280,35 +255,31 @@
   }
   
   .epoch-date-picker-dropdown {
-    min-width: min(240px, calc(100vw - 2rem));
-    max-width: min(260px, calc(100vw - 2rem));
-    max-height: 340px;
-    /* Positioning handled by general mobile rule above */
+    min-width: min(240px, calc(100vw - 32px));
+    max-width: min(260px, calc(100vw - 32px));
+    max-height: min(300px, calc(100vh - 100px));
+    /* Positioning handled dynamically via JS, rendered via Portal */
   }
-  
-  .date-picker-header {
-    padding: 0.75rem 0.875rem;
-  }
-  
+
   .month-group {
-    padding: 0.75rem 0.875rem;
+    padding: 10px;
   }
-  
+
   .calendar-grid {
     grid-template-columns: repeat(5, 1fr);
-    gap: 0.3rem;
+    gap: 4px;
   }
-  
+
   .calendar-day {
-    padding: 0.4rem 0.3rem;
-    min-height: 46px;
+    padding: 4px 2px;
+    min-height: 40px;
   }
-  
+
   .day-name {
-    font-size: 0.5rem;
+    font-size: 0.4375rem;
   }
-  
+
   .day-number {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
   }
 }

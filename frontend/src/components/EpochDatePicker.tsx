@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './EpochDatePicker.css';
 
 interface EpochDatePickerProps {
@@ -86,7 +87,12 @@ export function EpochDatePicker({
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // Check if click is outside both the button container and the dropdown (which is in portal)
+      const isOutsideButton = dropdownRef.current && !dropdownRef.current.contains(target);
+      const isOutsideDropdown = dropdownElementRef.current && !dropdownElementRef.current.contains(target);
+      
+      if (isOutsideButton && isOutsideDropdown) {
         setIsOpen(false);
       }
     }
@@ -104,8 +110,12 @@ export function EpochDatePicker({
       const dropdown = dropdownElementRef.current;
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      const dropdownWidth = 320; // max-width from CSS
+      
+      // Get actual dropdown dimensions (or use defaults) - smaller size
+      const dropdownWidth = Math.min(260, viewportWidth - 32); // Smaller responsive width
+      const dropdownHeight = Math.min(320, viewportHeight - 100); // Smaller max height
       const spacing = 8; // spacing between button and dropdown
+      const margin = 16; // margin from viewport edges
       
       // Use fixed positioning relative to viewport
       dropdown.style.position = 'fixed';
@@ -113,39 +123,57 @@ export function EpochDatePicker({
       dropdown.style.right = '';
       dropdown.style.top = '';
       dropdown.style.bottom = '';
+      dropdown.style.width = `${dropdownWidth}px`;
       
       // Calculate available space
       const spaceBelow = viewportHeight - buttonRect.bottom - spacing;
       const spaceAbove = buttonRect.top - spacing;
       
       // Position vertically: prefer below, but use above if not enough space
-      if (spaceBelow >= 300 || spaceBelow > spaceAbove) {
+      let topPosition: number;
+      let maxHeight: number;
+      
+      // Smaller threshold since calendar is now smaller
+      if (spaceBelow >= 250 || (spaceBelow > spaceAbove && spaceBelow >= 180)) {
         // Position below button
-        dropdown.style.top = `${buttonRect.bottom + spacing}px`;
-        dropdown.style.maxHeight = `${Math.min(420, spaceBelow - 10)}px`;
+        topPosition = buttonRect.bottom + spacing;
+        maxHeight = Math.min(dropdownHeight, spaceBelow - margin);
+        dropdown.style.top = `${topPosition}px`;
+        dropdown.style.bottom = 'auto';
       } else {
         // Position above button
-        dropdown.style.bottom = `${viewportHeight - buttonRect.top + spacing}px`;
+        const bottomPosition = viewportHeight - buttonRect.top + spacing;
+        maxHeight = Math.min(dropdownHeight, spaceAbove - margin);
+        dropdown.style.bottom = `${bottomPosition}px`;
         dropdown.style.top = 'auto';
-        dropdown.style.maxHeight = `${Math.min(420, spaceAbove - 10)}px`;
       }
+      
+      dropdown.style.maxHeight = `${maxHeight}px`;
       
       // Position horizontally: align to left edge of button, but adjust if needed
       let leftPosition = buttonRect.left;
       
       // Check if dropdown would overflow right edge
-      if (leftPosition + dropdownWidth > viewportWidth - 16) {
-        // Shift left to fit
-        leftPosition = viewportWidth - dropdownWidth - 16;
+      if (leftPosition + dropdownWidth > viewportWidth - margin) {
+        // Try to align right edge with button right edge
+        leftPosition = buttonRect.right - dropdownWidth;
+        
+        // If still overflows, shift to fit within viewport
+        if (leftPosition < margin) {
+          leftPosition = margin;
+        }
       }
       
       // Ensure it doesn't go off left edge
-      if (leftPosition < 16) {
-        leftPosition = 16;
+      if (leftPosition < margin) {
+        leftPosition = margin;
       }
       
       dropdown.style.left = `${leftPosition}px`;
       dropdown.style.right = 'auto';
+      
+      // Ensure dropdown is visible (not behind containers)
+      dropdown.style.zIndex = '10000';
     }
   }, [isOpen]);
   
@@ -220,12 +248,8 @@ export function EpochDatePicker({
         </svg>
       </button>
       
-      {isOpen && (
+      {isOpen && createPortal(
         <div ref={dropdownElementRef} className="epoch-date-picker-dropdown">
-          <div className="date-picker-header">
-            <span className="date-picker-title">Select Date</span>
-          </div>
-          
           {Object.entries(monthGroups).map(([monthKey, dates]) => (
             <div key={monthKey} className="month-group">
               <div className="month-header">{monthKey}</div>
@@ -251,7 +275,8 @@ export function EpochDatePicker({
               </div>
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

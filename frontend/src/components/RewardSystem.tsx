@@ -8,12 +8,10 @@ import './RewardSystem.css';
 const CYCLES_PER_EPOCH = 288;
 const CYCLES_PER_ROW = 24;
 
+import { getCurrentEpochCET, formatCETTime, getEpochFromTimestampCET } from '../utils/timeUtils';
+
 function getCurrentEpoch(): string {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(now.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getCurrentEpochCET();
 }
 
 function getCycleStateColor(state: CycleState | 'PENDING' | 'NOT_EXECUTED'): string {
@@ -50,15 +48,14 @@ function getCycleStateLabel(state: CycleState | 'PENDING' | 'NOT_EXECUTED', erro
 
 function formatCycleTime(timestamp: number): string {
   const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
+  // Format in CET timezone with 24-hour format
+  const cetTime = formatCETTime(date);
+  const cetDate = date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'UTC',
-    timeZoneName: 'short',
+    timeZone: 'Europe/Paris',
   });
+  return `${cetDate} ${cetTime} CET`;
 }
 
 interface CycleBlockProps {
@@ -184,15 +181,17 @@ export function RewardSystem({ selectedEpoch: externalSelectedEpoch, onEpochChan
     const map = new Map<number, number>(); // cycleNumber -> SOL
     if (historicalData?.cycles && selectedEpoch) {
       historicalData.cycles.forEach(cycle => {
-        const cycleDate = new Date(cycle.timestamp);
-        const cycleDateStr = `${cycleDate.getUTCFullYear()}-${String(cycleDate.getUTCMonth() + 1).padStart(2, '0')}-${String(cycleDate.getUTCDate()).padStart(2, '0')}`;
+        // Get epoch from timestamp in CET timezone
+        const cycleEpoch = getEpochFromTimestampCET(cycle.timestamp);
         
         // Only map cycles from the selected epoch
-        if (cycleDateStr === selectedEpoch) {
-          // Calculate cycle number from timestamp
-          const startOfDay = new Date(cycleDate);
-          startOfDay.setUTCHours(0, 0, 0, 0);
-          const minutesSinceStartOfDay = Math.floor((cycleDate.getTime() - startOfDay.getTime()) / (1000 * 60));
+        if (cycleEpoch === selectedEpoch) {
+          // Calculate cycle number from CET timestamp
+          const cycleDate = new Date(cycle.timestamp);
+          const cetDate = new Date(cycleDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+          const startOfDay = new Date(cetDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const minutesSinceStartOfDay = Math.floor((cetDate.getTime() - startOfDay.getTime()) / (1000 * 60));
           const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1;
           
           map.set(cycleNumber, cycle.totalSOLDistributed || 0);

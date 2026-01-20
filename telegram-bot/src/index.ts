@@ -180,11 +180,11 @@ async function fetchSwapDistributionNotification(
   
   // Build message with TEK branding and spacing
   const messageLines = [
-    '🟩 TEK Rewards Distributed',
+    '*🟢 TEK Distribution*',
     '',
-    `Total: ${totalSOLFormatted} SOL`,
-    `Holders: ${solToHoldersFormatted} SOL`,
-    `Treasury: ${solToTreasuryFormatted} SOL`,
+    `*Total:* ${totalSOLFormatted} SOL`,
+    `*Holders:* ${solToHoldersFormatted} SOL`,
+    `*Treasury:* ${solToTreasuryFormatted} SOL`,
   ];
 
   // Add spacing before epoch/cycle section
@@ -196,12 +196,9 @@ async function fetchSwapDistributionNotification(
     const distributionCycleNumber = rewards.tax.lastDistributionCycleNumber || cycleInfo.cycleNumber;
     const distributionEpochNumber = rewards.tax.lastDistributionEpochNumber || cycleInfo.epochNumber;
     
-    messageLines.push(`Epoch: ${distributionEpochNumber}`); // Use stored epoch number from distribution
-    messageLines.push(`Cycle: ${distributionCycleNumber} / ${cycleInfo.cyclesPerEpoch}`); // Use stored cycle number from distribution
+    messageLines.push(`*Epoch:* ${distributionEpochNumber}`); // Use stored epoch number from distribution
+    messageLines.push(`*Cycle:* ${distributionCycleNumber} / ${cycleInfo.cyclesPerEpoch}`); // Use stored cycle number from distribution
   }
-
-  // Add timestamp
-  messageLines.push(`Time: ${distributionTime}`);
 
   const message = messageLines.join('\n');
 

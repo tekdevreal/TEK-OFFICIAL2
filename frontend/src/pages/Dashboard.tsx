@@ -5,20 +5,12 @@ import { DistributionCard, type DistributionCardItem } from '../components/Distr
 import { GlassCard } from '../components/GlassCard';
 import { RewardSystem } from '../components/RewardSystem';
 import { useRewards, useHistoricalRewards, useCurrentCycleInfo, useLiquiditySummary, useEpochCycles, useEpochs } from '../hooks/useApiData';
+import { getCurrentEpochCET, formatCETTime, formatCETDateTime, getEpochFromTimestampCET } from '../utils/timeUtils';
 import './Dashboard.css';
 
-// Helper to get current epoch date
-function getCurrentEpoch(): string {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(now.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
 export function Dashboard() {
-  // Track selected epoch for filtering distributions
-  const [selectedEpoch, setSelectedEpoch] = useState<string>(getCurrentEpoch());
+  // Track selected epoch for filtering distributions (using CET timezone)
+  const [selectedEpoch, setSelectedEpoch] = useState<string>(getCurrentEpochCET());
   
   // Use professional data fetching hooks with caching and deduplication
   const {
@@ -47,8 +39,8 @@ export function Dashboard() {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
 
-  // Fetch current epoch data to get the last cycle's harvested TEK
-  const currentEpoch = getCurrentEpoch();
+  // Fetch current epoch data to get the last cycle's harvested TEK (using CET timezone)
+  const currentEpoch = getCurrentEpochCET();
   const { data: currentEpochData } = useEpochCycles(currentEpoch, {
     refetchInterval: 2 * 60 * 1000, // 2 minutes
   });
@@ -77,22 +69,35 @@ export function Dashboard() {
       return [];
     }
 
-    // Filter cycles to only include those from the selected epoch
+    // Filter cycles to only include those from the selected epoch (using CET timezone)
     const selectedEpochCycles = historicalData.cycles.filter((cycle: RewardCycle) => {
-      const cycleDate = new Date(cycle.timestamp);
-      const cycleDateStr = `${cycleDate.getUTCFullYear()}-${String(cycleDate.getUTCMonth() + 1).padStart(2, '0')}-${String(cycleDate.getUTCDate()).padStart(2, '0')}`;
-      return cycleDateStr === selectedEpoch;
+      const cycleEpoch = getEpochFromTimestampCET(cycle.timestamp);
+      return cycleEpoch === selectedEpoch;
     });
 
     // Get up to 108 items (12 pages * 9 cards per page) from selected epoch only
     const cycles = selectedEpochCycles.slice(0, 108);
     
     // Create a map of cycle numbers to actual harvested TEK from epoch data
+    // Use CET cycle numbers to match the dashboard's CET timeframe format
     const cycleTekMap = new Map<number, number>();
     if (selectedEpochData?.cycles) {
       selectedEpochData.cycles.forEach(cycle => {
         if (cycle.taxResult?.harvested) {
-          cycleTekMap.set(cycle.cycleNumber, parseFloat(cycle.taxResult.harvested) / 1e6);
+          // Verify cycle is from the selected epoch (using CET date to match selectedEpoch format)
+          const cycleEpoch = getEpochFromTimestampCET(cycle.timestamp);
+          if (cycleEpoch === selectedEpoch) {
+            // Calculate cycle number in CET from the cycle's timestamp
+            // This ensures the map key matches the CET-calculated cycle number used for lookup
+            const cycleDate = new Date(cycle.timestamp);
+            const cetDate = new Date(cycleDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+            const startOfDay = new Date(cetDate);
+            startOfDay.setHours(0, 0, 0, 0);
+            const minutesSinceStartOfDay = Math.floor((cetDate.getTime() - startOfDay.getTime()) / (1000 * 60));
+            const cycleNumberCET = Math.floor(minutesSinceStartOfDay / 5) + 1;
+            
+            cycleTekMap.set(cycleNumberCET, parseFloat(cycle.taxResult.harvested) / 1e6);
+          }
         }
       });
     }
@@ -100,26 +105,35 @@ export function Dashboard() {
     return cycles
       .map((cycle: RewardCycle) => {
         const d = new Date(cycle.timestamp);
-        const hours = d.getHours();
-        const minutes = d.getMinutes();
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const displayHours = hours % 12 || 12;
-        const displayMinutes = minutes.toString().padStart(2, '0');
         
-        // Calculate actual cycle number (1-288) based on timestamp
-        const startOfDay = new Date(d);
-        startOfDay.setUTCHours(0, 0, 0, 0);
-        const minutesSinceStartOfDay = Math.floor((d.getTime() - startOfDay.getTime()) / (1000 * 60));
+        // Format time in CET timezone with 24-hour format
+        const cetTime = formatCETTime(d);
+        
+        // Calculate actual cycle number (1-288) based on CET timestamp
+        // Using CET timeframe format to match RewardSystem and dashboard display
+        const cycleDate = new Date(d);
+        const cetDate = new Date(cycleDate.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+        const startOfDay = new Date(cetDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const minutesSinceStartOfDay = Math.floor((cetDate.getTime() - startOfDay.getTime()) / (1000 * 60));
         const cycleNumber = Math.floor(minutesSinceStartOfDay / 5) + 1;
         
         // Use actual harvested TEK from epoch data if available, otherwise 0
+        // cycleTekMap is now keyed by CET cycle numbers, so this should match
         const harvestedTEK = cycleTekMap.get(cycleNumber) || 0;
         // Use SOL from historical API (already in SOL, not lamports)
         const distributedSOL = cycle.totalSOLDistributed || 0;
         
+        // Format date in CET timezone
+        const dateStr = cetDate.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+        
         return {
-          date: d.toLocaleDateString(),
-          time: `${displayHours}:${displayMinutes} ${period} EST`,
+          date: dateStr,
+          time: `${cetTime} CET`,
           status: 'Completed' as const,
           harvestedTEK,
           distributedSOL: parseFloat(distributedSOL.toFixed(8)), // Ensure 8 decimal places
@@ -202,14 +216,8 @@ export function Dashboard() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    const dateStr = date.toLocaleDateString();
-    const timeStr = date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
-    return `${dateStr} ${timeStr}`;
+    // Format in CET timezone with 24-hour format
+    return formatCETDateTime(dateString);
   };
 
   const getTimeUntilNext = (nextRun: string | null) => {
@@ -258,9 +266,12 @@ export function Dashboard() {
               <StatCard
                 label="Total Distributions (SOL)"
                 value={(() => {
-                  // Use statistics.totalSOLDistributed which is already in SOL (converted from lamports)
-                  const sol = stats.totalSOLDistributed || 0;
-                  return sol > 0 ? `${sol.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 })} SOL` : '0.000000 SOL';
+                  // Calculate total SOL distributed from historical data (same as DistributionPage)
+                  if (!historicalData?.cycles) return '0.000000 SOL';
+                  const totalSOL = historicalData.cycles.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
+                  return totalSOL > 0 
+                    ? `${totalSOL.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 })} SOL` 
+                    : '0.000000 SOL';
                 })()}
               />
               <StatCard
@@ -359,14 +370,21 @@ export function Dashboard() {
         <GlassCard className="dashboard-section-card">
           <h2 className="section-title">
             Distributions Epoch: {(() => {
-              // Use calculated epoch number
+              // Use same formula as Processing stats section
+              // If selected epoch is current epoch, use currentCycleInfo
+              if (selectedEpoch === currentEpoch && currentCycleInfo?.epochNumber) {
+                return currentCycleInfo.epochNumber.toString();
+              }
+              // For past epochs, use calculated epoch number from epochsData
               if (selectedEpochNumber !== null) {
                 return selectedEpochNumber;
               }
-              // Fallback: show formatted date if no epoch number
+              // Fallback: show formatted date if no epoch number (CET timezone)
               if (selectedEpoch) {
-                const date = new Date(selectedEpoch + 'T00:00:00Z');
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const date = new Date(selectedEpoch + 'T00:00:00');
+                // Format in CET timezone
+                const cetDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+                return cetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
               }
               return 'N/A';
             })()}

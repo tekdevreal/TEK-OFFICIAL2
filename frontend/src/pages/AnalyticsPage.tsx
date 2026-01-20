@@ -80,9 +80,11 @@ export function AnalyticsPage() {
 
   // Calculate stats from real data
   const totalSOLDistributed = useMemo(() => {
-    const sol = parseFloat(rewardsData?.tax?.totalSolDistributed || '0') / 1e9;
-    return sol.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 });
-  }, [rewardsData]);
+    // Calculate total SOL distributed from historical data (same as DistributionPage and Dashboard)
+    if (!historicalData?.cycles) return '0.000000';
+    const totalSOL = historicalData.cycles.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
+    return totalSOL.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 });
+  }, [historicalData]);
 
   const averageSOLPerEpoch = useMemo(() => {
     if (!historicalData?.cycles || historicalData.cycles.length === 0) return '0.000000';
@@ -105,7 +107,7 @@ export function AnalyticsPage() {
     if (!historicalData?.cycles || historicalData.cycles.length === 0) return [];
     
     const timeRangeStart = getTimeRange(timeFilter);
-    const { cyclesPerGroup, maxGroups, label } = getGroupingInfo(timeFilter);
+    const { cyclesPerGroup, maxGroups } = getGroupingInfo(timeFilter);
     
     // Filter cycles by time range
     const filteredCycles = historicalData.cycles
@@ -126,30 +128,34 @@ export function AnalyticsPage() {
     
     for (let i = 0; i < filteredCycles.length; i += cyclesPerGroup) {
       const group = filteredCycles.slice(i, i + cyclesPerGroup);
+      // Sum total SOL distributed (not average) for each group
       const totalSOL = group.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
-      const avgSOL = group.length > 0 ? totalSOL / group.length : 0;
       
-      // Create label based on grouping type
+      // Create label based on grouping type (using CET timezone)
       let groupLabel = '';
       const firstCycleTime = typeof group[0].timestamp === 'string' ? new Date(group[0].timestamp) : new Date(group[0].timestamp);
       
       if (timeFilter === '24H') {
-        // For 24H: show cycle ranges
-        const startOfDay = new Date(firstCycleTime);
-        startOfDay.setHours(0, 0, 0, 0);
-        const minutesSinceStart = Math.floor((firstCycleTime.getTime() - startOfDay.getTime()) / (1000 * 60));
-        const cycleNumber = Math.floor(minutesSinceStart / 5) + 1;
-        const groupStart = Math.floor((cycleNumber - 1) / cyclesPerGroup) * cyclesPerGroup + 1;
-        const groupEnd = Math.min(groupStart + cyclesPerGroup - 1, 288);
-        groupLabel = `${label} ${groupStart}-${groupEnd}`;
+        // For 24H: show time in CET with 24-hour format
+        const cetTime = firstCycleTime.toLocaleString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: 'Europe/Paris',
+        });
+        groupLabel = cetTime;
       } else {
-        // For Week, Month, All Time: show date
-        groupLabel = firstCycleTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        // For Week, Month, All Time: show date in CET
+        groupLabel = firstCycleTime.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          timeZone: 'Europe/Paris',
+        });
       }
       
       groupedData.push({
         epoch: groupLabel,
-        solDistributed: parseFloat(avgSOL.toFixed(4)),
+        solDistributed: parseFloat(totalSOL.toFixed(6)), // Use total, not average, with 6 decimals
         count: group.length
       });
     }
@@ -394,7 +400,7 @@ export function AnalyticsPage() {
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Rewards Over Time</h3>
             <p className="chart-section-description">Average rewards per cycle range</p>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={300} className="rewards-over-time-chart">
               <LineChart data={rewardsOverTimeData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                 <XAxis 
@@ -424,10 +430,10 @@ export function AnalyticsPage() {
                 <Line 
                   type="monotone" 
                   dataKey="solDistributed" 
-                  stroke="#6366f1" 
+                  stroke="#0066FF" 
                   strokeWidth={2}
                   name="SOL Distributed"
-                  dot={{ fill: '#6366f1' }}
+                  dot={{ fill: '#0066FF' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -437,7 +443,7 @@ export function AnalyticsPage() {
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Volume vs Rewards Correlation</h3>
             <p className="chart-section-description">Trading volume and rewards per period</p>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={300} className="volume-rewards-chart">
               <ComposedChart data={volumeVsRewardsData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                 <XAxis 
@@ -479,17 +485,17 @@ export function AnalyticsPage() {
                 <Bar 
                   yAxisId="left"
                   dataKey="volume24h" 
-                  fill="#8b5cf6" 
+                  fill="rgba(0, 102, 255, 0.3)" 
                   name="24H Trading Volume"
                 />
                 <Line 
                   yAxisId="right"
                   type="monotone" 
                   dataKey="solDistributed" 
-                  stroke="#6366f1" 
+                  stroke="#0066FF" 
                   strokeWidth={2}
                   name="SOL Distributed"
-                  dot={{ fill: '#6366f1' }}
+                  dot={{ fill: '#0066FF' }}
                 />
               </ComposedChart>
             </ResponsiveContainer>
@@ -499,7 +505,7 @@ export function AnalyticsPage() {
           <div className="analytics-chart-section">
             <h3 className="chart-section-title">Treasury Balance Over Time</h3>
             <p className="chart-section-description">Treasury accumulation over time</p>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={300} className="treasury-balance-chart">
               <LineChart data={treasuryBalanceChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                 <XAxis 
@@ -572,7 +578,12 @@ export function AnalyticsPage() {
               <div className="metric-item">
                 <span className="metric-label">Total SOL to Holders:</span>
                 <span className="metric-value">
-                  {(parseFloat(rewardsData?.tax?.totalSolDistributed || '0') / 1e9).toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 })} SOL
+                  {(() => {
+                    // Calculate total SOL distributed to holders from historical data
+                    if (!historicalData?.cycles) return '0.000000 SOL';
+                    const totalSOL = historicalData.cycles.reduce((sum, cycle) => sum + (cycle.totalSOLDistributed || 0), 0);
+                    return `${totalSOL.toLocaleString(undefined, { maximumFractionDigits: 6, minimumFractionDigits: 6 })} SOL`;
+                  })()}
                 </span>
               </div>
               <div className="metric-item">

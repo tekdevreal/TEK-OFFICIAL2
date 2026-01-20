@@ -204,6 +204,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  outline: none;
+}
+
+.cycle-block-wrapper:hover {
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+
+/* Remove any underline from last item in row - most specific rule */
+.reward-system-row > .cycle-block-wrapper:last-child,
+.reward-system-row > .cycle-block-wrapper:last-child:hover,
+.reward-system-row > .cycle-block-wrapper:last-child .cycle-block,
+.reward-system-row > .cycle-block-wrapper:last-child .cycle-block:hover {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  border: none !important;
 }
 
 .cycle-block {
@@ -215,6 +233,9 @@
   min-width: 8px;
   min-height: 8px;
   animation: fadeInBlock 0.2s ease-in;
+  text-decoration: none;
+  border: none;
+  outline: none;
 }
 
 @keyframes fadeInBlock {
@@ -230,6 +251,25 @@
   transform: scale(1.15);
   z-index: 10;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.cycle-block-wrapper {
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.cycle-block-wrapper:hover {
+  text-decoration: none;
+  border-bottom: none;
+}
+
+/* Remove any underline from last item in row */
+.reward-system-row > .cycle-block-wrapper:last-child .cycle-block,
+.reward-system-row > .cycle-block-wrapper:last-child .cycle-block:hover {
+  text-decoration: none;
+  border-bottom: none;
 }
 
 .reward-system-loading {

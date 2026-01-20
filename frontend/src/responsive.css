@@ -148,13 +148,13 @@
 /* Dashboard Section Cards */
 @media (max-width: 768px) {
   .dashboard-section-card {
-    padding: 1.25rem !important;
+    padding: 24px !important;
   }
 }
 
 @media (max-width: 640px) {
   .dashboard-section-card {
-    padding: 1rem !important;
+    padding: 16px !important;
   }
 }
 
@@ -230,7 +230,7 @@
   
   /* Better cell spacing for mobile */
   th, td {
-    padding: 0.875rem 1rem !important; /* Increased padding */
+    padding: 16px !important; /* Increased padding - 8px grid */
     font-size: 0.875rem !important; /* Slightly larger text */
     white-space: nowrap; /* Prevent text wrapping */
   }
@@ -238,7 +238,7 @@
 
 @media (max-width: 640px) {
   th, td {
-    padding: 0.5rem 0.625rem !important;
+    padding: 12px !important; /* 8px grid - 12px for mobile */
     font-size: 0.75rem !important;
   }
 }
